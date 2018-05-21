@@ -169,16 +169,17 @@ func (s *Stmt) createTableCommand(e *entity) (*Command, error) {
 	buf.WriteString(fmt.Sprintf(
 		"CREATE TABLE IF NOT EXISTS %s (", s.getTable(e.Name())))
 	for _, c := range e.cols {
-		fmt.Println(c)
-		// sc := s.dialect.GetSchema(c)
-		// if sc.isIndexed {
-		// 	k := fmt.Sprintf("%s_%s_%s", e.Name(), c.Name(), "Idx")
-		// 	idx = append(idx, fmt.Sprintf("INDEX %s (%s)",
-		// 		s.dialect.Quote(k), s.dialect.Quote(c.Name())))
-		// }
-		// buf.WriteString(fmt.Sprintf("%s %s,",
-		// 	s.dialect.Quote(c.Name()),
-		// 	s.dialect.DataType(sc)))
+		for _, ss := range s.dialect.GetSchema(c) {
+			buf.WriteString(fmt.Sprintf("%s %s,",
+				s.dialect.Quote(ss.Name),
+				s.dialect.DataType(ss)))
+
+			if ss.IsIndexed {
+				idx := fmt.Sprintf("%s_%s_%s", e.Name(), ss.Name, "Idx")
+				buf.WriteString(fmt.Sprintf("INDEX %s (%s),",
+					s.dialect.Quote(idx), s.dialect.Quote(ss.Name)))
+			}
+		}
 	}
 
 	if len(idx) > 0 {
@@ -230,12 +231,18 @@ func (s *Stmt) alterTableCommand(e *entity) (*Command, error) {
 					s.dialect.Quote(idx),
 					s.dialect.Quote(ss.Name)))
 			}
+			cols.delete(ss.Name)
 		}
 	}
 
-	for _, k := range idxs.keys() {
+	// for _, col := range cols.keys() {
+	// 	buf.WriteString(fmt.Sprintf(
+	// 		" DROP COLUMN %s,", s.dialect.Quote(col)))
+	// }
+
+	for _, idx := range idxs.keys() {
 		buf.WriteString(fmt.Sprintf(
-			" DROP INDEX %s,", s.dialect.Quote(k)))
+			" DROP INDEX %s,", s.dialect.Quote(idx)))
 	}
 	buf.Truncate(buf.Len() - 1)
 	buf.WriteString(";")
@@ -476,14 +483,19 @@ func (s *Stmt) putCommand(parentKey []*datastore.Key, e *entity) (*Command, erro
 		pk := newPrimaryKey(e.Name(), keys[i])
 		if isInline {
 			kk, isOk := props[keyFieldName].(*datastore.Key)
+			fmt.Println("isInline", kk)
 			if !isOk {
 				return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
 			}
 			pk = newPrimaryKey(e.Name(), kk)
 		}
-		fmt.Println("pk ::: ", pk)
+		fmt.Println("pk ::: ", pk, e.field(keyFieldName))
 		props[keyColumn], props[parentColumn] = splitKey(pk)
 		fv := mustGetField(f, e.field(keyFieldName))
+		if fv.Type() != typeOfPtrKey {
+			return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
+		}
+		fmt.Println(fv, reflect.TypeOf(fv))
 		fv.Set(reflect.ValueOf(pk))
 
 		if i != 0 {

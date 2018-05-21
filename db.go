@@ -71,11 +71,18 @@ func (db *DB) Migrate(model ...interface{}) error {
 
 // Create :
 func (db *DB) Create(model interface{}, parentKey ...*datastore.Key) error {
+	if parentKey == nil {
+		return db.stmt.put(db.NewQuery(), model, nil)
+	}
 	return db.stmt.put(db.NewQuery(), model, parentKey)
 }
 
 // Upsert :
 func (db *DB) Upsert(model interface{}, parentKey ...*datastore.Key) error {
+	fmt.Println("debug :: ", parentKey, parentKey == nil)
+	if parentKey == nil {
+		return db.stmt.upsert(db.NewQuery(), model, nil)
+	}
 	return db.stmt.upsert(db.NewQuery(), model, parentKey)
 }
 

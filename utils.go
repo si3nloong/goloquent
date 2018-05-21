@@ -140,6 +140,11 @@ func parseKey(str string) (*datastore.Key, error) {
 	return parentKey, nil
 }
 
+// StringifyKey :
+func StringifyKey(key *datastore.Key) string {
+	return stringifyKey(key)
+}
+
 // stringifyKey, will transform key to either string or empty string
 func stringifyKey(key *datastore.Key) string {
 	paths := make([]string, 0)

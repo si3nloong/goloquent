@@ -15,6 +15,21 @@ func Connection(driver string) *goloquent.DB {
 	return nil
 }
 
+// Ancestor :
+func Ancestor(ancestorKey *datastore.Key) *goloquent.Query {
+	return defaultDB.NewQuery().Ancestor(ancestorKey)
+}
+
+// DistinctOn :
+func DistinctOn(fields ...string) *goloquent.Query {
+	return defaultDB.NewQuery().DistinctOn(fields...)
+}
+
+// Table :
+func Table(name string) *goloquent.Query {
+	return defaultDB.Table(name)
+}
+
 // Migrate :
 func Migrate(model ...interface{}) error {
 	return defaultDB.Migrate(model...)
@@ -23,7 +38,7 @@ func Migrate(model ...interface{}) error {
 // Create :
 func Create(model interface{}, parentKey ...*datastore.Key) error {
 	if parentKey == nil {
-		return defaultDB.Create(model, nil)
+		return defaultDB.Create(model)
 	}
 	return defaultDB.Create(model, parentKey...)
 }
@@ -31,7 +46,7 @@ func Create(model interface{}, parentKey ...*datastore.Key) error {
 // Upsert :
 func Upsert(model interface{}, parentKey ...*datastore.Key) error {
 	if parentKey == nil {
-		return defaultDB.Upsert(model, nil)
+		return defaultDB.Upsert(model)
 	}
 	return defaultDB.Upsert(model, parentKey...)
 }

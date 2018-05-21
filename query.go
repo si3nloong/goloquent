@@ -273,6 +273,11 @@ func (q *Query) Where(field string, op string, value interface{}) *Query {
 	return q
 }
 
+// WhereEq :
+func (q *Query) WhereEq(field string, v interface{}) *Query {
+	return q.Where(field, "=", v)
+}
+
 // WhereIn :
 func (q *Query) WhereIn(field string, v []interface{}) *Query {
 	return q.Where(field, "in", v)

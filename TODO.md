@@ -1,7 +1,3 @@
-* SoftDelete
-* Eager Loading
-* Logger / Debug
-
 ### Bug / Issue
 
 * Set primary key on insert
@@ -12,24 +8,26 @@
 
 # Breaking Changes
 
-* No longer support Union
-* No longer support
-* No longer support single `Update`
-* Dropped SetDebug(boolean)
-* Dropped unsigned
-* Dropped datastore from roadmap
-* Changed datatype
-* Changed `LockForUpdate` to `WriteLock`
-* Changed `LockForShared` to `ReadLock`
+* Dropped function `Count`
+* Dropped function `Union`
+* Dropped function single `Update`
+* Dropped function `SetDebug(boolean)`
+* Dropped tag option `unsigned` support
+* Dropped datastore support
+* `Delete` function using entity model instead of `*datastore.Key`
+* Changed function `LockForUpdate` to `WLock`
+* Changed function `LockForShared` to `RLock`
 
 # New Features
 
 * Introduced `Select` function
 * Introduced `DistinctOn` function
-* Introduced `Debug` function
+* Introduced `Lock` function
+* Introduced package `qson` (Query JSON)
 * Replaced single entity `Update` to `Save`
 * Eager loading `Related` function
-* Support unsigned data type, uint, uint8
+* Support unsigned integer, uint, uint8, uint16, uint32, uint64
+* Support any pointer of base data type and struct
 
 - Logger
 
@@ -37,7 +35,6 @@
 
 * Create (ok)
 * Upsert (ok)
-* SoftDelete
 * Save (ok)
 * UpdateMulti
 * Delete Multi

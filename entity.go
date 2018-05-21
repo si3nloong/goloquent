@@ -110,7 +110,6 @@ func (e *entity) Name() string {
 func (e *entity) Columns() (cols []string) {
 	cols = make([]string, 0, len(e.cols))
 	for _, c := range e.cols {
-		// fmt.Println(c.field.getFullPath())
 		if c.Name() == keyFieldName {
 			cols = append(cols, keyColumn, parentColumn)
 			continue

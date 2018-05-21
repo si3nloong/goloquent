@@ -12,6 +12,8 @@ type mysql struct {
 	sequel
 }
 
+var _ Dialect = new(mysql)
+
 func init() {
 	RegisterDialect("mysql", new(mysql))
 }

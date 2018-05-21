@@ -18,11 +18,6 @@ type Saver interface {
 	Save() error
 }
 
-// NewIterator :
-func NewIterator() *Iterator {
-	return &Iterator{"", -1, []string{}, make([]map[string][]byte, 0), nil}
-}
-
 // Iterator :
 type Iterator struct {
 	table    string

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/si3nloong/playground/goloquent"
+	"github.com/si3nloong/goloquent"
 )
 
 var (

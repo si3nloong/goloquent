@@ -9,6 +9,9 @@ import (
 	"cloud.google.com/go/datastore"
 )
 
+// TransactionHandler :
+type TransactionHandler func(*DB) error
+
 // public constant variables :
 const (
 	keyColumn    = "$Key"

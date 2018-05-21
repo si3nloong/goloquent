@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/datastore"
-	"github.com/si3nloong/playground/goloquent"
+	"github.com/si3nloong/goloquent"
 )
 
 // Connection :

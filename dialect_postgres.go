@@ -8,6 +8,8 @@ type postgres struct {
 	sequel
 }
 
+var _ Dialect = new(postgres)
+
 func init() {
 	RegisterDialect("postges", new(postgres))
 }
@@ -36,7 +38,6 @@ func (p *postgres) OnConflictUpdate(cols []string) string {
 // 		}
 // 		t = t.Elem()
 // 	}
-
 // 	switch t {
 // 	case typeOfByte:
 // 		sc.dataType = "bytea"

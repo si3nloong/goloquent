@@ -7,11 +7,3 @@ type Relationship struct {
 	Relation   string
 	Child      string
 }
-
-// type relationship string
-
-// type (
-// 	HasOne   relationship
-// 	HasMany  relationship
-// 	BelongTo relationship
-// )

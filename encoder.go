@@ -72,7 +72,7 @@ func marshal(it interface{}) (interface{}, error) {
 }
 
 // SaveStruct :
-func SaveStruct(src interface{}) (map[string]interface{}, error) {
+func SaveStruct(src interface{}) (map[string]Property, error) {
 	vi := reflect.Indirect(reflect.ValueOf(src))
 	vv := reflect.New(vi.Type())
 	vv.Elem().Set(vi) // copy the value to new struct
@@ -82,7 +82,7 @@ func SaveStruct(src interface{}) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	data := make(map[string]interface{})
+	data := make(map[string]Property)
 	for _, f := range ety.codec.fields {
 		fv := getFieldByIndex(vv.Elem(), f.paths)
 		var it, err = saveField(f, fv)
@@ -94,23 +94,8 @@ func SaveStruct(src interface{}) (map[string]interface{}, error) {
 			return nil, err
 		}
 		for _, p := range props {
-			data[p.Name()] = p.Value
+			data[p.Name()] = p
 		}
-
-		// it = l[p.key()]
-		// vv, err := interfaceToValue(it)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// vv, err = marshal(vv)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// p.Value = vv
-		// if _, isOk := data[p.key()]; isOk {
-		// 	continue
-		// }
-		// data[p.key()] = vv
 	}
 
 	return data, nil
@@ -144,8 +129,6 @@ func interfaceToValue(it interface{}) (interface{}, error) {
 	var value interface{}
 
 	switch vi := it.(type) {
-	case nil:
-		value = vi
 	case string:
 		value = vi
 	case bool:
@@ -165,6 +148,12 @@ func interfaceToValue(it interface{}) (interface{}, error) {
 		} else {
 			value = str
 		}
+	case SoftDelete:
+		vv := reflect.ValueOf(it)
+		if vv.IsNil() {
+			return nil, nil
+		}
+		value = (*SoftDelete(vi)).Format("2006-01-02 15:04:05")
 	case time.Time:
 		value = vi.Format("2006-01-02 15:04:05")
 	case geoLocation:
@@ -180,24 +169,29 @@ func interfaceToValue(it interface{}) (interface{}, error) {
 			slice = append(slice, s)
 		}
 		value = slice
-
 	case map[string]interface{}: // Nested struct
 		var list, err = mapToValue(vi)
 		if err != nil {
 			return nil, err
 		}
 		value = list
-
 	default:
 		vv := reflect.ValueOf(it)
-		if vv.Kind() == reflect.Ptr && vv.IsNil() {
-			return nil, nil
+		fmt.Println("data ::: ", it, vv.Type())
+		if vv.Type().Kind() == reflect.Ptr {
+			if vv.IsNil() {
+				return nil, nil
+			}
+			it, err := interfaceToValue(vv.Elem().Interface())
+			if err != nil {
+				return nil, err
+			}
+			return it, nil
 		}
-		it, err := interfaceToValue(vv.Elem().Interface())
-		if err != nil {
-			return nil, err
-		}
-		return it, nil
+		fmt.Println(vv, reflect.TypeOf(vv))
+		//
+
+		// return it, nil
 	}
 
 	return value, nil
@@ -249,6 +243,11 @@ func saveField(f field, v reflect.Value) (interface{}, error) {
 		it = vi
 	case datastore.GeoPoint:
 		it = geoLocation{vi.Lat, vi.Lng}
+	case SoftDelete:
+		if v.IsNil() {
+			return reflect.Zero(typeOfSoftDelete), nil
+		}
+		it = vi
 	default:
 		switch t.Kind() {
 		case reflect.String:

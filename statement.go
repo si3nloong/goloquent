@@ -513,6 +513,12 @@ func (s *Stmt) putCommand(parentKey []*datastore.Key, e *entity) (*Command, erro
 	// loop every entity
 	for i := 0; i < v.Len(); i++ {
 		f := v.Index(i)
+		if x, isOk := f.Interface().(Saver); isOk {
+			if err := x.Save(); err != nil {
+				return nil, err
+			}
+		}
+
 		props, err := SaveStruct(f.Interface())
 		if err != nil {
 			return nil, nil
@@ -520,48 +526,43 @@ func (s *Stmt) putCommand(parentKey []*datastore.Key, e *entity) (*Command, erro
 
 		pk := newPrimaryKey(e.Name(), keys[i])
 		if isInline {
-			kk, isOk := props[keyFieldName].(*datastore.Key)
+			kk, isOk := props[keyFieldName].Value.(*datastore.Key)
 			if !isOk {
 				return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
 			}
 			pk = newPrimaryKey(e.Name(), kk)
 		}
+
+		k, p := splitKey(pk)
+		props[keyColumn] = Property{[]string{keyColumn}, nil, k}
+		props[parentColumn] = Property{[]string{parentColumn}, nil, p}
 		fmt.Println("pk ::: ", pk)
-		props[keyColumn], props[parentColumn] = splitKey(pk)
-		fv := mustGetField(f, e.field(keyFieldName))
-		if fv.Type() != typeOfPtrKey {
-			return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
-		}
-		fv.Set(reflect.ValueOf(pk))
+		//
+		// fv := mustGetField(f, e.field(keyFieldName))
+		// if fv.Type() != typeOfPtrKey {
+		// 	return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
+		// }
+		// fv.Set(reflect.ValueOf(pk))
 
 		if i != 0 {
 			buf.WriteString(",")
 		}
 		vals := make([]interface{}, len(cols), len(cols))
 		for j, c := range cols {
-			vv, err := interfaceToValue(props[c])
-			if err != nil {
-				return nil, err
-			}
-			vv, err = marshal(vv)
+			vv, err := props[c].Interface()
 			if err != nil {
 				return nil, err
 			}
 			vals[j] = vv
 		}
 
-		if x, isOk := f.Interface().(Saver); isOk {
-			if err := x.Save(); err != nil {
-				return nil, err
-			}
-		}
 		buf.WriteString("(")
 		for j := 0; j < len(cols); j++ {
 			buf.WriteString(s.dialect.Bind(i*len(cols)+j) + ",")
 		}
 		buf.Truncate(buf.Len() - 1)
 		buf.WriteString(")")
-		args = append(args, vals...)
+		// args = append(args, vals...)
 	}
 	buf.WriteString(";")
 
@@ -577,12 +578,14 @@ func (s *Stmt) put(query *Query, model interface{}, parentKey []*datastore.Key) 
 	if err != nil {
 		return err
 	}
-	e.setName(query.table)
+	// e.setName(query.table)
 	cmd, err := s.putCommand(parentKey, e)
 	if err != nil {
 		return err
 	}
-	return s.execCommand(cmd)
+	fmt.Println("HERE !!!!!!", cmd)
+	// return s.execCommand(cmd)
+	return nil
 }
 
 func (s *Stmt) upsert(query *Query, model interface{}, parentKey []*datastore.Key) error {

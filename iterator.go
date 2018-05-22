@@ -167,6 +167,19 @@ func (p Property) Name() string {
 	return strings.Join(p.name, ".")
 }
 
+// Interface :
+func (p Property) Interface() (interface{}, error) {
+	vv, err := interfaceToValue(p.Value)
+	if err != nil {
+		return nil, err
+	}
+	vv, err = marshal(vv)
+	if err != nil {
+		return nil, err
+	}
+	return vv, err
+}
+
 func getTypes(ns []string, f field, isFlatten bool) []Property {
 	props := make([]Property, 0)
 	if isFlatten && f.StructCodec != nil {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"sync"
 
 	"cloud.google.com/go/datastore"
 )
@@ -164,21 +163,14 @@ func (s *Stmt) buildWhere(query *Query, args ...interface{}) (*Command, error) {
 	}, nil
 }
 
-var waitGroup sync.WaitGroup
-
-func log(s Stmt, cmd Command) {
-	waitGroup.Add(1)
+func consoleLog(s Stmt, cmd Command) {
 	if s.logger != nil {
-		func() {
-			defer waitGroup.Done()
-			s.logger(&cmd)
-		}()
+		s.logger(&cmd)
 	}
-	waitGroup.Wait()
 }
 
 func (s *Stmt) execCommand(cmd *Command) error {
-	go log(*s, *cmd)
+	go consoleLog(*s, *cmd)
 	stmt, err := s.db.Prepare(cmd.Statement())
 	if err != nil {
 		return fmt.Errorf("goloquent: unable to prepare the sql statement: %v", err)
@@ -190,7 +182,7 @@ func (s *Stmt) execCommand(cmd *Command) error {
 }
 
 func (s *Stmt) execQuery(cmd *Command) (*sql.Rows, error) {
-	go log(*s, *cmd)
+	go consoleLog(*s, *cmd)
 	return s.db.Query(cmd.Statement(), cmd.arguments...)
 }
 
@@ -536,13 +528,11 @@ func (s *Stmt) putCommand(parentKey []*datastore.Key, e *entity) (*Command, erro
 		k, p := splitKey(pk)
 		props[keyColumn] = Property{[]string{keyColumn}, nil, k}
 		props[parentColumn] = Property{[]string{parentColumn}, nil, p}
-		fmt.Println("pk ::: ", pk)
-		//
-		// fv := mustGetField(f, e.field(keyFieldName))
-		// if fv.Type() != typeOfPtrKey {
-		// 	return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
-		// }
-		// fv.Set(reflect.ValueOf(pk))
+		fv := mustGetField(f, e.field(keyFieldName))
+		if !fv.IsValid() || fv.Type() != typeOfPtrKey {
+			return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
+		}
+		fv.Set(reflect.ValueOf(pk))
 
 		if i != 0 {
 			buf.WriteString(",")
@@ -562,7 +552,7 @@ func (s *Stmt) putCommand(parentKey []*datastore.Key, e *entity) (*Command, erro
 		}
 		buf.Truncate(buf.Len() - 1)
 		buf.WriteString(")")
-		// args = append(args, vals...)
+		args = append(args, vals...)
 	}
 	buf.WriteString(";")
 
@@ -578,14 +568,12 @@ func (s *Stmt) put(query *Query, model interface{}, parentKey []*datastore.Key) 
 	if err != nil {
 		return err
 	}
-	// e.setName(query.table)
+	e.setName(query.table)
 	cmd, err := s.putCommand(parentKey, e)
 	if err != nil {
 		return err
 	}
-	fmt.Println("HERE !!!!!!", cmd)
-	// return s.execCommand(cmd)
-	return nil
+	return s.execCommand(cmd)
 }
 
 func (s *Stmt) upsert(query *Query, model interface{}, parentKey []*datastore.Key) error {

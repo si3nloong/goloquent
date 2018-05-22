@@ -129,6 +129,8 @@ func interfaceToValue(it interface{}) (interface{}, error) {
 	var value interface{}
 
 	switch vi := it.(type) {
+	case nil:
+		value = vi
 	case string:
 		value = vi
 	case bool:
@@ -177,21 +179,17 @@ func interfaceToValue(it interface{}) (interface{}, error) {
 		value = list
 	default:
 		vv := reflect.ValueOf(it)
-		fmt.Println("data ::: ", it, vv.Type())
-		if vv.Type().Kind() == reflect.Ptr {
-			if vv.IsNil() {
-				return nil, nil
-			}
-			it, err := interfaceToValue(vv.Elem().Interface())
-			if err != nil {
-				return nil, err
-			}
-			return it, nil
+		if vv.Type().Kind() != reflect.Ptr {
+			return nil, fmt.Errorf("goloquent: invalid data type %v", vv.Type())
 		}
-		fmt.Println(vv, reflect.TypeOf(vv))
-		//
-
-		// return it, nil
+		if vv.IsNil() {
+			return nil, nil
+		}
+		it, err := interfaceToValue(vv.Elem().Interface())
+		if err != nil {
+			return nil, err
+		}
+		return it, nil
 	}
 
 	return value, nil
@@ -245,7 +243,7 @@ func saveField(f field, v reflect.Value) (interface{}, error) {
 		it = geoLocation{vi.Lat, vi.Lng}
 	case SoftDelete:
 		if v.IsNil() {
-			return reflect.Zero(typeOfSoftDelete), nil
+			return reflect.Zero(typeOfSoftDelete).Interface(), nil
 		}
 		it = vi
 	default:
@@ -271,7 +269,7 @@ func saveField(f field, v reflect.Value) (interface{}, error) {
 			elem := t.Elem()
 			if isBaseType(elem) {
 				if v.IsNil() { // return zero which has datatype
-					return reflect.Zero(t), nil
+					return reflect.Zero(t).Interface(), nil
 				}
 				return saveField(f, v.Elem())
 			}
@@ -279,7 +277,7 @@ func saveField(f field, v reflect.Value) (interface{}, error) {
 				return nil, fmt.Errorf("goloquent: unsupported struct field data type %q", t.String())
 			}
 			if v.IsNil() {
-				return reflect.Zero(t), nil
+				return reflect.Zero(t).Interface(), nil
 			}
 			v = v.Elem()
 			fallthrough

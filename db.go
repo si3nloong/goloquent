@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/datastore"
@@ -20,12 +21,25 @@ const (
 
 // Config :
 type Config struct {
-	Username string
-	Password string
-	Host     string
-	Port     string
-	Database string
-	IsSocket bool
+	Username   string
+	Password   string
+	Host       string
+	Port       string
+	Database   string
+	UnixSocket string
+	CharSet    *CharSet
+}
+
+func (c Config) trimSpace() {
+	c.Username = strings.TrimSpace(c.Username)
+	c.Host = strings.TrimSpace(c.Host)
+	c.Port = strings.TrimSpace(c.Port)
+	c.Database = strings.TrimSpace(c.Database)
+	c.UnixSocket = strings.TrimSpace(c.UnixSocket)
+	if c.CharSet != nil {
+		c.CharSet.Collation = strings.TrimSpace(c.CharSet.Collation)
+		c.CharSet.Encoding = strings.TrimSpace(c.CharSet.Encoding)
+	}
 }
 
 // DB :
@@ -37,10 +51,11 @@ type DB struct {
 
 // NewDB :
 func NewDB(driver string, conn sqlCommon, dialect Dialect) *DB {
+	dbName := dialect.CurrentDB()
 	return &DB{
 		id:   fmt.Sprintf("%s:%d", driver, time.Now().UnixNano()),
-		name: dialect.CurrentDB(),
-		stmt: &Stmt{db: conn, dialect: dialect},
+		name: dbName,
+		stmt: &Stmt{dbName: dbName, db: conn, dialect: dialect},
 	}
 }
 
@@ -52,6 +67,11 @@ func (db *DB) clone() *DB {
 // ID :
 func (db *DB) ID() string {
 	return db.id
+}
+
+// Raw :
+func (db *DB) Raw(stmt string, args ...interface{}) *sql.Row {
+	return db.clone().stmt.db.QueryRow(stmt, args...)
 }
 
 // NewQuery :
@@ -66,34 +86,33 @@ func (db *DB) Table(name string) *Query {
 
 // Migrate :
 func (db *DB) Migrate(model ...interface{}) error {
-	return db.stmt.migrate(model)
+	return db.clone().stmt.migrate(model)
 }
 
 // Create :
 func (db *DB) Create(model interface{}, parentKey ...*datastore.Key) error {
 	if parentKey == nil {
-		return db.stmt.put(db.NewQuery(), model, nil)
+		return db.clone().stmt.put(db.NewQuery(), model, nil)
 	}
-	return db.stmt.put(db.NewQuery(), model, parentKey)
+	return db.clone().stmt.put(db.NewQuery(), model, parentKey)
 }
 
 // Upsert :
 func (db *DB) Upsert(model interface{}, parentKey ...*datastore.Key) error {
-	fmt.Println("debug :: ", parentKey, parentKey == nil)
 	if parentKey == nil {
-		return db.stmt.upsert(db.NewQuery(), model, nil)
+		return db.clone().stmt.upsert(db.NewQuery(), model, nil)
 	}
-	return db.stmt.upsert(db.NewQuery(), model, parentKey)
+	return db.clone().stmt.upsert(db.NewQuery(), model, parentKey)
 }
 
 // Save :
 func (db *DB) Save(model interface{}) error {
-	return db.stmt.update(db.NewQuery(), model)
+	return db.clone().stmt.update(db.NewQuery(), model)
 }
 
 // Delete :
 func (db *DB) Delete(model interface{}) error {
-	return db.stmt.delete(db.NewQuery(), model)
+	return db.clone().stmt.delete(db.NewQuery(), model)
 }
 
 // Truncate :
@@ -118,7 +137,7 @@ func (db *DB) Truncate(model interface{}) error {
 		return fmt.Errorf("goloquent: missing table name")
 	}
 
-	return db.stmt.truncate(table)
+	return db.clone().stmt.truncate(table)
 }
 
 // Select :
@@ -153,7 +172,7 @@ func (db *DB) Where(field string, operator string, value interface{}) *Query {
 
 // RunInTransaction :
 func (db *DB) RunInTransaction(cb TransactionHandler) error {
-	return db.stmt.runInTransaction(cb)
+	return db.clone().stmt.runInTransaction(cb)
 }
 
 // Close :
@@ -163,4 +182,24 @@ func (db *DB) Close() error {
 		return nil
 	}
 	return x.Close()
+}
+
+// Table :
+type Table struct {
+	db *DB
+}
+
+// Create :
+func (t *Table) Create(model interface{}) error {
+	return t.db.Create(model)
+}
+
+// Delete :
+func (t *Table) Delete(model interface{}) error {
+	return t.db.Delete(model)
+}
+
+// Where :
+func (t *Table) Where(field, operator string, value interface{}) *Query {
+	return t.db.Where(field, operator, value)
 }

@@ -15,12 +15,14 @@ var (
 
 // Config :
 type Config struct {
-	Username string
-	Password string
-	Host     string
-	Port     string
-	Database string
-	IsSocket bool
+	Username   string
+	Password   string
+	Host       string
+	Port       string
+	Database   string
+	UnixSocket string
+	CharSet    *goloquent.CharSet
+	Logger     func()
 }
 
 // Open :
@@ -35,12 +37,13 @@ func Open(driver string, conf Config) (*goloquent.DB, error) {
 		pool = p.(map[string]*goloquent.DB)
 	}
 	conn, err := dialect.Open(goloquent.Config{
-		Username: conf.Username,
-		Password: conf.Password,
-		Host:     conf.Host,
-		Port:     conf.Host,
-		Database: conf.Database,
-		IsSocket: conf.IsSocket,
+		Username:   conf.Username,
+		Password:   conf.Password,
+		Host:       conf.Host,
+		Port:       conf.Port,
+		Database:   conf.Database,
+		UnixSocket: conf.UnixSocket,
+		CharSet:    conf.CharSet,
 	})
 	if err != nil {
 		return nil, err

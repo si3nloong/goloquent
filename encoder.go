@@ -166,7 +166,8 @@ func interfaceToValue(it interface{}) (interface{}, error) {
 	case time.Time:
 		value = vi.Format("2006-01-02 15:04:05")
 	case geoLocation:
-		value = vi
+		b, _ := json.Marshal(vi)
+		value = json.RawMessage(b)
 	case []interface{}:
 		slice := make([]interface{}, 0, len(vi))
 		for _, elem := range vi {

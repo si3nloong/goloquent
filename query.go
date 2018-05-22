@@ -349,6 +349,11 @@ func (q *Query) WLock() *Query {
 	return q
 }
 
+// Update :
+func (q *Query) Update(v interface{}) error {
+	return q.db.stmt.updateMulti(q.clone(), v)
+}
+
 // Flush :
 func (q *Query) Flush() error {
 	if q.table == "" {

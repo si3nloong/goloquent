@@ -15,9 +15,24 @@ type Command struct {
 	arguments []interface{}
 }
 
+// Raw :
+func (c *Command) Raw() string {
+	ss := c.Statement()
+	// for i, aa := range cmd.arguments {
+	// 	ss = strings.Replace(ss, s.dialect.Bind(i), fmt.Sprintf("%q", aa), 1)
+	// }
+	// fmt.Println(ss)
+	return ss
+}
+
 // Statement :
 func (c *Command) Statement() string {
 	return c.statement.String()
+}
+
+// Arguments :
+func (c *Command) Arguments() []interface{} {
+	return c.arguments
 }
 
 func checkMultiPtr(v reflect.Value) (isPtr bool, t reflect.Type) {

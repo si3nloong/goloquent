@@ -15,15 +15,21 @@ var (
 	ErrNoSuchEntity = fmt.Errorf("goloquent: entity not found")
 )
 
+// Logger :
+type Logger interface {
+	Println(cmd *Command)
+}
+
 // Stmt :
 type Stmt struct {
+	dbName  string
 	db      sqlCommon
 	dialect Dialect
-	logger  interface{}
+	logger  Logger
 }
 
 func (s *Stmt) getTable(table string) string {
-	return s.dialect.Quote(table)
+	return fmt.Sprintf("%s.%s", s.dialect.Quote(s.dbName), s.dialect.Quote(table))
 }
 
 func (s *Stmt) buildWhere(query *Query, args ...interface{}) (*Command, error) {
@@ -148,6 +154,12 @@ func (s *Stmt) execCommand(cmd *Command) error {
 	fmt.Println(strings.Repeat("-", 100))
 	fmt.Println("SQL :: ", cmd.Statement())
 	fmt.Println(strings.Repeat("-", 100))
+	// s.logger.Println(cmd)
+	ss := cmd.Statement()
+	for i, aa := range cmd.arguments {
+		ss = strings.Replace(ss, s.dialect.Bind(i), fmt.Sprintf("%q", aa), 1)
+	}
+	fmt.Println(ss)
 	// fmt.Println("Arguments :: ", cmd.arguments)
 	stmt, err := s.db.Prepare(cmd.Statement())
 	if err != nil {
@@ -168,7 +180,7 @@ func (s *Stmt) createTableCommand(e *entity) (*Command, error) {
 	buf := new(bytes.Buffer)
 	buf.WriteString(fmt.Sprintf(
 		"CREATE TABLE IF NOT EXISTS %s (", s.getTable(e.Name())))
-	for _, c := range e.cols {
+	for _, c := range e.columns {
 		for _, ss := range s.dialect.GetSchema(c) {
 			buf.WriteString(fmt.Sprintf("%s %s,",
 				s.dialect.Quote(ss.Name),
@@ -210,7 +222,7 @@ func (s *Stmt) alterTableCommand(e *entity) (*Command, error) {
 	buf := new(bytes.Buffer)
 	buf.WriteString(fmt.Sprintf("ALTER TABLE %s", s.getTable(e.Name())))
 	suffix := "FIRST"
-	for _, c := range e.cols {
+	for _, c := range e.columns {
 		for _, ss := range s.dialect.GetSchema(c) {
 			action := "ADD"
 			if cols.has(ss.Name) {
@@ -280,12 +292,7 @@ func (s *Stmt) migrate(models []interface{}) error {
 	return nil
 }
 
-func (s *Stmt) getCommand(query *Query, model interface{}) (*Command, error) {
-	e, err := newEntity(model)
-	if err != nil {
-		return nil, err
-	}
-
+func (s *Stmt) getCommand(e *entity, query *Query) (*Command, error) {
 	buf := new(bytes.Buffer)
 	scope := "*"
 	if len(query.projection) > 0 {
@@ -295,7 +302,7 @@ func (s *Stmt) getCommand(query *Query, model interface{}) (*Command, error) {
 		scope = "DISTINCT " + s.dialect.Quote(strings.Join(query.distinctOn, s.dialect.Quote(",")))
 	}
 
-	buf.WriteString(fmt.Sprintf("SELECT %s FROM %s", scope, s.dialect.Quote(e.Name())))
+	buf.WriteString(fmt.Sprintf("SELECT %s FROM %s", scope, s.getTable(e.Name())))
 	cmd, err := s.buildWhere(query)
 	if err != nil {
 		return nil, err
@@ -357,7 +364,12 @@ func (s *Stmt) run(cmd *Command) (*Iterator, error) {
 }
 
 func (s *Stmt) get(query *Query, model interface{}, mustExist bool) error {
-	cmd, err := s.getCommand(query, model)
+	e, err := newEntity(model)
+	if err != nil {
+		return err
+	}
+	e.setName(query.table)
+	cmd, err := s.getCommand(e, query)
 	if err != nil {
 		return err
 	}
@@ -382,7 +394,12 @@ func (s *Stmt) get(query *Query, model interface{}, mustExist bool) error {
 }
 
 func (s *Stmt) getMulti(query *Query, model interface{}) error {
-	cmd, err := s.getCommand(query, model)
+	e, err := newEntity(model)
+	if err != nil {
+		return err
+	}
+	e.setName(query.table)
+	cmd, err := s.getCommand(e, query)
 	if err != nil {
 		return err
 	}
@@ -412,7 +429,12 @@ func (s *Stmt) getMulti(query *Query, model interface{}) error {
 }
 
 func (s *Stmt) paginate(query *Query, p *Pagination, model interface{}) error {
-	cmd, err := s.getCommand(query, model)
+	e, err := newEntity(model)
+	if err != nil {
+		return err
+	}
+	e.setName(query.table)
+	cmd, err := s.getCommand(e, query)
 	if err != nil {
 		return err
 	}
@@ -469,7 +491,7 @@ func (s *Stmt) putCommand(parentKey []*datastore.Key, e *entity) (*Command, erro
 	cols := e.Columns()
 	buf.WriteString(fmt.Sprintf(
 		"INSERT INTO %s (%s) VALUES ",
-		s.dialect.Quote(e.Name()),
+		s.getTable(e.Name()),
 		s.dialect.Quote(strings.Join(e.Columns(), s.dialect.Quote(",")))))
 
 	// loop every entity
@@ -483,19 +505,17 @@ func (s *Stmt) putCommand(parentKey []*datastore.Key, e *entity) (*Command, erro
 		pk := newPrimaryKey(e.Name(), keys[i])
 		if isInline {
 			kk, isOk := props[keyFieldName].(*datastore.Key)
-			fmt.Println("isInline", kk)
 			if !isOk {
 				return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
 			}
 			pk = newPrimaryKey(e.Name(), kk)
 		}
-		fmt.Println("pk ::: ", pk, e.field(keyFieldName))
+		fmt.Println("pk ::: ", pk)
 		props[keyColumn], props[parentColumn] = splitKey(pk)
 		fv := mustGetField(f, e.field(keyFieldName))
 		if fv.Type() != typeOfPtrKey {
 			return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
 		}
-		fmt.Println(fv, reflect.TypeOf(fv))
 		fv.Set(reflect.ValueOf(pk))
 
 		if i != 0 {
@@ -541,6 +561,7 @@ func (s *Stmt) put(query *Query, model interface{}, parentKey []*datastore.Key) 
 	if err != nil {
 		return err
 	}
+	e.setName(query.table)
 	cmd, err := s.putCommand(parentKey, e)
 	if err != nil {
 		return err
@@ -553,6 +574,7 @@ func (s *Stmt) upsert(query *Query, model interface{}, parentKey []*datastore.Ke
 	if err != nil {
 		return err
 	}
+	e.setName(query.table)
 	cmd, err := s.putCommand(parentKey, e)
 	if err != nil {
 		return err
@@ -571,12 +593,11 @@ func (s *Stmt) updateMutation(query *Query, model interface{}) (*Command, error)
 	if v.Len() <= 0 {
 		return new(Command), nil
 	}
-
 	e, err := newEntity(model)
 	if err != nil {
 		return nil, err
 	}
-
+	e.setName(query.table)
 	buf := new(bytes.Buffer)
 	args := make([]interface{}, 0)
 	buf.WriteString(fmt.Sprintf("UPDATE %s SET ", s.getTable(e.Name())))
@@ -585,10 +606,10 @@ func (s *Stmt) updateMutation(query *Query, model interface{}) (*Command, error)
 	if err != nil {
 		return nil, err
 	}
-	pk, isOk := data[keyFieldName].(*datastore.Key)
-	if !isOk || pk == nil {
-		return nil, fmt.Errorf("goloquent: entity has no primary key")
-	}
+	// pk, isOk := data[keyFieldName].(*datastore.Key)
+	// if !isOk || pk == nil {
+	// 	return nil, fmt.Errorf("goloquent: entity has no primary key")
+	// }
 
 	for k, v := range data {
 		if k == keyFieldName {
@@ -607,13 +628,22 @@ func (s *Stmt) updateMutation(query *Query, model interface{}) (*Command, error)
 		" WHERE %s = %s AND %s = %s;",
 		s.dialect.Quote(keyColumn), s.dialect.Bind(len(args)),
 		s.dialect.Quote(parentColumn), s.dialect.Bind(len(args))))
-	k, p := splitKey(pk)
-	args = append(args, k, p)
+	// k, p := splitKey(pk)
+	// args = append(args, k, p)
+
+	fmt.Println(buf.String(), args)
 
 	return &Command{
 		statement: buf,
 		arguments: args,
 	}, nil
+}
+
+func (s *Stmt) updateWithMap(v reflect.Value) {
+	for _, k := range v.MapKeys() {
+		vv := v.MapIndex(k)
+		fmt.Println(vv)
+	}
 }
 
 func (s *Stmt) update(query *Query, model interface{}) error {
@@ -633,8 +663,27 @@ func (s *Stmt) update(query *Query, model interface{}) error {
 	return nil
 }
 
-func (s *Stmt) updateMulti() {
-
+func (s *Stmt) updateMulti(query *Query, v interface{}) error {
+	fmt.Println("Debug Update " + strings.Repeat("-", 100))
+	fmt.Println(v)
+	vi := reflect.Indirect(reflect.ValueOf(v))
+	switch vi.Type().Kind() {
+	case reflect.Map:
+		if vi.IsNil() || vi.Len() == 0 {
+			return nil
+		}
+		s.updateWithMap(vi)
+	case reflect.Struct:
+		vs := reflect.MakeSlice(reflect.SliceOf(vi.Type()), 1, 1)
+		vs.Index(0).Set(vi)
+		vv := reflect.New(vs.Type())
+		vv.Elem().Set(vs)
+		_, err := s.updateMutation(query, vv.Interface())
+		fmt.Println(err)
+	default:
+		return fmt.Errorf("goloquent: unsupported data type %v on `Update`", vi.Type())
+	}
+	return nil
 }
 
 func (s *Stmt) deleteCommand(e *entity) (*Command, error) {
@@ -643,7 +692,7 @@ func (s *Stmt) deleteCommand(e *entity) (*Command, error) {
 
 	buf.WriteString(fmt.Sprintf(
 		"DELETE FROM %s WHERE concat(%s) in (",
-		s.dialect.Quote(e.Name()),
+		s.getTable(e.Name()),
 		fmt.Sprintf("%s,%q,%s", s.dialect.Quote(parentColumn), "/", s.dialect.Quote(keyColumn))))
 	for i := 0; i < v.Len(); i++ {
 		f := v.Index(i)
@@ -676,6 +725,7 @@ func (s *Stmt) delete(query *Query, model interface{}) error {
 	if err != nil {
 		return err
 	}
+	e.setName(query.table)
 	cmd, err := s.deleteCommand(e)
 	if err != nil {
 		return err
@@ -693,21 +743,6 @@ func (s *Stmt) deleteByQuery(query *Query) error {
 	buf.WriteString(fmt.Sprintf("DELETE FROM %s", s.getTable(table)))
 	buf.WriteString(cmd.Statement())
 	buf.WriteString(";")
-	cmd.statement = buf
-	return s.execCommand(cmd)
-}
-
-func (s *Stmt) deleteByKey(key *datastore.Key) error {
-	k, p := splitKey(key)
-	cmd := new(Command)
-	buf := new(bytes.Buffer)
-	buf.WriteString(fmt.Sprintf("DELETE FROM %s ", s.getTable(key.Kind)))
-	buf.WriteString(fmt.Sprintf("WHERE %s = %s AND %s = %s;",
-		s.dialect.Quote(keyColumn),
-		s.dialect.Bind(1),
-		s.dialect.Quote(parentColumn),
-		s.dialect.Bind(2)))
-	cmd.arguments = append(cmd.arguments, k, p)
 	cmd.statement = buf
 	return s.execCommand(cmd)
 }

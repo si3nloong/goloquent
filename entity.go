@@ -40,7 +40,7 @@ type entity struct {
 	slice      reflect.Value
 	codec      *StructCodec
 	fields     map[string]column
-	cols       []column
+	columns    []column
 }
 
 // convertMulti will convert any single model to pointer of []model
@@ -95,8 +95,15 @@ func newEntity(it interface{}) (*entity, error) {
 		codec:      codec,
 		slice:      v,
 		fields:     fields,
-		cols:       cols,
+		columns:    cols,
 	}, nil
+}
+
+func (e *entity) setName(name string) {
+	name = strings.TrimSpace(name)
+	if name != "" {
+		e.name = name
+	}
 }
 
 func (e *entity) field(key string) field {
@@ -108,8 +115,8 @@ func (e *entity) Name() string {
 }
 
 func (e *entity) Columns() (cols []string) {
-	cols = make([]string, 0, len(e.cols))
-	for _, c := range e.cols {
+	cols = make([]string, 0, len(e.columns))
+	for _, c := range e.columns {
 		if c.Name() == keyFieldName {
 			cols = append(cols, keyColumn, parentColumn)
 			continue

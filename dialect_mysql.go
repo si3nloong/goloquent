@@ -20,8 +20,20 @@ func init() {
 
 // Open :
 func (s *mysql) Open(conf Config) (*sql.DB, error) {
-	connStr := conf.Username + ":" + conf.Password + "@/" + conf.Database
-	client, err := sql.Open("mysql", connStr)
+	conf.trimSpace()
+	addr, buf := "@", new(bytes.Buffer)
+	buf.WriteString(conf.Username + ":" + conf.Password)
+	if conf.UnixSocket != "" {
+		addr += fmt.Sprintf("unix(%s)", conf.UnixSocket)
+	} else {
+		if conf.Host != "" && conf.Port != "" {
+			addr += fmt.Sprintf("tcp(%s:%s)", conf.Host, conf.Port)
+		}
+	}
+	buf.WriteString(addr)
+	buf.WriteString(fmt.Sprintf("/%s", conf.Database))
+	fmt.Println("Connection String :: ", buf.String())
+	client, err := sql.Open("mysql", buf.String())
 	if err != nil {
 		return nil, err
 	}

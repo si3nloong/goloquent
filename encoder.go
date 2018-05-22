@@ -144,6 +144,8 @@ func interfaceToValue(it interface{}) (interface{}, error) {
 	var value interface{}
 
 	switch vi := it.(type) {
+	case nil:
+		value = vi
 	case string:
 		value = vi
 	case bool:
@@ -187,12 +189,15 @@ func interfaceToValue(it interface{}) (interface{}, error) {
 		value = list
 
 	default:
-		iv := reflect.ValueOf(it)
-		if iv.Kind() == reflect.Ptr && iv.IsNil() {
+		vv := reflect.ValueOf(it)
+		if vv.Kind() == reflect.Ptr && vv.IsNil() {
 			return nil, nil
 		}
-
-		// return value, nil
+		it, err := interfaceToValue(vv.Elem().Interface())
+		if err != nil {
+			return nil, err
+		}
+		return it, nil
 	}
 
 	return value, nil

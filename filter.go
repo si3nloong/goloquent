@@ -54,11 +54,13 @@ func normalizeValue(val interface{}) (interface{}, error) {
 			if v.IsNil() {
 				return nil, nil
 			}
-			var val, err = normalizeValue(v.Elem())
+			var val, err = normalizeValue(v.Elem().Interface())
 			if err != nil {
 				return nil, err
 			}
-			it = &val
+			vv := reflect.New(v.Type().Elem())
+			vv.Elem().Set(reflect.ValueOf(val))
+			it = vv.Interface()
 		default:
 			return nil, fmt.Errorf("goloquent: unsupported data type %v", t)
 		}

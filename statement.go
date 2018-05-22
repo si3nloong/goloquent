@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 
 	"cloud.google.com/go/datastore"
 )
@@ -15,21 +16,34 @@ var (
 	ErrNoSuchEntity = fmt.Errorf("goloquent: entity not found")
 )
 
-// Logger :
-type Logger interface {
-	Println(cmd *Command)
-}
-
 // Stmt :
 type Stmt struct {
 	dbName  string
 	db      sqlCommon
 	dialect Dialect
-	logger  Logger
+	logger  LogHandler
 }
 
 func (s *Stmt) getTable(table string) string {
 	return fmt.Sprintf("%s.%s", s.dialect.Quote(s.dbName), s.dialect.Quote(table))
+}
+
+func interfaceKeyToString(it interface{}) (interface{}, error) {
+	var v interface{}
+	switch vi := it.(type) {
+	case nil:
+		v = vi
+	case *datastore.Key:
+		k, p := splitKey(vi)
+		v = k + p
+	case string:
+		v = vi
+	case []byte:
+		v = string(vi)
+	default:
+		return nil, fmt.Errorf("goloquent: primary key has invalid data type %v", reflect.TypeOf(vi))
+	}
+	return v, nil
 }
 
 func (s *Stmt) buildWhere(query *Query, args ...interface{}) (*Command, error) {
@@ -43,14 +57,12 @@ func (s *Stmt) buildWhere(query *Query, args ...interface{}) (*Command, error) {
 			return nil, err
 		}
 		if f.field == keyFieldName {
-			name = fmt.Sprintf("concat(%s,%q,%s)",
-				s.dialect.Quote(parentColumn), "/", s.dialect.Quote(keyColumn))
-			x, isOk := f.value.(*datastore.Key)
-			if !isOk {
-
+			name = fmt.Sprintf("concat(%s,%s)",
+				s.dialect.Quote(parentColumn), s.dialect.Quote(keyColumn))
+			v, err = interfaceKeyToString(f.value)
+			if err != nil {
+				return nil, err
 			}
-			k, p := splitKey(x)
-			v = p + "/" + k
 		}
 
 		op, vv := "=", s.dialect.Bind(i)
@@ -105,13 +117,15 @@ func (s *Stmt) buildWhere(query *Query, args ...interface{}) (*Command, error) {
 
 	for _, aa := range query.ancestors {
 		wheres = append(wheres, fmt.Sprintf(
-			"(%s LIKE %s OR %s LIKE %s)",
+			"(%s = %s OR %s LIKE %s OR %s LIKE %s)",
+			s.dialect.Quote(parentColumn),
+			s.dialect.Bind(i),
 			s.dialect.Quote(parentColumn),
 			s.dialect.Bind(i),
 			s.dialect.Quote(parentColumn),
 			s.dialect.Bind(i)))
 		k := stringifyKey(aa)
-		args = append(args, "%"+k, k+"%")
+		args = append(args, k, "%/"+k, k+"/%")
 	}
 
 	if len(wheres) > 0 {
@@ -125,8 +139,8 @@ func (s *Stmt) buildWhere(query *Query, args ...interface{}) (*Command, error) {
 		for _, o := range query.orders {
 			name := s.dialect.Quote(o.field)
 			if o.field == keyFieldName {
-				name = fmt.Sprintf("concat(%s,%q,%s)",
-					s.dialect.Quote(parentColumn), "/", s.dialect.Quote(keyColumn))
+				name = fmt.Sprintf("concat(%s,%s)",
+					s.dialect.Quote(parentColumn), s.dialect.Quote(keyColumn))
 			}
 			suffix := " ASC"
 			if o.direction != ascending {
@@ -150,17 +164,21 @@ func (s *Stmt) buildWhere(query *Query, args ...interface{}) (*Command, error) {
 	}, nil
 }
 
-func (s *Stmt) execCommand(cmd *Command) error {
-	fmt.Println(strings.Repeat("-", 100))
-	fmt.Println("SQL :: ", cmd.Statement())
-	fmt.Println(strings.Repeat("-", 100))
-	// s.logger.Println(cmd)
-	ss := cmd.Statement()
-	for i, aa := range cmd.arguments {
-		ss = strings.Replace(ss, s.dialect.Bind(i), fmt.Sprintf("%q", aa), 1)
+var waitGroup sync.WaitGroup
+
+func log(s Stmt, cmd Command) {
+	waitGroup.Add(1)
+	if s.logger != nil {
+		func() {
+			defer waitGroup.Done()
+			s.logger(&cmd)
+		}()
 	}
-	fmt.Println(ss)
-	// fmt.Println("Arguments :: ", cmd.arguments)
+	waitGroup.Wait()
+}
+
+func (s *Stmt) execCommand(cmd *Command) error {
+	go log(*s, *cmd)
 	stmt, err := s.db.Prepare(cmd.Statement())
 	if err != nil {
 		return fmt.Errorf("goloquent: unable to prepare the sql statement: %v", err)
@@ -171,8 +189,9 @@ func (s *Stmt) execCommand(cmd *Command) error {
 	return nil
 }
 
-func (s *Stmt) execQuery(cmd *Command) error {
-	return nil
+func (s *Stmt) execQuery(cmd *Command) (*sql.Rows, error) {
+	go log(*s, *cmd)
+	return s.db.Query(cmd.Statement(), cmd.arguments...)
 }
 
 func (s *Stmt) createTableCommand(e *entity) (*Command, error) {
@@ -324,10 +343,7 @@ func (s *Stmt) getCommand(e *entity, query *Query) (*Command, error) {
 }
 
 func (s *Stmt) run(cmd *Command) (*Iterator, error) {
-	fmt.Println(strings.Repeat("-", 100))
-	fmt.Println("SQL :: ", cmd.Statement(), cmd.arguments)
-	fmt.Println(strings.Repeat("-", 100))
-	var rows, err = s.db.Query(cmd.Statement(), cmd.arguments...)
+	var rows, err = s.execQuery(cmd)
 	if err != nil {
 		return nil, fmt.Errorf("goloquent: %v", err)
 	}
@@ -631,8 +647,6 @@ func (s *Stmt) updateMutation(query *Query, model interface{}) (*Command, error)
 	// k, p := splitKey(pk)
 	// args = append(args, k, p)
 
-	fmt.Println(buf.String(), args)
-
 	return &Command{
 		statement: buf,
 		arguments: args,
@@ -756,20 +770,21 @@ func (s *Stmt) truncate(table string) error {
 }
 
 func (s *Stmt) runInTransaction(cb TransactionHandler) error {
-	db, isOk := s.db.(*sql.DB)
-	if !isOk {
-		return fmt.Errorf("goloquent: invalid connection")
-	}
-	txn, err := db.Begin()
-	if err != nil {
-		return fmt.Errorf("goloquent: unable to begin transaction, %v", err)
-	}
-	tx := NewDB("", txn, s.dialect)
-	if r := recover(); r != nil {
-		defer txn.Rollback()
-		if err := cb(tx); err != nil {
-			return err
-		}
-	}
-	return txn.Commit()
+	// db, isOk := s.db.(*sql.DB)
+	// if !isOk {
+	// 	return fmt.Errorf("goloquent: invalid connection")
+	// }
+	// txn, err := db.Begin()
+	// if err != nil {
+	// 	return fmt.Errorf("goloquent: unable to begin transaction, %v", err)
+	// }
+	// tx := NewDB("", txn, s.dialect)
+	// if r := recover(); r != nil {
+	// 	defer txn.Rollback()
+	// 	if err := cb(tx); err != nil {
+	// 		return err
+	// 	}
+	// }
+	// return txn.Commit()
+	return nil
 }

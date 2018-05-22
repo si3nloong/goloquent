@@ -13,6 +13,9 @@ import (
 // TransactionHandler :
 type TransactionHandler func(*DB) error
 
+// LogHandler :
+type LogHandler func(*Command)
+
 // public constant variables :
 const (
 	keyColumn    = "$Key"
@@ -28,6 +31,7 @@ type Config struct {
 	Database   string
 	UnixSocket string
 	CharSet    *CharSet
+	Logger     LogHandler
 }
 
 func (c Config) trimSpace() {
@@ -50,12 +54,17 @@ type DB struct {
 }
 
 // NewDB :
-func NewDB(driver string, conn sqlCommon, dialect Dialect) *DB {
+func NewDB(driver string, conn sqlCommon, dialect Dialect, logHandler LogHandler) *DB {
 	dbName := dialect.CurrentDB()
 	return &DB{
 		id:   fmt.Sprintf("%s:%d", driver, time.Now().UnixNano()),
 		name: dbName,
-		stmt: &Stmt{dbName: dbName, db: conn, dialect: dialect},
+		stmt: &Stmt{
+			dbName:  dbName,
+			db:      conn,
+			dialect: dialect,
+			logger:  logHandler,
+		},
 	}
 }
 

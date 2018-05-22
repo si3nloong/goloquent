@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -15,13 +16,25 @@ type Command struct {
 	arguments []interface{}
 }
 
+func toString(it interface{}) string {
+	var str string
+	switch vi := it.(type) {
+	case nil:
+		str = "NULL"
+	case string, []byte:
+		str = fmt.Sprintf("%q", vi)
+	default:
+		str = fmt.Sprintf("%v", vi)
+	}
+	return str
+}
+
 // Raw :
 func (c *Command) Raw() string {
 	ss := c.Statement()
-	// for i, aa := range cmd.arguments {
-	// 	ss = strings.Replace(ss, s.dialect.Bind(i), fmt.Sprintf("%q", aa), 1)
-	// }
-	// fmt.Println(ss)
+	for _, aa := range c.arguments {
+		ss = strings.Replace(ss, "?", toString(aa), 1)
+	}
 	return ss
 }
 

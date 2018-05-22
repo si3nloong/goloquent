@@ -58,6 +58,9 @@ type Filter struct {
 
 // Value :
 func (f *Filter) Value() (interface{}, error) {
+	if f.field == keyFieldName {
+		return nil, nil
+	}
 	if f.value == nil {
 		return nil, nil
 	}

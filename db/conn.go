@@ -22,7 +22,7 @@ type Config struct {
 	Database   string
 	UnixSocket string
 	CharSet    *goloquent.CharSet
-	Logger     func()
+	Logger     goloquent.LogHandler
 }
 
 // Open :
@@ -44,6 +44,7 @@ func Open(driver string, conf Config) (*goloquent.DB, error) {
 		Database:   conf.Database,
 		UnixSocket: conf.UnixSocket,
 		CharSet:    conf.CharSet,
+		Logger:     conf.Logger,
 	})
 	if err != nil {
 		return nil, err
@@ -52,7 +53,7 @@ func Open(driver string, conf Config) (*goloquent.DB, error) {
 		return nil, fmt.Errorf("goloquent: mysql server has not response")
 	}
 	dialect.SetDB(conn)
-	db := goloquent.NewDB(driver, conn, dialect)
+	db := goloquent.NewDB(driver, conn, dialect, conf.Logger)
 	pool[conf.Database] = db
 	connPool.Store(driver, pool)
 	// Override defaultDB wheneve initialise a new connection

@@ -81,7 +81,7 @@ type Query struct {
 
 func newQuery(db *DB) *Query {
 	return &Query{
-		db:     db,
+		db:     db.clone(),
 		limit:  -1,
 		offset: -1,
 	}
@@ -115,6 +115,7 @@ func (q *Query) Table(name string) *Query {
 
 // Select :
 func (q *Query) Select(fields ...string) *Query {
+	q = q.clone()
 	arr := make([]string, 0, len(fields))
 	for _, f := range fields {
 		f := strings.TrimSpace(f)
@@ -144,12 +145,13 @@ func (q *Query) Find(key *datastore.Key, model interface{}) error {
 	if key == nil || key.Incomplete() {
 		return fmt.Errorf("goloquent: find action with invalid key value, %q", key)
 	}
-	q.Where(keyFieldName, "=", key).Limit(1)
-	return q.db.stmt.get(q, model, true)
+	q = q.Where(keyFieldName, "=", key).Limit(1)
+	return newBuilder(q.db).get(q, model, true)
 }
 
 // First :
 func (q *Query) First(model interface{}) error {
+	q = q.clone()
 	if err := q.getError(); err != nil {
 		return err
 	}
@@ -157,15 +159,16 @@ func (q *Query) First(model interface{}) error {
 		return err
 	}
 	q.Limit(1)
-	return q.db.stmt.get(q, model, false)
+	return newBuilder(q.db).get(q, model, false)
 }
 
 // Get :
 func (q *Query) Get(model interface{}) error {
+	q = q.clone()
 	if err := q.getError(); err != nil {
 		return err
 	}
-	return q.db.stmt.getMulti(q, model)
+	return newBuilder(q.db).getMulti(q, model)
 }
 
 // Paginate :
@@ -177,22 +180,22 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 	if p.Limit > maxLimit {
 		return fmt.Errorf("goloquent: limit overflow : %d, maximum limit : %d", p.Limit, maxLimit)
 	}
-	q.Limit(int(p.Limit) + 1).Order(keyFieldName)
+	q = q.Limit(int(p.Limit) + 1).Order(keyFieldName)
 	if p.Cursor != "" {
 		c, err := datastore.DecodeKey(p.Cursor)
 		if err != nil {
 			return err
 		}
-		q.Where(keyFieldName, ">", c)
+		q = q.Where(keyFieldName, ">", c)
 	}
+	q = q.Order(p.Sort...)
 	q.filters = append(q.filters, p.Filter...)
-	q.Order(p.Sort...)
-	return q.db.stmt.paginate(q, p, model)
+	return newBuilder(q.db).paginate(q, p, model)
 }
 
 // DistinctOn :
 func (q *Query) DistinctOn(fields ...string) *Query {
-	// Primary key is always selected
+	q = q.clone()
 	dict := newDictionary(append(q.distinctOn, fields...))
 	dict.delete(keyFieldName)
 	dict.add(keyColumn)
@@ -215,6 +218,7 @@ func (q *Query) Ancestor(ancestor *datastore.Key) *Query {
 
 // Where :
 func (q *Query) Where(field string, op string, value interface{}) *Query {
+	q = q.clone()
 	field = strings.TrimSpace(field)
 	op = strings.TrimSpace(op)
 
@@ -290,12 +294,14 @@ func (q *Query) WhereNotLike(field, v string) *Query {
 
 // Limit :
 func (q *Query) Limit(limit int) *Query {
+	q = q.clone()
 	q.limit = int32(limit)
 	return q
 }
 
 // Offset :
 func (q *Query) Offset(offset int) *Query {
+	q = q.clone()
 	q.offset = int32(offset)
 	return q
 }
@@ -306,6 +312,7 @@ func (q *Query) Order(fields ...string) *Query {
 		return q
 	}
 
+	q = q.clone()
 	f := fields[0]
 	name, dir := strings.TrimSpace(f), ascending
 	if strings.HasPrefix(name, "+") {
@@ -323,18 +330,21 @@ func (q *Query) Order(fields ...string) *Query {
 
 // Lock :
 func (q *Query) Lock(mode locked) *Query {
+	q = q.clone()
 	q.lockMode = mode
 	return q
 }
 
 // RLock :
 func (q *Query) RLock() *Query {
+	q = q.clone()
 	q.lockMode = ReadLock
 	return q
 }
 
 // WLock :
 func (q *Query) WLock() *Query {
+	q = q.clone()
 	q.lockMode = WriteLock
 	return q
 }
@@ -344,7 +354,8 @@ func (q *Query) Update(v interface{}) error {
 	if err := q.getError(); err != nil {
 		return err
 	}
-	return q.db.stmt.updateMulti(q.clone(), v)
+	q = q.clone()
+	return newBuilder(q.db).updateMulti(q, v)
 }
 
 // Flush :
@@ -355,5 +366,5 @@ func (q *Query) Flush() error {
 	if q.table == "" {
 		return fmt.Errorf("goloquent: unable to perform delete without table name")
 	}
-	return q.db.stmt.deleteByQuery(q.clone())
+	return newBuilder(q.db).deleteByQuery(q.clone())
 }

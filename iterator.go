@@ -49,6 +49,9 @@ func (it *Iterator) put(pos int, k string, v interface{}) error {
 // First :
 func (it *Iterator) First() *Iterator {
 	it.position = 0
+	if len(it.results) <= 0 {
+		return nil
+	}
 	return it
 }
 
@@ -200,8 +203,8 @@ func interfaceIsZero(it interface{}) bool {
 		if vv.Type().Kind() == reflect.Ptr && vv.IsNil() {
 			return true
 		}
-		// TODO:
-		fmt.Println("Zero :: ", reflect.Zero(vv.Type()).Interface())
+
+		return reflect.DeepEqual(it, reflect.Zero(vv.Type()).Interface())
 	}
 	return zero
 }

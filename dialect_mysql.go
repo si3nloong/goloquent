@@ -65,7 +65,7 @@ func (s *mysql) DataType(sc Schema) string {
 	if !sc.IsNullable {
 		buf.WriteString(" NOT NULL")
 		t := reflect.TypeOf(sc.DefaultValue)
-		if t != reflect.TypeOf(omitDefault(nil)) {
+		if t != reflect.TypeOf(OmitDefault(nil)) {
 			buf.WriteString(fmt.Sprintf(" DEFAULT %s", s.toString(sc.DefaultValue)))
 		}
 	}

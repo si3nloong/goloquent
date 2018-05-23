@@ -18,6 +18,16 @@ type Builder struct {
 	logger  LogHandler
 }
 
+func newBuilder(db *DB) *Builder {
+	clone := db.clone()
+	return &Builder{
+		dbName:  clone.name,
+		db:      clone.conn,
+		dialect: clone.dialect,
+		logger:  clone.logger,
+	}
+}
+
 func (s *Builder) getTable(table string) string {
 	return fmt.Sprintf("%s.%s", s.dialect.Quote(s.dbName), s.dialect.Quote(table))
 }
@@ -766,13 +776,11 @@ func (s *Builder) updateMulti(query *Query, v interface{}) error {
 	if err != nil {
 		return err
 	}
-	args = append(args, stmt.arguments...)
 	buf.WriteString(stmt.Raw())
 	buf.WriteString(";")
-	fmt.Println(buf.String())
 	return s.execStmt(&Stmt{
 		statement: buf,
-		arguments: args,
+		arguments: append(args, stmt.arguments...),
 	})
 }
 

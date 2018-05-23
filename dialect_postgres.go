@@ -1,7 +1,11 @@
 package goloquent
 
 import (
+	"bytes"
+	"database/sql"
 	"fmt"
+	"reflect"
+	"time"
 )
 
 type postgres struct {
@@ -14,6 +18,30 @@ func init() {
 	RegisterDialect("postges", new(postgres))
 }
 
+// Open :
+func (p *postgres) Open(conf Config) (*sql.DB, error) {
+	conf.trimSpace()
+	addr, buf := "@", new(bytes.Buffer)
+	buf.WriteString("postgres://")
+	buf.WriteString(conf.Username + ":" + conf.Password)
+	if conf.UnixSocket != "" {
+		addr += fmt.Sprintf("unix(%s)", conf.UnixSocket)
+	} else {
+		if conf.Host != "" && conf.Port != "" {
+			addr += fmt.Sprintf("tcp(%s:%s)", conf.Host, conf.Port)
+		}
+	}
+	buf.WriteString(addr)
+	buf.WriteString(fmt.Sprintf("/%s", conf.Database))
+	buf.WriteString("?sslmode=verify-full")
+	fmt.Println("Connection String :: ", buf.String())
+	client, err := sql.Open("postgres", buf.String())
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
 func (p *postgres) Bind(i int) string {
 	return fmt.Sprintf("$%d", i)
 }
@@ -23,51 +51,47 @@ func (p *postgres) Quote(n string) string {
 }
 
 func (p *postgres) OnConflictUpdate(cols []string) string {
-	return ""
+	buf := new(bytes.Buffer)
+	buf.WriteString(fmt.Sprintf(
+		"ON CONFLICT (%s,%s) UPDATE SET",
+		p.Quote(parentColumn),
+		p.Quote(keyColumn)))
+	for _, c := range cols {
+		buf.WriteString(fmt.Sprintf("%s = %s", p.Quote(c), p.Quote(c)))
+	}
+	return buf.String()
 }
 
-// func (p *postgres) GetSchema(f field) Schema {
-// 	t := f.getRoot().typeOf
-// 	sc := Schema{}
-// 	if t.Kind() == reflect.Ptr {
-// 		sc.IsNullable = true
-// 		if t == typeOfPtrKey {
-// 			sc.isIndexed = true
-// 			sc.dataType = fmt.Sprintf("varchar(%d)", 512)
-// 			return sc
-// 		}
-// 		t = t.Elem()
-// 	}
-// 	switch t {
-// 	case typeOfByte:
-// 		sc.dataType = "bytea"
-// 	case typeOfTime:
-// 		sc.defaultValue = time.Time{}
-// 		sc.dataType = "timestamptz"
-// 	default:
-// 		switch t.Kind() {
-// 		case reflect.String:
-// 			sc.defaultValue = ""
-// 			sc.dataType = fmt.Sprintf("varchar(%d)", 255)
-// 		case reflect.Bool:
-// 			sc.defaultValue = false
-// 			sc.dataType = "boolean"
-// 		case reflect.Int8:
-// 			sc.defaultValue = int8(0)
-// 			sc.dataType = "smallint"
-// 		case reflect.Int, reflect.Int16, reflect.Int32:
-// 			sc.defaultValue = int(0)
-// 			sc.dataType = "integer"
-// 		case reflect.Int64:
-// 			sc.defaultValue = int64(0)
-// 			sc.dataType = "bigint"
-// 		case reflect.Float32, reflect.Float64:
-// 			sc.defaultValue = float64(0)
-// 			sc.dataType = "real"
-// 		default:
-// 			sc.dataType = "text"
-// 		}
-// 	}
+func (p *postgres) GetSchema(c column) []Schema {
+	f := c.field
+	t := f.getRoot().typeOf
+	if f.isFlatten() {
+		t = f.typeOf
+	}
 
-// 	return sc
-// }
+	sc := Schema{
+		Name:       c.Name(),
+		IsNullable: f.isPtrChild,
+	}
+
+	switch t {
+	case typeOfByte:
+		sc.DataType = "bytea"
+	case typeOfTime:
+		sc.DefaultValue = time.Time{}
+		sc.DataType = "timestamptz"
+	default:
+		switch t.Kind() {
+		case reflect.String:
+			sc.DefaultValue = ""
+			sc.DataType = fmt.Sprintf("varchar(%d)", 191)
+			if f.isLongText() {
+				sc.DefaultValue = nil
+				sc.DataType = "text"
+			}
+			sc.CharSet = utf8mb4CharSet
+		}
+	}
+
+	return []Schema{sc}
+}

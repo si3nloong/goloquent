@@ -98,7 +98,7 @@ func (s *sequel) DataType(sc Schema) string {
 	if !sc.IsNullable {
 		buf.WriteString(" NOT NULL")
 		t := reflect.TypeOf(sc.DefaultValue)
-		if t != reflect.TypeOf(omitDefault(nil)) {
+		if t != reflect.TypeOf(OmitDefault(nil)) {
 			buf.WriteString(fmt.Sprintf(" DEFAULT %s", s.toString(sc.DefaultValue)))
 		}
 	}
@@ -147,8 +147,8 @@ func (s *sequel) GetSchema(c column) []Schema {
 		if t == typeOfPtrKey {
 			if f.name == keyFieldName {
 				return []Schema{
-					Schema{keyColumn, fmt.Sprintf("varchar(%d)", 50), omitDefault(nil), false, false, false, latin2CharSet},
-					Schema{parentColumn, fmt.Sprintf("varchar(%d)", 512), omitDefault(nil), false, false, false, latin2CharSet},
+					Schema{keyColumn, fmt.Sprintf("varchar(%d)", 50), OmitDefault(nil), false, false, false, latin2CharSet},
+					Schema{parentColumn, fmt.Sprintf("varchar(%d)", 512), OmitDefault(nil), false, false, false, latin2CharSet},
 				}
 			}
 			sc.IsIndexed = true
@@ -161,7 +161,7 @@ func (s *sequel) GetSchema(c column) []Schema {
 
 	switch t {
 	case typeOfByte:
-		sc.DefaultValue = omitDefault(nil)
+		sc.DefaultValue = OmitDefault(nil)
 		sc.DataType = "mediumblob"
 	case typeOfTime:
 		sc.DefaultValue = time.Time{}
@@ -209,7 +209,7 @@ func (s *sequel) GetSchema(c column) []Schema {
 			sc.IsUnsigned = f.isUnsigned()
 		case reflect.Slice, reflect.Array:
 			sc.DataType = "text"
-			sc.DefaultValue = omitDefault(nil)
+			sc.DefaultValue = OmitDefault(nil)
 			sc.CharSet = utf8CharSet
 			if isBaseType(t.Elem()) {
 				sc.CharSet = latin2CharSet
@@ -220,7 +220,7 @@ func (s *sequel) GetSchema(c column) []Schema {
 			}
 		default:
 			sc.DataType = "text"
-			sc.DefaultValue = omitDefault(nil)
+			sc.DefaultValue = OmitDefault(nil)
 			sc.CharSet = utf8CharSet
 			if s.Version() >= "5.5" {
 				sc.DataType = "json"

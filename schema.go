@@ -6,7 +6,8 @@ var (
 	latin2CharSet  = &CharSet{"latin2", "latin2_general_ci"}
 )
 
-type omitDefault interface{}
+// OmitDefault :
+type OmitDefault interface{}
 
 // CharSet :
 type CharSet struct {

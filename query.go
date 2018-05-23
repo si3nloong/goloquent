@@ -49,28 +49,6 @@ const (
 	keyFieldName = "__key__"
 )
 
-// Filter :
-type Filter struct {
-	field    string
-	operator operator
-	value    interface{}
-}
-
-// Value :
-func (f *Filter) Value() (interface{}, error) {
-	if f.field == keyFieldName {
-		return nil, nil
-	}
-	if f.value == nil {
-		return nil, nil
-	}
-	v, err := normalizeValue(f.value)
-	if err != nil {
-		return nil, err
-	}
-	return interfaceToValue(v)
-}
-
 func checkSinglePtr(it interface{}) error {
 	v := reflect.ValueOf(it)
 	if v.Kind() != reflect.Ptr {
@@ -97,7 +75,6 @@ type Query struct {
 	errs       []error
 	relatives  []Relationship
 	lockMode   locked
-	isDebug    bool
 	keyOnly    bool
 	hasTrash   bool
 }
@@ -124,12 +101,6 @@ func (q *Query) getError() error {
 		return fmt.Errorf("%s", buf.String())
 	}
 	return nil
-}
-
-// Debug :
-func (q *Query) Debug() *Query {
-	q.isDebug = true
-	return q
 }
 
 // Table :
@@ -164,6 +135,9 @@ func (q *Query) Select(fields ...string) *Query {
 
 // Find :
 func (q *Query) Find(key *datastore.Key, model interface{}) error {
+	if err := q.getError(); err != nil {
+		return err
+	}
 	if err := checkSinglePtr(model); err != nil {
 		return nil
 	}
@@ -176,6 +150,9 @@ func (q *Query) Find(key *datastore.Key, model interface{}) error {
 
 // First :
 func (q *Query) First(model interface{}) error {
+	if err := q.getError(); err != nil {
+		return err
+	}
 	if err := checkSinglePtr(model); err != nil {
 		return nil
 	}
@@ -185,11 +162,17 @@ func (q *Query) First(model interface{}) error {
 
 // Get :
 func (q *Query) Get(model interface{}) error {
+	if err := q.getError(); err != nil {
+		return err
+	}
 	return q.db.stmt.getMulti(q, model)
 }
 
 // Paginate :
 func (q *Query) Paginate(p *Pagination, model interface{}) error {
+	if err := q.getError(); err != nil {
+		return err
+	}
 	q = q.clone()
 	if p.Limit > maxLimit {
 		return fmt.Errorf("goloquent: limit overflow : %d, maximum limit : %d", p.Limit, maxLimit)
@@ -243,7 +226,7 @@ func (q *Query) Where(field string, op string, value interface{}) *Query {
 
 	var optr operator
 	switch strings.ToLower(op) {
-	case "=", "<=>", "eq":
+	case "=", "eq":
 		optr = equal
 	case "!=", "<>", "ne":
 		optr = notEqual
@@ -281,6 +264,16 @@ func (q *Query) WhereEq(field string, v interface{}) *Query {
 	return q.Where(field, "=", v)
 }
 
+// WhereNull :
+func (q *Query) WhereNull(field string) *Query {
+	return q.Where(field, "=", nil)
+}
+
+// WhereNotNull :
+func (q *Query) WhereNotNull(field string) *Query {
+	return q.Where(field, "<>", nil)
+}
+
 // WhereIn :
 func (q *Query) WhereIn(field string, v []interface{}) *Query {
 	return q.Where(field, "in", v)
@@ -292,12 +285,12 @@ func (q *Query) WhereNotIn(field string, v []interface{}) *Query {
 }
 
 // WhereLike :
-func (q *Query) WhereLike(field string, v interface{}) *Query {
+func (q *Query) WhereLike(field, v string) *Query {
 	return q.Where(field, "like", v)
 }
 
 // WhereNotLike :
-func (q *Query) WhereNotLike(field string, v interface{}) *Query {
+func (q *Query) WhereNotLike(field, v string) *Query {
 	return q.Where(field, "nlike", v)
 }
 
@@ -354,11 +347,17 @@ func (q *Query) WLock() *Query {
 
 // Update :
 func (q *Query) Update(v interface{}) error {
+	if err := q.getError(); err != nil {
+		return err
+	}
 	return q.db.stmt.updateMulti(q.clone(), v)
 }
 
 // Flush :
 func (q *Query) Flush() error {
+	if err := q.getError(); err != nil {
+		return err
+	}
 	if q.table == "" {
 		return fmt.Errorf("goloquent: unable to perform delete without table name")
 	}

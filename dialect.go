@@ -35,7 +35,7 @@ func RegisterDialect(driver string, d Dialect) {
 func GetDialect(driver string) (d Dialect, isValid bool) {
 	d, isValid = dialects[driver]
 	if isValid {
-		// Clone a new connection
+		// Clone a new dialect
 		d = reflect.New(reflect.TypeOf(d).Elem()).Interface().(Dialect)
 	}
 	return

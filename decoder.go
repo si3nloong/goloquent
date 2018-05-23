@@ -419,7 +419,6 @@ func unflatMap(l map[string]interface{}, names []string, it interface{}) {
 		if !isExist {
 			l[k] = make(map[string]interface{})
 		}
-		// l[k] = p
 		l = (l[k]).(map[string]interface{})
 	}
 }

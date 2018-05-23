@@ -8,8 +8,28 @@ import (
 	"cloud.google.com/go/datastore"
 )
 
+// Filter :
+type Filter struct {
+	field    string
+	operator operator
+	value    interface{}
+}
+
+// Interface :
+func (f *Filter) Interface() (interface{}, error) {
+	if f.value == nil {
+		return nil, nil
+	}
+	v, err := normalizeValue(f.value)
+	if err != nil {
+		return nil, err
+	}
+	return interfaceToValue(v)
+}
+
 // final data type :::
-// string, bool, int64, float64, []byte, *datastore.Key, time.Time, datastore.GeoPoint, []interface{}
+// string, bool, uint64, int64, float64, []byte
+// time.Time, *datastore.Key, datastore.GeoPoint, []interface{}
 func normalizeValue(val interface{}) (interface{}, error) {
 	v := reflect.ValueOf(val)
 	var it interface{}

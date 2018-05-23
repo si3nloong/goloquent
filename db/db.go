@@ -9,8 +9,13 @@ import (
 
 // Connection :
 func Connection(driver string) *goloquent.DB {
-	if _, isOk := connPool.Load(driver); !isOk {
+	x, isOk := connPool.Load(driver)
+	if !isOk {
 		panic(fmt.Errorf("goloquent: connection not found"))
+	}
+	pool := x.(map[string]*goloquent.DB)
+	for _, v := range pool {
+		return v
 	}
 	return nil
 }
@@ -33,6 +38,11 @@ func Table(name string) *goloquent.Query {
 // Migrate :
 func Migrate(model ...interface{}) error {
 	return defaultDB.Migrate(model...)
+}
+
+// Omit :
+func Omit(fields ...string) goloquent.Creator {
+	return defaultDB.Omit(fields...)
 }
 
 // Create :

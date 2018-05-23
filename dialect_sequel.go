@@ -210,12 +210,12 @@ func (s *sequel) GetSchema(c column) []Schema {
 		switch t.Kind() {
 		case reflect.String:
 			sc.DefaultValue = ""
-			sc.DataType = fmt.Sprintf("varchar(%d)", 255)
+			sc.DataType = fmt.Sprintf("varchar(%d)", 191)
 			if f.isLongText() {
 				sc.DefaultValue = nil
 				sc.DataType = "text"
 			}
-			sc.CharSet = utf8CharSet
+			sc.CharSet = utf8mb4CharSet
 		case reflect.Bool:
 			sc.DefaultValue = false
 			sc.DataType = "boolean"

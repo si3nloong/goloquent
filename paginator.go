@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/si3nloong/playground/goloquent/qson"
+	"github.com/si3nloong/goloquent/qson"
 )
 
 type rawString string

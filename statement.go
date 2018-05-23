@@ -51,7 +51,7 @@ func (s *Stmt) buildWhere(query *Query, args ...interface{}) (*Command, error) {
 	i := len(args)
 	for _, f := range query.filters {
 		name := s.dialect.Quote(f.field)
-		v, err := f.Value()
+		v, err := f.Interface()
 		if err != nil {
 			return nil, err
 		}
@@ -502,7 +502,6 @@ func (s *Stmt) putCommand(parentKey []*datastore.Key, e *entity) (*Command, erro
 		s.getTable(e.Name()),
 		s.dialect.Quote(strings.Join(e.Columns(), s.dialect.Quote(",")))))
 
-	// loop every entity
 	for i := 0; i < v.Len(); i++ {
 		f := v.Index(i)
 		if x, isOk := f.Interface().(Saver); isOk {
@@ -526,8 +525,8 @@ func (s *Stmt) putCommand(parentKey []*datastore.Key, e *entity) (*Command, erro
 		}
 
 		k, p := splitKey(pk)
-		props[keyColumn] = Property{[]string{keyColumn}, nil, k}
-		props[parentColumn] = Property{[]string{parentColumn}, nil, p}
+		props[keyColumn] = Property{[]string{keyColumn}, typeOfPtrKey, k}
+		props[parentColumn] = Property{[]string{parentColumn}, typeOfPtrKey, p}
 		fv := mustGetField(f, e.field(keyFieldName))
 		if !fv.IsValid() || fv.Type() != typeOfPtrKey {
 			return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
@@ -644,11 +643,36 @@ func (s *Stmt) updateMutation(query *Query, model interface{}) (*Command, error)
 	}, nil
 }
 
-func (s *Stmt) updateWithMap(v reflect.Value) {
-	for _, k := range v.MapKeys() {
+func (s *Stmt) updateWithMap(v reflect.Value) (*Command, error) {
+	buf := new(bytes.Buffer)
+	args := make([]interface{}, 0)
+	for i, k := range v.MapKeys() {
 		vv := v.MapIndex(k)
-		fmt.Println(vv)
+		if k.Kind() != reflect.String {
+			return nil, fmt.Errorf("goloquent: invalid map key data type, %q", k.Kind())
+		}
+		kk := k.String()
+		if kk == keyFieldName {
+			return nil, fmt.Errorf("goloquent: update __key__ is not allow")
+		}
+		buf.WriteString(fmt.Sprintf(" %s = %s,",
+			s.dialect.Quote(kk),
+			s.dialect.Bind(i)))
+		v, err := normalizeValue(vv.Interface())
+		if err != nil {
+			return nil, err
+		}
+		it, err := interfaceToValue(v)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, it)
 	}
+	buf.Truncate(buf.Len() - 1)
+	return &Command{
+		statement: buf,
+		arguments: args,
+	}, nil
 }
 
 func (s *Stmt) update(query *Query, model interface{}) error {
@@ -669,15 +693,21 @@ func (s *Stmt) update(query *Query, model interface{}) error {
 }
 
 func (s *Stmt) updateMulti(query *Query, v interface{}) error {
-	fmt.Println("Debug Update " + strings.Repeat("-", 100))
-	fmt.Println(v)
 	vi := reflect.Indirect(reflect.ValueOf(v))
+	args := make([]interface{}, 0)
+	buf := new(bytes.Buffer)
+	buf.WriteString(fmt.Sprintf("UPDATE %s SET", s.getTable(query.table)))
 	switch vi.Type().Kind() {
 	case reflect.Map:
 		if vi.IsNil() || vi.Len() == 0 {
 			return nil
 		}
-		s.updateWithMap(vi)
+		cmd, err := s.updateWithMap(vi)
+		if err != nil {
+			return err
+		}
+		buf.WriteString(cmd.Statement())
+		args = append(args, cmd.arguments...)
 	case reflect.Struct:
 		vs := reflect.MakeSlice(reflect.SliceOf(vi.Type()), 1, 1)
 		vs.Index(0).Set(vi)
@@ -688,7 +718,17 @@ func (s *Stmt) updateMulti(query *Query, v interface{}) error {
 	default:
 		return fmt.Errorf("goloquent: unsupported data type %v on `Update`", vi.Type())
 	}
-	return nil
+	cmd, err := s.buildWhere(query)
+	if err != nil {
+		return err
+	}
+	args = append(args, cmd.arguments...)
+	buf.WriteString(cmd.Statement())
+	buf.WriteString(";")
+	return s.execCommand(&Command{
+		statement: buf,
+		arguments: args,
+	})
 }
 
 func (s *Stmt) deleteCommand(e *entity) (*Command, error) {

@@ -46,11 +46,18 @@ func (c Config) trimSpace() {
 	}
 }
 
+// Creator :
+type Creator interface {
+	Create(interface{}, ...*datastore.Key) error
+	Upsert(interface{}, ...*datastore.Key) error
+}
+
 // DB :
 type DB struct {
-	id   string
-	name string
-	stmt *Stmt
+	id    string
+	name  string
+	query *Query
+	stmt  *Stmt
 }
 
 // NewDB :
@@ -98,6 +105,13 @@ func (db *DB) Migrate(model ...interface{}) error {
 	return db.clone().stmt.migrate(model)
 }
 
+// Omit :
+func (db *DB) Omit(fields ...string) Creator {
+	clone := db.clone()
+	// clone.query = db.query.Omit(fields...)
+	return clone
+}
+
 // Create :
 func (db *DB) Create(model interface{}, parentKey ...*datastore.Key) error {
 	if parentKey == nil {
@@ -128,24 +142,21 @@ func (db *DB) Delete(model interface{}) error {
 func (db *DB) Truncate(model interface{}) error {
 	var table string
 	v := reflect.Indirect(reflect.ValueOf(model))
-
 	switch v.Type().Kind() {
 	case reflect.String:
-		table = v.Interface().(string)
+		table = v.String()
 	case reflect.Struct:
-		ety, err := newEntity(model)
+		e, err := newEntity(model)
 		if err != nil {
 			return err
 		}
-		table = ety.name
+		table = e.name
 	default:
 		return fmt.Errorf("goloquent: unsupported model")
 	}
-
 	if table == "" {
 		return fmt.Errorf("goloquent: missing table name")
 	}
-
 	return db.clone().stmt.truncate(table)
 }
 
@@ -178,6 +189,11 @@ func (db *DB) Paginate(p *Pagination, model interface{}) error {
 func (db *DB) Where(field string, operator string, value interface{}) *Query {
 	return db.NewQuery().Where(field, operator, value)
 }
+
+// // Run :
+// func (db *DB) Run(query *Query) (*Iterator, error) {
+// 	return new(Iterator), nil
+// }
 
 // RunInTransaction :
 func (db *DB) RunInTransaction(cb TransactionHandler) error {

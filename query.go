@@ -139,7 +139,7 @@ func (q *Query) Find(key *datastore.Key, model interface{}) error {
 		return err
 	}
 	if err := checkSinglePtr(model); err != nil {
-		return nil
+		return err
 	}
 	if key == nil || key.Incomplete() {
 		return fmt.Errorf("goloquent: find action with invalid key value, %q", key)
@@ -154,7 +154,7 @@ func (q *Query) First(model interface{}) error {
 		return err
 	}
 	if err := checkSinglePtr(model); err != nil {
-		return nil
+		return err
 	}
 	q.Limit(1)
 	return q.db.stmt.get(q, model, false)
@@ -189,12 +189,6 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 	q.Order(p.Sort...)
 	return q.db.stmt.paginate(q, p, model)
 }
-
-// // Relative :
-// func (q *Query) Relative(r Relationship) *Query {
-// 	q.relatives = append(q.relatives, r)
-// 	return q
-// }
 
 // DistinctOn :
 func (q *Query) DistinctOn(fields ...string) *Query {

@@ -5,48 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 )
-
-// Command :
-type Command struct {
-	table     string
-	statement *bytes.Buffer
-	arguments []interface{}
-}
-
-func toString(it interface{}) string {
-	var str string
-	switch vi := it.(type) {
-	case nil:
-		str = "NULL"
-	case string, []byte:
-		str = fmt.Sprintf("%q", vi)
-	default:
-		str = fmt.Sprintf("%v", vi)
-	}
-	return str
-}
-
-// Raw :
-func (c *Command) Raw() string {
-	ss := c.Statement()
-	for _, aa := range c.arguments {
-		ss = strings.Replace(ss, "?", toString(aa), 1)
-	}
-	return ss
-}
-
-// Statement :
-func (c *Command) Statement() string {
-	return c.statement.String()
-}
-
-// Arguments :
-func (c *Command) Arguments() []interface{} {
-	return c.arguments
-}
 
 func checkMultiPtr(v reflect.Value) (isPtr bool, t reflect.Type) {
 	t = v.Type().Elem()
@@ -83,7 +43,7 @@ func (s *sequel) SetDB(db sqlCommon) {
 
 func (s *sequel) Open(conf Config) (*sql.DB, error) {
 	connStr := conf.Username + ":" + conf.Password + "@/" + conf.Database
-	client, err := sql.Open("mysql", connStr)
+	client, err := sql.Open("common", connStr)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +264,17 @@ func (s *sequel) HasTable(table string) bool {
 
 // OnConflictUpdate :
 func (s *sequel) OnConflictUpdate(cols []string) string {
-	return ""
+	buf := new(bytes.Buffer)
+	buf.WriteString("ON DUPLICATE KEY UPDATE ")
+	for _, c := range cols {
+		if c == keyColumn || c == parentColumn {
+			continue
+		}
+		buf.WriteString(fmt.Sprintf("%s=values(%s),",
+			s.Quote(c), s.Quote(c)))
+	}
+	buf.Truncate(buf.Len() - 1)
+	return buf.String()
 }
 
 // LoadStruct :
@@ -343,7 +313,7 @@ func LoadStruct(src interface{}, data map[string]interface{}) error {
 // 	}
 
 // 	buf := new(bytes.Buffer)
-// 	buf.WriteString(cmd.Statement())
+// 	buf.WriteString(cmd.String())
 // 	buf.WriteString(" ON DUPLICATE KEY UPDATE ")
 // 	for _, c := range ety.Columns() {
 // 		if c == keyColumn || c == parentColumn {
@@ -358,10 +328,10 @@ func LoadStruct(src interface{}, data map[string]interface{}) error {
 // 	return nil
 // }
 
-// func (s *sequel) updateMutation(query *Query, model interface{}) (*Command, error) {
+// func (s *sequel) updateMutation(query *Query, model interface{}) (*Stmt, error) {
 // 	v := reflect.Indirect(reflect.ValueOf(model))
 // 	if v.Len() <= 0 {
-// 		return new(Command), nil
+// 		return new(Stmt), nil
 // 	}
 
 // 	ety, err := newEntity(model)
@@ -404,14 +374,14 @@ func LoadStruct(src interface{}, data map[string]interface{}) error {
 // 	k, p := splitKey(pk)
 // 	args = append(args, k, p)
 
-// 	return &Command{
+// 	return &Stmt{
 // 		table:     table,
 // 		statement: buf,
 // 		arguments: args,
 // 	}, nil
 // }
 
-// func (s *sequel) updateCommand(query *Query, v map[string]interface{}) *Command {
+// func (s *sequel) updateCommand(query *Query, v map[string]interface{}) *Stmt {
 // 	table := query.table
 // 	args := make([]interface{}, 0, len(v))
 // 	buf := new(bytes.Buffer)
@@ -424,7 +394,7 @@ func LoadStruct(src interface{}, data map[string]interface{}) error {
 // 	buf.WriteString(wheres.String())
 // 	args = append(args, vals...)
 
-// 	return &Command{
+// 	return &Stmt{
 // 		table:     table,
 // 		statement: buf,
 // 		arguments: args,

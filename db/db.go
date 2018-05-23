@@ -98,7 +98,7 @@ func NewQuery() *goloquent.Query {
 
 // Where :
 func Where(field string, operator string, value interface{}) *goloquent.Query {
-	return defaultDB.NewQuery().Where(field, operator, value)
+	return defaultDB.Where(field, operator, value)
 }
 
 // RunInTransaction :

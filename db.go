@@ -14,12 +14,18 @@ import (
 type TransactionHandler func(*DB) error
 
 // LogHandler :
-type LogHandler func(*Command)
+type LogHandler func(*Stmt)
 
 // public constant variables :
 const (
 	keyColumn    = "$Key"
 	parentColumn = "$Parent"
+	keyDelimeter = "/"
+)
+
+// CommonError :
+var (
+	ErrNoSuchEntity = fmt.Errorf("goloquent: entity not found")
 )
 
 // Config :
@@ -48,8 +54,9 @@ func (c Config) trimSpace() {
 
 // Creator :
 type Creator interface {
-	Create(interface{}, ...*datastore.Key) error
-	Upsert(interface{}, ...*datastore.Key) error
+	Create(model interface{}, k ...*datastore.Key) error
+	Upsert(model interface{}, k ...*datastore.Key) error
+	Save(model interface{}) error
 }
 
 // DB :
@@ -57,7 +64,7 @@ type DB struct {
 	id    string
 	name  string
 	query *Query
-	stmt  *Stmt
+	stmt  *Builder
 }
 
 // NewDB :
@@ -66,7 +73,7 @@ func NewDB(driver string, conn sqlCommon, dialect Dialect, logHandler LogHandler
 	return &DB{
 		id:   fmt.Sprintf("%s:%d", driver, time.Now().UnixNano()),
 		name: dbName,
-		stmt: &Stmt{
+		stmt: &Builder{
 			dbName:  dbName,
 			db:      conn,
 			dialect: dialect,
@@ -130,7 +137,10 @@ func (db *DB) Upsert(model interface{}, parentKey ...*datastore.Key) error {
 
 // Save :
 func (db *DB) Save(model interface{}) error {
-	return db.clone().stmt.update(db.NewQuery(), model)
+	if err := checkSinglePtr(model); err != nil {
+		return err
+	}
+	return db.clone().stmt.save(db.NewQuery(), model)
 }
 
 // Delete :

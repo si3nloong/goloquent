@@ -57,7 +57,11 @@ func (it *Iterator) First() *Iterator {
 
 // Last :
 func (it *Iterator) Last() *Iterator {
-	it.position = len(it.results) - 1
+	i := len(it.results) - 1
+	if i < 0 {
+		return nil
+	}
+	it.position = i
 	return it
 }
 

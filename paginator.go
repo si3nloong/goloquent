@@ -87,8 +87,10 @@ func umarshalQuery(it interface{}, str string) (interface{}, error) {
 func ParseQuery(query []byte, layout interface{}, option ...PaginateOption) (*Pagination, error) {
 	query = bytes.TrimSpace(query)
 	queryStr := string(query)
+	p := new(Pagination)
 	if queryStr == "" {
-		return new(Pagination), nil
+		p.Reset()
+		return p, nil
 	}
 
 	l, err := url.ParseQuery(queryStr)

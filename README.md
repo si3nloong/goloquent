@@ -30,7 +30,7 @@ This repo still under development. We accept any pull request. ^\_^
 
 ```go
     import "github.com/si3nloong/goloquent/db"
-    // Connect to mysql, please refer to https://github.com/go-sql-driver/mysql#dsn-data-source-name
+
     conn, err := db.Open("mysql", db.Config{
         Username: "root",
         Password: "",

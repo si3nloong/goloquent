@@ -33,7 +33,15 @@ This repo still under development. We accept any pull request. ^\_^
     // Connect to mysql, please refer to https://github.com/go-sql-driver/mysql#dsn-data-source-name
     conn, err := db.Open("mysql", db.Config{
         Username: "root",
+        Password: "",
+        Host: "localhost",
+        Port: "3306",
         Database: "test",
+        Logger: func(stmt *goloquent.Stmt) {
+            log.Println(stmt.String()) // Sql string without any ?
+            log.Println(stmt.Raw()) // Sql prepare statement
+            log.Println(stmt.Arguments()) // Sql prepare statement's arguments
+        },
     })
     defer conn.Close()
     if err != nil {
@@ -70,11 +78,14 @@ func (x *User) Save() (error) {
 
 ```go
     // StringPrimaryKey is to get key value in string form
-    key := datastore.NameKey("User", "mjfFgYnxBS", nil)
+    key := datastore.NameKey("Merchant", "mjfFgYnxBS", nil)
     fmt.Println(goloquent.StringKey(key)) // "mjfFgYnxBS"
 
     key = datastore.IDKey("User", int64(2305297334603281546), nil)
     fmt.Println(goloquent.StringKey(key)) // "2305297334603281546"
+
+    key = datastore.NameKey("User", int64(2305297334603281546), datastore.NameKey("Merchant", "mjfFgYnxBS", nil))
+    fmt.Println(goloquent.StringifyKey(key)) // Merchant,'mjfFgYnxBS'/User,2305297334603281546
 ```
 
 ### Create Record
@@ -105,7 +116,8 @@ func (x *User) Save() (error) {
 
     // Create with self generate key
     key := datastore.NameKey("User", "uniqueID", nil)
-    if err := db.Create(user, key); err != nil {
+    user.Key = key
+    if err := db.Create(user); err != nil {
         log.Println(err) // fail to create record
     }
 ```
@@ -170,16 +182,19 @@ func (x *User) Save() (error) {
 
     // Example 2
     user := new(User)
-    if err := db.Where("Email", "=", "admin@hotmail.com").First(user); err != nil {
+    if err := db.
+        WhereEq("Email", "admin@hotmail.com").
+        First(user); err != nil {
         log.Println(err) // error while retrieving record
     }
 
     // Example 3
+    age := 22
     parentKey := datastore.IDKey("Parent", 1093, nil)
     user := new(User)
     if err := db.NewQuery().
         Ancestor(parentKey).
-        Where("Age", "=", 22).
+        WhereEq("Age", &age).
         Order("-CreatedDateTime").
         First(user); err != nil {
         log.Println(err) // error while retrieving record
@@ -226,7 +241,8 @@ func (x *User) Save() (error) {
     }
 
     // Descending order
-    if err := db.Table("User").
+    if err := db.
+        Table("User").
         Order("-CreatedDateTime").
         Get(users); err != nil {
         log.Println(err) // error while retrieving record
@@ -314,7 +330,11 @@ func (x *User) Save() (error) {
 ```go
     // Example
     user := new(User)
-    if err := db.Table("User").Migrate(user); err != nil {
+    if err := db.Migrate(
+        new(user),
+        Merchant{},
+        &Log{},
+    ); err != nil {
         log.Println(err)
     }
 ```
@@ -373,16 +393,17 @@ func (x *User) Save() (error) {
 ```go
     // Example
     userKey := datastore.IDKey("User", int64(4645436182170916864), nil)
-    if err := db.RunInTransaction(func(txn *goloquent.Connection) error {
+    if err := db.RunInTransaction(func(txn *goloquent.DB) error {
         user := new(User)
 
-        if err := txn.Table("User").
-            LockForUpdate(). // Lock record for update
+        if err := txn.NewQuery().
+            WLock(). // Lock record for update
             Find(userKey, user); err != nil {
             return err
         }
 
-        if err := txn.Table("User").Update(user); err != nil {
+        user.Age = 30
+        if err := txn.Save(user); err != nil {
             return err // return any err to rollback the transaction
         }
 
@@ -407,15 +428,15 @@ func (x *User) Save() (error) {
 ```go
     // Update single record
     user := new(User)
-    if err := db.Table("User").
-        Where("Status", "IN", []string{"active", "pending"}).
+    if err := db.NewQuery().
+        WhereIn("Status", []string{"active", "pending"}).
         First(user); err != nil {
         log.Println(err) // error while retrieving record or record not found
     }
 
     // Get record with like
-    if err := db.Table("User").
-        Where("Name", "LIKE", "%name%").
+    if err := db.NewQuery().
+        WhereLike("Name", "%name%").
         First(user); err != nil {
         log.Println(err) // error while retrieving record or record not found
     }
@@ -439,6 +460,17 @@ func (x *User) Save() (error) {
             "Name": "New Name",
             "Email": "email@gmail.com",
             "UpdatedDateTime": time.Now().UTC(),
+        }); err != nil {
+        log.Println(err) // error while retrieving record or record not found
+    }
+
+    if err := db.Table("User").
+        Omit("Name").
+        Where("Age", ">", 10).
+        Update(User{
+            Name: "New Name",
+            Email: "test@gmail.com",
+            UpdatedDateTime: time.Now().UTC(),
         }); err != nil {
         log.Println(err) // error while retrieving record or record not found
     }

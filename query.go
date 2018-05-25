@@ -60,36 +60,43 @@ func checkSinglePtr(it interface{}) error {
 	return nil
 }
 
-// Query :
-type Query struct {
-	db         *DB
+type scope struct {
 	table      string
+	distinctOn []string
+	projection []string
+	omits      []string
 	ancestors  []*datastore.Key
 	filters    []Filter
-	projection []string
 	orders     []order
-	omits      []string
+	relatives  []Relationship
 	limit      int32
 	offset     int32
-	distinctOn []string
 	errs       []error
-	relatives  []Relationship
 	lockMode   locked
-	keyOnly    bool
-	hasTrash   bool
+}
+
+// Query :
+type Query struct {
+	db *DB
+	scope
 }
 
 func newQuery(db *DB) *Query {
 	return &Query{
-		db:     db.clone(),
-		limit:  -1,
-		offset: -1,
+		db: db.clone(),
+		scope: scope{
+			limit:  -1,
+			offset: -1,
+		},
 	}
 }
 
 func (q *Query) clone() *Query {
-	c := *q
-	return &c
+	ss := q.scope
+	return &Query{
+		db:    q.db.clone(),
+		scope: ss,
+	}
 }
 
 func (q *Query) getError() error {
@@ -101,16 +108,6 @@ func (q *Query) getError() error {
 		return fmt.Errorf("%s", buf.String())
 	}
 	return nil
-}
-
-// Table :
-func (q *Query) Table(name string) *Query {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return q
-	}
-	q.table = name
-	return q
 }
 
 // Select :
@@ -134,6 +131,27 @@ func (q *Query) Select(fields ...string) *Query {
 	return q
 }
 
+// Omit :
+func (q *Query) Omit(fields ...string) *Query {
+	q = q.clone()
+	arr := make([]string, 0, len(fields))
+	for _, f := range fields {
+		f := strings.TrimSpace(f)
+		if f == "" || f == "*" {
+			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid omit value %v", f))
+			return q
+		}
+		arr = append(arr, f)
+	}
+	// Primary key is always not omited
+	dict := newDictionary(append(q.projection, arr...))
+	dict.delete(keyFieldName)
+	dict.delete(keyColumn)
+	dict.delete(parentColumn)
+	q.omits = dict.keys()
+	return q
+}
+
 // Find :
 func (q *Query) Find(key *datastore.Key, model interface{}) error {
 	if err := q.getError(); err != nil {
@@ -146,7 +164,7 @@ func (q *Query) Find(key *datastore.Key, model interface{}) error {
 		return fmt.Errorf("goloquent: find action with invalid key value, %q", key)
 	}
 	q = q.Where(keyFieldName, "=", key).Limit(1)
-	return newBuilder(q.db).get(q, model, true)
+	return newBuilder(q).get(model, true)
 }
 
 // First :
@@ -159,7 +177,7 @@ func (q *Query) First(model interface{}) error {
 		return err
 	}
 	q.Limit(1)
-	return newBuilder(q.db).get(q, model, false)
+	return newBuilder(q).get(model, false)
 }
 
 // Get :
@@ -168,7 +186,7 @@ func (q *Query) Get(model interface{}) error {
 	if err := q.getError(); err != nil {
 		return err
 	}
-	return newBuilder(q.db).getMulti(q, model)
+	return newBuilder(q).getMulti(model)
 }
 
 // Paginate :
@@ -190,7 +208,7 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 	}
 	q = q.Order(p.Sort...)
 	q.filters = append(q.filters, p.Filter...)
-	return newBuilder(q.db).paginate(q, p, model)
+	return newBuilder(q).paginate(p, model)
 }
 
 // DistinctOn :
@@ -208,8 +226,7 @@ func (q *Query) DistinctOn(fields ...string) *Query {
 func (q *Query) Ancestor(ancestor *datastore.Key) *Query {
 	clone := q.clone()
 	if ancestor.Incomplete() {
-		clone.errs = append(clone.errs,
-			fmt.Errorf("goloquent: ancestor key is incomplete, %v", ancestor))
+		clone.errs = append(clone.errs, fmt.Errorf("goloquent: ancestor key is incomplete, %v", ancestor))
 		return q
 	}
 	clone.ancestors = append(clone.ancestors, ancestor)
@@ -224,25 +241,25 @@ func (q *Query) Where(field string, op string, value interface{}) *Query {
 
 	var optr operator
 	switch strings.ToLower(op) {
-	case "=", "eq":
+	case "=", "eq", "$eq":
 		optr = equal
-	case "!=", "<>", "ne":
+	case "!=", "<>", "ne", "$ne":
 		optr = notEqual
-	case ">", "gt", "!<":
+	case ">", "!<", "gt", "$gt":
 		optr = greaterThan
-	case "<", "lt", "!>":
+	case "<", "!>", "lt", "$lt":
 		optr = lessThan
-	case ">=", "gte":
+	case ">=", "gte", "$gte":
 		optr = greaterEqual
-	case "<=", "lte":
+	case "<=", "lte", "$lte":
 		optr = lessEqual
-	case "like":
+	case "like", "$like":
 		optr = like
-	case "nlike", "!like":
+	case "nlike", "!like", "$nlike":
 		optr = notLike
-	case "in":
+	case "in", "$in":
 		optr = in
-	case "nin", "!in":
+	case "nin", "!in", "$nin":
 		optr = notIn
 	default:
 		q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q", op))
@@ -294,14 +311,12 @@ func (q *Query) WhereNotLike(field, v string) *Query {
 
 // Limit :
 func (q *Query) Limit(limit int) *Query {
-	q = q.clone()
 	q.limit = int32(limit)
 	return q
 }
 
 // Offset :
 func (q *Query) Offset(offset int) *Query {
-	q = q.clone()
 	q.offset = int32(offset)
 	return q
 }
@@ -312,39 +327,37 @@ func (q *Query) Order(fields ...string) *Query {
 		return q
 	}
 
-	q = q.clone()
-	f := fields[0]
-	name, dir := strings.TrimSpace(f), ascending
-	if strings.HasPrefix(name, "+") {
-		name, dir = strings.TrimSpace(name[1:]), ascending
-	} else if strings.HasPrefix(name, "-") {
-		name, dir = strings.TrimSpace(name[1:]), descending
-	}
+	for _, ff := range fields {
+		q = q.clone()
+		name, dir := strings.TrimSpace(ff), ascending
+		if strings.HasPrefix(name, "+") {
+			name, dir = strings.TrimSpace(name[1:]), ascending
+		} else if strings.HasPrefix(name, "-") {
+			name, dir = strings.TrimSpace(name[1:]), descending
+		}
 
-	q.orders = append(q.orders, order{
-		direction: dir,
-		field:     name,
-	})
+		q.orders = append(q.orders, order{
+			direction: dir,
+			field:     name,
+		})
+	}
 	return q
 }
 
 // Lock :
 func (q *Query) Lock(mode locked) *Query {
-	q = q.clone()
 	q.lockMode = mode
 	return q
 }
 
 // RLock :
 func (q *Query) RLock() *Query {
-	q = q.clone()
 	q.lockMode = ReadLock
 	return q
 }
 
 // WLock :
 func (q *Query) WLock() *Query {
-	q = q.clone()
 	q.lockMode = WriteLock
 	return q
 }
@@ -354,8 +367,7 @@ func (q *Query) Update(v interface{}) error {
 	if err := q.getError(); err != nil {
 		return err
 	}
-	q = q.clone()
-	return newBuilder(q.db).updateMulti(q, v)
+	return newBuilder(q).updateMulti(v)
 }
 
 // Flush :
@@ -366,5 +378,5 @@ func (q *Query) Flush() error {
 	if q.table == "" {
 		return fmt.Errorf("goloquent: unable to perform delete without table name")
 	}
-	return newBuilder(q.db).deleteByQuery(q.clone())
+	return newBuilder(q).deleteByQuery(q.clone())
 }

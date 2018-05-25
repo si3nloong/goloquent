@@ -62,7 +62,7 @@ func (p *postgres) OnConflictUpdate(cols []string) string {
 	return buf.String()
 }
 
-func (p *postgres) GetSchema(c column) []Schema {
+func (p *postgres) GetSchema(c Column) []Schema {
 	f := c.field
 	t := f.getRoot().typeOf
 	if f.isFlatten() {
@@ -76,6 +76,7 @@ func (p *postgres) GetSchema(c column) []Schema {
 
 	switch t {
 	case typeOfByte:
+		sc.DefaultValue = OmitDefault(nil)
 		sc.DataType = "bytea"
 	case typeOfTime:
 		sc.DefaultValue = time.Time{}
@@ -90,6 +91,16 @@ func (p *postgres) GetSchema(c column) []Schema {
 				sc.DataType = "text"
 			}
 			sc.CharSet = utf8mb4CharSet
+		case reflect.Int8:
+		case reflect.Int16:
+		case reflect.Int, reflect.Int32:
+		case reflect.Int64:
+		case reflect.Uint8:
+		case reflect.Uint16:
+		case reflect.Uint, reflect.Uint32:
+		case reflect.Uint64:
+		case reflect.Float32, reflect.Float64:
+		default:
 		}
 	}
 

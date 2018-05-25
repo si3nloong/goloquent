@@ -20,16 +20,6 @@ func Connection(driver string) *goloquent.DB {
 	return nil
 }
 
-// Ancestor :
-func Ancestor(ancestorKey *datastore.Key) *goloquent.Query {
-	return defaultDB.NewQuery().Ancestor(ancestorKey)
-}
-
-// DistinctOn :
-func DistinctOn(fields ...string) *goloquent.Query {
-	return defaultDB.NewQuery().DistinctOn(fields...)
-}
-
 // Table :
 func Table(name string) *goloquent.Query {
 	return defaultDB.Table(name)
@@ -41,7 +31,7 @@ func Migrate(model ...interface{}) error {
 }
 
 // Omit :
-func Omit(fields ...string) goloquent.Creator {
+func Omit(fields ...string) goloquent.Replacer {
 	return defaultDB.Omit(fields...)
 }
 
@@ -94,6 +84,21 @@ func Paginate(p *goloquent.Pagination, model interface{}) error {
 // NewQuery :
 func NewQuery() *goloquent.Query {
 	return defaultDB.NewQuery()
+}
+
+// Select :
+func Select(fields ...string) *goloquent.Query {
+	return defaultDB.Select(fields...)
+}
+
+// Ancestor :
+func Ancestor(ancestorKey *datastore.Key) *goloquent.Query {
+	return defaultDB.NewQuery().Ancestor(ancestorKey)
+}
+
+// DistinctOn :
+func DistinctOn(fields ...string) *goloquent.Query {
+	return defaultDB.NewQuery().DistinctOn(fields...)
 }
 
 // Where :

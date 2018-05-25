@@ -13,7 +13,7 @@ type Dialect interface {
 	CurrentDB() (n string)
 	Quote(n string) string
 	Bind(i int) string
-	GetSchema(c column) []Schema
+	GetSchema(c Column) []Schema
 	DataType(s Schema) string
 	HasTable(tb string) bool
 	GetColumns(tb string) (cols []string)

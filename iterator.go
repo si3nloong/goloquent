@@ -164,55 +164,6 @@ func getField(v reflect.Value, path []int) reflect.Value {
 	return v
 }
 
-func interfaceIsZero(it interface{}) bool {
-	var zero bool
-	switch vi := it.(type) {
-	case string:
-		zero = len(vi) == 0
-	case bool:
-		zero = vi == false
-	case []byte:
-		zero = len(vi) == 0
-	case json.RawMessage:
-		zero = len(vi) == 0
-	case int64:
-		zero = vi == 0
-	case uint64:
-		zero = vi == 0
-	case float64:
-		zero = vi == 0
-	case SoftDelete:
-		zero = vi == SoftDelete(nil)
-	case *datastore.Key:
-		zero = vi == nil || (*vi) == datastore.Key{}
-	case datastore.GeoPoint:
-		zero = vi == datastore.GeoPoint{}
-	case time.Time:
-		zero = vi == time.Time{}
-	case []interface{}:
-		zero = len(vi) == 0
-	case map[string]interface{}:
-		if len(vi) == 0 {
-			return true
-		}
-		allZero := true
-		for _, v := range vi {
-			if z := interfaceIsZero(v); !z {
-				return false
-			}
-		}
-		zero = allZero
-	default:
-		vv := reflect.ValueOf(vi)
-		if vv.Type().Kind() == reflect.Ptr && vv.IsNil() {
-			return true
-		}
-
-		return reflect.DeepEqual(it, reflect.Zero(vv.Type()).Interface())
-	}
-	return zero
-}
-
 // Property :
 type Property struct {
 	name   []string
@@ -264,4 +215,53 @@ func getTypes(ns []string, f field, isFlatten bool) []Property {
 	d := Property{append(ns, f.name), t, nil}
 	props = append(props, d)
 	return props
+}
+
+func interfaceIsZero(it interface{}) bool {
+	var zero bool
+	switch vi := it.(type) {
+	case string:
+		zero = len(vi) == 0
+	case bool:
+		zero = vi == false
+	case []byte:
+		zero = len(vi) == 0
+	case json.RawMessage:
+		zero = len(vi) == 0
+	case int64:
+		zero = vi == 0
+	case uint64:
+		zero = vi == 0
+	case float64:
+		zero = vi == 0
+	case SoftDelete:
+		zero = vi == SoftDelete(nil)
+	case *datastore.Key:
+		zero = vi == nil || (*vi) == datastore.Key{}
+	case datastore.GeoPoint:
+		zero = vi == datastore.GeoPoint{}
+	case time.Time:
+		zero = vi == time.Time{}
+	case []interface{}:
+		zero = len(vi) == 0
+	case map[string]interface{}:
+		if len(vi) == 0 {
+			return true
+		}
+		allZero := true
+		for _, v := range vi {
+			if z := interfaceIsZero(v); !z {
+				return false
+			}
+		}
+		zero = allZero
+	default:
+		vv := reflect.ValueOf(vi)
+		if vv.Type().Kind() == reflect.Ptr && vv.IsNil() {
+			return true
+		}
+
+		return reflect.DeepEqual(it, reflect.Zero(vv.Type()).Interface())
+	}
+	return zero
 }

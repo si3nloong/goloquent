@@ -6,23 +6,25 @@ import (
 	"strings"
 )
 
-type column struct {
+// Column :
+type Column struct {
 	names []string
 	field field
 }
 
-func (c column) Name() string {
+// Name :
+func (c Column) Name() string {
 	return strings.Join(c.names, ".")
 }
 
-func getColumns(prefix []string, codec *StructCodec) []column {
-	columns := make([]column, 0)
+func getColumns(prefix []string, codec *StructCodec) []Column {
+	columns := make([]Column, 0)
 	for _, f := range codec.fields {
-		c := make([]column, 0)
+		c := make([]Column, 0)
 		if f.getRoot().isFlatten() && f.StructCodec != nil {
 			c = getColumns(append(prefix, f.name), f.StructCodec)
 		} else {
-			c = append(c, column{
+			c = append(c, Column{
 				names: append(prefix, f.name),
 				field: f,
 			})
@@ -39,8 +41,8 @@ type entity struct {
 	isMultiPtr bool
 	slice      reflect.Value
 	codec      *StructCodec
-	fields     map[string]column
-	columns    []column
+	fields     map[string]Column
+	columns    []Column
 }
 
 // convertMulti will convert any single model to pointer of []model
@@ -52,6 +54,7 @@ func convertMulti(v reflect.Value) reflect.Value {
 	return vv
 }
 
+// TODO: check primary key must present
 func newEntity(it interface{}) (*entity, error) {
 	v := reflect.ValueOf(it)
 	if v.Kind() != reflect.Ptr {
@@ -82,10 +85,14 @@ func newEntity(it interface{}) (*entity, error) {
 		return nil, err
 	}
 
-	fields := make(map[string]column)
+	fields := make(map[string]Column)
 	cols := getColumns(nil, codec)
 	for _, c := range cols {
 		fields[c.Name()] = c
+	}
+
+	if _, hasKey := fields[keyFieldName]; !hasKey {
+		return nil, fmt.Errorf("goloquent: entity %v doesn't has primary key property", t)
 	}
 
 	return &entity{

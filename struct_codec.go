@@ -165,7 +165,6 @@ type structScan struct {
 	StructCodec *StructCodec
 }
 
-// TODO: check primary key must present
 func getStructCodec(it interface{}) (*StructCodec, error) {
 	v := reflect.Indirect(reflect.ValueOf(it))
 	rt := v.Type()
@@ -203,6 +202,10 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 				return nil, fmt.Errorf("goloquent: struct tag has invalid field name: %q", st.name)
 			case isReserveFieldName(st.name):
 				return nil, fmt.Errorf("goloquent: struct tag has reserved field name: %q", st.name)
+			}
+
+			if ft == typeOfSoftDelete {
+				st.name = softDeleteColumn
 			}
 
 			k := ft.Kind()

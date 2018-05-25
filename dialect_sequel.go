@@ -131,7 +131,7 @@ func (s *sequel) toString(it interface{}) string {
 }
 
 // GetSchema :
-func (s *sequel) GetSchema(c column) []Schema {
+func (s *sequel) GetSchema(c Column) []Schema {
 	f := c.field
 	t := f.getRoot().typeOf
 	if f.isFlatten() {
@@ -165,6 +165,11 @@ func (s *sequel) GetSchema(c column) []Schema {
 		sc.DataType = "mediumblob"
 	case typeOfTime:
 		sc.DefaultValue = time.Time{}
+		sc.DataType = "datetime"
+	case typeOfSoftDelete:
+		fmt.Println("SOFTDELETE !!!", c.Name())
+		sc.DefaultValue = OmitDefault(nil)
+		sc.IsNullable = true
 		sc.DataType = "datetime"
 	default:
 		switch t.Kind() {

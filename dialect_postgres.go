@@ -42,12 +42,34 @@ func (p *postgres) Open(conf Config) (*sql.DB, error) {
 	return client, nil
 }
 
+func (p *postgres) Quote(n string) string {
+	return fmt.Sprintf("%q", n)
+}
+
 func (p *postgres) Bind(i int) string {
 	return fmt.Sprintf("$%d", i)
 }
 
-func (p *postgres) Quote(n string) string {
-	return fmt.Sprintf("%q", n)
+// DataType :
+func (p *postgres) DataType(sc Schema) string {
+	buf := new(bytes.Buffer)
+	buf.WriteString(sc.DataType)
+	if sc.IsUnsigned {
+		buf.WriteString(fmt.Sprintf(" CHECK (%s > 0)", sc.Name))
+	}
+	if sc.CharSet != nil {
+		buf.WriteString(fmt.Sprintf(" CHARACTER SET %s COLLATE %s",
+			p.Quote(sc.CharSet.Encoding),
+			p.Quote(sc.CharSet.Collation)))
+	}
+	if !sc.IsNullable {
+		buf.WriteString(" NOT NULL")
+		t := reflect.TypeOf(sc.DefaultValue)
+		if t != reflect.TypeOf(OmitDefault(nil)) {
+			buf.WriteString(fmt.Sprintf(" DEFAULT %s", p.toString(sc.DefaultValue)))
+		}
+	}
+	return buf.String()
 }
 
 func (p *postgres) OnConflictUpdate(cols []string) string {

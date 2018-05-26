@@ -385,23 +385,3 @@ func LoadStruct(src interface{}, data map[string]interface{}) error {
 // 		arguments: args,
 // 	}, nil
 // }
-
-// func (s *sequel) updateCommand(query *Query, v map[string]interface{}) *Stmt {
-// 	table := query.table
-// 	args := make([]interface{}, 0, len(v))
-// 	buf := new(bytes.Buffer)
-// 	buf.WriteString(fmt.Sprintf("UPDATE %s SET ", s.GetTable(table)))
-// 	for k, val := range v {
-// 		buf.WriteString(fmt.Sprintf("%s = %s", s.Quote(k), s.Bind(len(args))))
-// 		args = append(args, val)
-// 	}
-// 	wheres, vals := s.buildWhere(query)
-// 	buf.WriteString(wheres.String())
-// 	args = append(args, vals...)
-
-// 	return &Stmt{
-// 		table:     table,
-// 		statement: buf,
-// 		arguments: args,
-// 	}
-// }

@@ -213,7 +213,9 @@ func (x *User) Save() (error) {
 
     // Example 2
     users := new([]*User)
-    if err := db.Where("Name", "=", "Hello World").Get(users); err != nil {
+    if err := db.
+        WhereEq("Name", "Hello World").
+        Get(users); err != nil {
         log.Println(err) // error while retrieving record
     }
 
@@ -310,10 +312,10 @@ func (x *User) Save() (error) {
 
 ```go
     // Example
-    if err := db.RunInTransaction(func(txn *goloquent.Connection) error {
+    if err := db.RunInTransaction(func(txn *goloquent.DB) error {
         user := new(User)
 
-        if err := txn.Table("User").Create(user, nil); err != nil {
+        if err := txn.Create(user, nil); err != nil {
             return err // return any err to rollback the transaction
         }
 
@@ -323,7 +325,38 @@ func (x *User) Save() (error) {
     }
 ```
 
-### MySQL Exclusive
+* **Table Locking (only effective inside RunInTransaction)**
+
+```go
+    // Example
+    merchantKey := datastore.IDKey("Merchant", "mjfFgYnxBS", nil)
+    userKey := datastore.IDKey("User", int64(4645436182170916864), nil)
+    if err := db.RunInTransaction(func(txn *goloquent.DB) error {
+        user := new(User)
+
+        if err := txn.NewQuery().
+            WLock(). // Lock record for update
+            Find(userKey, user); err != nil {
+            return err
+        }
+
+        merchant := new(Merchant)
+        if err := txn.NewQuery().
+            RLock().
+            Find(merchantKey, merchant); err != nil {
+            return err
+        }
+
+        user.Age = 30
+        if err := txn.Save(user); err != nil {
+            return err // return any err to rollback the transaction
+        }
+
+        return nil // return nil to commit the transaction
+    }); err != nil {
+        log.Println(err)
+    }
+```
 
 * **Database Migration**
 
@@ -335,80 +368,6 @@ func (x *User) Save() (error) {
         Merchant{},
         &Log{},
     ); err != nil {
-        log.Println(err)
-    }
-```
-
-* **Unique Index**
-
-```go
-    // Create unique Index
-    if err := db.Table("User").
-        UniqueIndex("CountryCode", "PhoneNumber"); err != nil {
-        log.Println(err)
-    }
-
-    // Drop Unique Index
-    if err := db.Table("User").
-        DropUniqueIndex("CountryCode", "PhoneNumber"); err != nil {
-        log.Println(err)
-    }
-
-    // Drop PrimaryKey
-    if err := db.Table("User").DropUniqueIndex("__key__"); err != nil {
-        log.Println(err)
-    }
-```
-
-* **Drop Database**
-
-```go
-    // This will throw error if table is not exist
-    if err := db.Table("User").Drop(); err != nil {
-        log.Println(err) // error while retrieving record or record not found
-    }
-
-    // Drop table if exists
-    if err := db.Table("User").DropIfExists(); err != nil {
-        log.Println(err) // error while retrieving record or record not found
-    }
-```
-
-* **Drop Database**
-
-```go
-    // This will throw error if table is not exist
-    if err := db.Table("User").Drop(); err != nil {
-        log.Println(err) // error while retrieving record or record not found
-    }
-
-    // Drop table if exists
-    if err := db.Table("User").DropIfExists(); err != nil {
-        log.Println(err) // error while retrieving record or record not found
-    }
-```
-
-* **Table Locking (only effective inside RunInTransaction)**
-
-```go
-    // Example
-    userKey := datastore.IDKey("User", int64(4645436182170916864), nil)
-    if err := db.RunInTransaction(func(txn *goloquent.DB) error {
-        user := new(User)
-
-        if err := txn.NewQuery().
-            WLock(). // Lock record for update
-            Find(userKey, user); err != nil {
-            return err
-        }
-
-        user.Age = 30
-        if err := txn.Save(user); err != nil {
-            return err // return any err to rollback the transaction
-        }
-
-        return nil // return nil to commit the transaction
-    }); err != nil {
         log.Println(err)
     }
 ```
@@ -517,27 +476,28 @@ The supported data type are :
 - *datastore.Key
 - datastore.GeoPoint
 - goloquent.SoftDelete
-- time.Time (pointer time is not support)
+- time.Time
 - structs whose fields are all valid value types
 - pointers to any one of the above
 - slices of any of the above
 ```
 
-| Data Type               | Schema                    | Default Value       |
-| :---------------------- | :------------------------ | :------------------ |
-| \*datastore.Key         | varchar(50), varchar(512) |                     |
-| datastore.GeoPoint      | varchar(50)               | {Lat: 0, Lng: 0}    |
-| string                  | varchar(255)              | ""                  |
-| []byte                  | mediumblob                |                     |
-| bool                    | boolean                   | false               |
-| float32                 | decimal(10,2)             | 0                   |
-| float64                 | decimal(10,2)             | 0                   |
-| int, int8, int16, int32 | int                       | 0                   |
-| int64                   | big integer               | 0                   |
-| slice or array          | text                      | ""                  |
-| struct                  | text                      | ""                  |
-| time.Time               | datetime                  | 0001-01-01 00:00:00 |
+| Data Type          | Schema                    | Default Value       |
+| :----------------- | :------------------------ | :------------------ |
+| \*datastore.Key    | varchar(50), varchar(512) |                     |
+| datastore.GeoPoint | varchar(50)               | {Lat: 0, Lng: 0}    |
+| string             | varchar(191)              | ""                  |
+| []byte             | mediumblob                |                     |
+| bool               | boolean                   | false               |
+| float32            | double                    | 0                   |
+| float64            | double                    | 0                   |
+| int8               | smallint                  | 0                   |
+| int8, int16, int32 | int                       | 0                   |
+| int, int64         | big integer               | 0                   |
+| slice or array     | text                      | ""                  |
+| struct             | text                      | ""                  |
+| time.Time          | datetime                  | 0001-01-01 00:00:00 |
 
-**$Key**, **$Parent** are reserved words, please avoid to use these words as your column name
+**$Key**, **$Parent** and **$Deleted** are reserved words, please avoid to use these words as your column name
 
 [MIT License](https://github.com/si3nloong/goloquent/blob/master/LICENSE)

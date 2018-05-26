@@ -35,6 +35,15 @@ func getColumns(prefix []string, codec *StructCodec) []Column {
 	return columns
 }
 
+// convertMulti will convert any single model to pointer of []model
+func convertMulti(v reflect.Value) reflect.Value {
+	vi := reflect.MakeSlice(reflect.SliceOf(v.Type()), 1, 1)
+	vi.Index(0).Set(v)
+	vv := reflect.New(vi.Type())
+	vv.Elem().Set(vi)
+	return vv
+}
+
 type entity struct {
 	name       string
 	typeOf     reflect.Type
@@ -43,15 +52,6 @@ type entity struct {
 	codec      *StructCodec
 	fields     map[string]Column
 	columns    []Column
-}
-
-// convertMulti will convert any single model to pointer of []model
-func convertMulti(v reflect.Value) reflect.Value {
-	vi := reflect.MakeSlice(reflect.SliceOf(v.Type()), 1, 1)
-	vi.Index(0).Set(v)
-	vv := reflect.New(vi.Type())
-	vv.Elem().Set(vi)
-	return vv
 }
 
 // TODO: check primary key must present
@@ -104,6 +104,11 @@ func newEntity(it interface{}) (*entity, error) {
 		fields:     fields,
 		columns:    cols,
 	}, nil
+}
+
+func (e *entity) hasSoftDelete() (isExist bool) {
+	_, isExist = e.fields[softDeleteColumn]
+	return
 }
 
 func (e *entity) setName(name string) {

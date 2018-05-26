@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/datastore"
 )
@@ -313,8 +314,14 @@ func (b *builder) getCommand(e *entity) (*Stmt, error) {
 	if len(query.distinctOn) > 0 {
 		scope = "DISTINCT " + b.dialect.Quote(strings.Join(query.distinctOn, b.dialect.Quote(",")))
 	}
-
 	buf.WriteString(fmt.Sprintf("SELECT %s FROM %s", scope, b.getTable(e.Name())))
+	if e.hasSoftDelete() {
+		query.filters = append(query.filters, Filter{
+			field:    softDeleteColumn,
+			operator: equal,
+			value:    nil,
+		})
+	}
 	cmd, err := b.buildWhere(query)
 	if err != nil {
 		return nil, err
@@ -486,7 +493,7 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 	return nil
 }
 
-func (b *builder) putCommand(parentKey []*datastore.Key, e *entity) (*Stmt, error) {
+func (b *builder) putStmt(parentKey []*datastore.Key, e *entity) (*Stmt, error) {
 	v := e.slice.Elem()
 	isInline := (parentKey == nil && len(parentKey) == 0)
 	buf, args := new(bytes.Buffer), make([]interface{}, 0)
@@ -569,7 +576,7 @@ func (b *builder) put(model interface{}, parentKey []*datastore.Key) error {
 		return err
 	}
 	e.setName(b.query.table)
-	cmd, err := b.putCommand(parentKey, e)
+	cmd, err := b.putStmt(parentKey, e)
 	if err != nil {
 		return err
 	}
@@ -582,7 +589,7 @@ func (b *builder) upsert(model interface{}, parentKey []*datastore.Key) error {
 		return err
 	}
 	e.setName(b.query.table)
-	cmd, err := b.putCommand(parentKey, e)
+	cmd, err := b.putStmt(parentKey, e)
 	if err != nil {
 		return err
 	}
@@ -797,13 +804,10 @@ func (b *builder) updateMulti(v interface{}) error {
 	})
 }
 
-func (b *builder) deleteCommand(e *entity) (*Stmt, error) {
+func (b *builder) concatKeys(e *entity) (*Stmt, error) {
 	v := e.slice.Elem()
 	buf, args := new(bytes.Buffer), make([]interface{}, 0)
-	buf.WriteString(fmt.Sprintf(
-		"DELETE FROM %s WHERE concat(%s) in (",
-		b.getTable(e.Name()),
-		fmt.Sprintf("%s,%q,%s", b.dialect.Quote(parentColumn), keyDelimeter, b.dialect.Quote(keyColumn))))
+	buf.WriteString("(")
 	for i := 0; i < v.Len(); i++ {
 		f := v.Index(i)
 		if i != 0 {
@@ -820,12 +824,58 @@ func (b *builder) deleteCommand(e *entity) (*Stmt, error) {
 		buf.WriteString(b.dialect.Bind(i))
 		args = append(args, p+keyDelimeter+k)
 	}
-	buf.WriteString(");")
+	buf.WriteString(")")
+	return &Stmt{
+		statement: buf,
+		arguments: args,
+	}, nil
+}
 
+func (b *builder) softDeleteStmt(e *entity) (*Stmt, error) {
+	buf, args := new(bytes.Buffer), make([]interface{}, 0)
+	buf.WriteString(fmt.Sprintf("UPDATE %s SET ", b.getTable(e.Name())))
+	buf.WriteString(fmt.Sprintf("%s = %s WHERE concat(%s) IN ",
+		b.dialect.Quote(softDeleteColumn),
+		b.dialect.Bind(1),
+		fmt.Sprintf("%s,%q,%s",
+			b.dialect.Quote(parentColumn),
+			keyDelimeter,
+			b.dialect.Quote(keyColumn))))
+	args = append(args, time.Now().UTC().Format("2006-01-02 15:04:05"))
+	stmt, err := b.concatKeys(e)
+	if err != nil {
+		return nil, err
+	}
+	buf.WriteString(stmt.Raw())
+	buf.WriteString(";")
+	return &Stmt{
+		statement: buf,
+		arguments: append(args, stmt.arguments...),
+	}, nil
+}
+
+func (b *builder) deleteStmt(e *entity) (*Stmt, error) {
+	buf, args := new(bytes.Buffer), make([]interface{}, 0)
+	if e.hasSoftDelete() {
+		return b.softDeleteStmt(e)
+	}
+	buf.WriteString(fmt.Sprintf(
+		"DELETE FROM %s WHERE concat(%s) IN ",
+		b.getTable(e.Name()),
+		fmt.Sprintf("%s,%q,%s",
+			b.dialect.Quote(parentColumn),
+			keyDelimeter,
+			b.dialect.Quote(keyColumn))))
+	stmt, err := b.concatKeys(e)
+	if err != nil {
+		return nil, err
+	}
+	buf.WriteString(stmt.Raw())
+	buf.WriteString(";")
 	return &Stmt{
 		table:     e.Name(),
 		statement: buf,
-		arguments: args,
+		arguments: append(args, stmt.arguments...),
 	}, nil
 }
 
@@ -835,7 +885,7 @@ func (b *builder) delete(model interface{}) error {
 		return err
 	}
 	e.setName(b.query.table)
-	cmd, err := b.deleteCommand(e)
+	cmd, err := b.deleteStmt(e)
 	if err != nil {
 		return err
 	}

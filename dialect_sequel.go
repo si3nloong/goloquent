@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -48,6 +49,13 @@ func (s *sequel) Open(conf Config) (*sql.DB, error) {
 		return nil, err
 	}
 	return client, nil
+}
+
+// CreateIndex :
+func (s *sequel) CreateIndex(idx string, cols []string) string {
+	return fmt.Sprintf("INDEX %s (%s)",
+		s.Quote(idx),
+		s.Quote(strings.Join(cols, ",")))
 }
 
 // GetTable :
@@ -304,34 +312,6 @@ func LoadStruct(src interface{}, data map[string]interface{}) error {
 	v.Elem().Set(nv.Elem())
 	return nil
 }
-
-// // UpsertMulti :
-// func (s *sequel) UpsertMulti(query *Query, model interface{}, parentKey []*datastore.Key) error {
-// 	cmd, err := s.insertCommand(query, model, parentKey)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	ety, err := newEntity(model)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	buf := new(bytes.Buffer)
-// 	buf.WriteString(cmd.String())
-// 	buf.WriteString(" ON DUPLICATE KEY UPDATE ")
-// 	for _, c := range ety.Columns() {
-// 		if c == keyColumn || c == parentColumn {
-// 			continue
-// 		}
-// 		buf.WriteString(fmt.Sprintf("%s=values(%s),", s.Quote(c), s.Quote(c)))
-// 	}
-// 	buf.Truncate(buf.Len() - 1)
-// 	buf.WriteString(";")
-// 	fmt.Println("DEBUG UPSERT " + strings.Repeat("-", 100))
-// 	fmt.Println(buf.String())
-// 	return nil
-// }
 
 // func (s *sequel) updateMutation(query *Query, model interface{}) (*Stmt, error) {
 // 	v := reflect.Indirect(reflect.ValueOf(model))

@@ -8,7 +8,9 @@ import (
 // Dialect :
 type Dialect interface {
 	SetDB(db sqlCommon)
+	GetTable(ns string) string
 	Open(c Config) (*sql.DB, error)
+	CreateIndex(ns string, cols []string) string
 	Version() (ver string)
 	CurrentDB() (n string)
 	Quote(n string) string

@@ -165,7 +165,7 @@ func consoleLog(b builder, stmt Stmt) {
 }
 
 func (b *builder) execStmt(stmt *Stmt) error {
-	consoleLog(*b, *stmt)
+	go consoleLog(*b, *stmt)
 	sql, err := b.db.Prepare(stmt.Raw())
 	if err != nil {
 		return fmt.Errorf("goloquent: unable to prepare the sql statement: %v", err)
@@ -179,7 +179,7 @@ func (b *builder) execStmt(stmt *Stmt) error {
 }
 
 func (b *builder) execQuery(stmt *Stmt) (*sql.Rows, error) {
-	consoleLog(*b, *stmt)
+	go consoleLog(*b, *stmt)
 	var rows, err = b.db.Query(stmt.Raw(), stmt.arguments...)
 	if err != nil {
 		return nil, err
@@ -187,22 +187,22 @@ func (b *builder) execQuery(stmt *Stmt) (*sql.Rows, error) {
 	return rows, nil
 }
 
-func (b *builder) createTableCommand(e *entity) (*Stmt, error) {
+func (b *builder) createTableStmt(e *entity) (*Stmt, error) {
 	idx := make([]string, 0)
 	buf := new(bytes.Buffer)
 	buf.WriteString(fmt.Sprintf(
-		"CREATE TABLE IF NOT EXISTS %s (", b.getTable(e.Name())))
+		"CREATE TABLE IF NOT EXISTS %s (", b.dialect.GetTable(e.Name())))
 	for _, c := range e.columns {
 		for _, ss := range b.dialect.GetSchema(c) {
 			buf.WriteString(fmt.Sprintf("%s %s,",
 				b.dialect.Quote(ss.Name),
 				b.dialect.DataType(ss)))
 
-			if ss.IsIndexed {
-				idx := fmt.Sprintf("%s_%s_%s", e.Name(), ss.Name, "Idx")
-				buf.WriteString(fmt.Sprintf("INDEX %s (%s),",
-					b.dialect.Quote(idx), b.dialect.Quote(ss.Name)))
-			}
+			// if ss.IsIndexed {
+			// 	idx := fmt.Sprintf("%s_%s_%s", e.Name(), ss.Name, "Idx")
+			// 	buf.WriteString(b.dialect.CreateIndex(idx, []string{ss.Name}))
+			// 	buf.WriteString(",")
+			// }
 		}
 	}
 
@@ -211,8 +211,9 @@ func (b *builder) createTableCommand(e *entity) (*Stmt, error) {
 	}
 	buf.WriteString(fmt.Sprintf("PRIMARY KEY (%s,%s)",
 		b.dialect.Quote(parentColumn), b.dialect.Quote(keyColumn)))
-	buf.WriteString(fmt.Sprintf(") ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s;",
-		utf8CharSet.Encoding, utf8CharSet.Collation))
+	buf.WriteString(");")
+	// buf.WriteString(fmt.Sprintf(") ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s;",
+	// 	utf8CharSet.Encoding, utf8CharSet.Collation))
 
 	return &Stmt{
 		statement: buf,
@@ -221,14 +222,14 @@ func (b *builder) createTableCommand(e *entity) (*Stmt, error) {
 }
 
 func (b *builder) createTable(e *entity) error {
-	cmd, err := b.createTableCommand(e)
+	cmd, err := b.createTableStmt(e)
 	if err != nil {
 		return err
 	}
 	return b.execStmt(cmd)
 }
 
-func (b *builder) alterTableCommand(e *entity) (*Stmt, error) {
+func (b *builder) alterTableStmt(e *entity) (*Stmt, error) {
 	cols := newDictionary(b.dialect.GetColumns(e.Name()))
 	idxs := newDictionary(b.dialect.GetIndexes(e.Name()))
 	buf := new(bytes.Buffer)
@@ -278,7 +279,7 @@ func (b *builder) alterTableCommand(e *entity) (*Stmt, error) {
 }
 
 func (b *builder) alterTable(e *entity) error {
-	cmd, err := b.alterTableCommand(e)
+	cmd, err := b.alterTableStmt(e)
 	if err != nil {
 		return err
 	}

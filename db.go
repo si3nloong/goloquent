@@ -107,6 +107,11 @@ func (db *DB) Raw(stmt string, args ...interface{}) *sql.Row {
 	return newBuilder(db.NewQuery()).db.QueryRow(stmt, args...)
 }
 
+// // Exec :
+// func (db *DB) Exec(stmt string, args ...interface{}) {
+
+// }
+
 // NewQuery :
 func (db *DB) NewQuery() *Query {
 	return newQuery(db)

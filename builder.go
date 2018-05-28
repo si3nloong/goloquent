@@ -337,13 +337,12 @@ func (b *builder) getCommand(e *entity) (*Stmt, error) {
 	buf.WriteString(";")
 
 	return &Stmt{
-		table:     e.Name(),
 		statement: buf,
 		arguments: cmd.arguments,
 	}, nil
 }
 
-func (b *builder) run(cmd *Stmt) (*Iterator, error) {
+func (b *builder) run(table string, cmd *Stmt) (*Iterator, error) {
 	var rows, err = b.execQuery(cmd)
 	if err != nil {
 		return nil, fmt.Errorf("goloquent: %v", err)
@@ -355,7 +354,7 @@ func (b *builder) run(cmd *Stmt) (*Iterator, error) {
 	}
 
 	it := Iterator{
-		table:    cmd.table,
+		table:    table,
 		position: -1,
 		columns:  cols,
 	}
@@ -374,6 +373,7 @@ func (b *builder) run(cmd *Stmt) (*Iterator, error) {
 		for j, name := range cols {
 			it.put(i, name, m[j])
 		}
+		it.mergeKey()
 		i++
 	}
 
@@ -391,7 +391,7 @@ func (b *builder) get(model interface{}, mustExist bool) error {
 		return err
 	}
 
-	it, err := b.run(cmd)
+	it, err := b.run(e.Name(), cmd)
 	if err != nil {
 		return err
 	}
@@ -421,7 +421,7 @@ func (b *builder) getMulti(model interface{}) error {
 		return err
 	}
 
-	it, err := b.run(cmd)
+	it, err := b.run(e.Name(), cmd)
 	if err != nil {
 		return err
 	}
@@ -456,7 +456,7 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		return err
 	}
 
-	it, err := b.run(cmd)
+	it, err := b.run(e.Name(), cmd)
 	if err != nil {
 		return err
 	}
@@ -565,7 +565,6 @@ func (b *builder) putStmt(parentKey []*datastore.Key, e *entity) (*Stmt, error) 
 	buf.WriteString(";")
 
 	return &Stmt{
-		table:     e.Name(),
 		statement: buf,
 		arguments: args,
 	}, nil
@@ -596,7 +595,6 @@ func (b *builder) upsert(model interface{}, parentKey []*datastore.Key) error {
 	}
 	cols := e.Columns()
 	omits := newDictionary(b.query.omits)
-	fmt.Println("Omit :: ", omits)
 	for i, c := range cols {
 		if !omits.has(c) {
 			continue
@@ -874,7 +872,6 @@ func (b *builder) deleteStmt(e *entity) (*Stmt, error) {
 	buf.WriteString(stmt.Raw())
 	buf.WriteString(";")
 	return &Stmt{
-		table:     e.Name(),
 		statement: buf,
 		arguments: append(args, stmt.arguments...),
 	}, nil

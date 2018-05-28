@@ -1,6 +1,7 @@
 package goloquent
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -27,6 +28,19 @@ type Iterator struct {
 	columns  []string
 	results  []map[string][]byte
 	cursor   *datastore.Key
+}
+
+func (it *Iterator) mergeKey() {
+	pos := len(it.results) - 1
+	l := it.results[pos]
+	buf := new(bytes.Buffer)
+	buf.Write(l[parentColumn])
+	buf.WriteString(keyDelimeter)
+	buf.WriteString(it.table + ",")
+	buf.Write(l[keyColumn])
+	fmt.Println("pk ::: ", buf.String())
+	l[keyFieldName] = buf.Bytes()
+	it.results[pos] = l
 }
 
 func (it *Iterator) put(pos int, k string, v interface{}) error {
@@ -108,15 +122,6 @@ func (it *Iterator) scan(src interface{}) (map[string]interface{}, error) {
 		for i, p := range props {
 			k := p.Name()
 			b := it.Get(k)
-			// primary key
-			if k == keyFieldName {
-				key := it.Get(parentColumn)
-				if len(key) > 0 {
-					b = append(b, it.Get(parentColumn)...)
-				}
-				b = append([]byte(it.table+","), it.Get(keyColumn)...)
-			}
-
 			var vv, err = valueToInterface(p.typeOf, b)
 			if err != nil {
 				return nil, err

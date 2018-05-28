@@ -9,7 +9,6 @@ import (
 
 // Stmt :
 type Stmt struct {
-	table     string
 	statement *bytes.Buffer
 	arguments []interface{}
 	Result    sql.Result

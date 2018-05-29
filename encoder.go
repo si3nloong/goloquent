@@ -67,7 +67,6 @@ func marshal(it interface{}) (interface{}, error) {
 		}
 		return string(b), nil
 	}
-
 	return it, nil
 }
 

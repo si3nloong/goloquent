@@ -256,7 +256,7 @@ func interfaceIsZero(it interface{}) bool {
 		}
 		allZero := true
 		for _, v := range vi {
-			if z := interfaceIsZero(v); !z {
+			if isZero := interfaceIsZero(v); !isZero {
 				return false
 			}
 		}

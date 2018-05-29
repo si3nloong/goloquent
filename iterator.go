@@ -38,7 +38,6 @@ func (it *Iterator) mergeKey() {
 	buf.WriteString(keyDelimeter)
 	buf.WriteString(it.table + ",")
 	buf.Write(l[keyColumn])
-	fmt.Println("pk ::: ", buf.String())
 	l[keyFieldName] = buf.Bytes()
 	it.results[pos] = l
 }
@@ -51,9 +50,11 @@ func (it *Iterator) put(pos int, k string, v interface{}) error {
 	l := it.results[pos]
 	var b []byte
 	switch vi := v.(type) {
+	case nil:
 	case []byte:
 		b = vi
 	default:
+		b = []byte(fmt.Sprintf("%v", vi))
 	}
 	l[k] = b
 	it.results[pos] = l

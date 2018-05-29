@@ -46,3 +46,6 @@
 // TODO:
 
 * add soft delete for get
+
+Bugs :
+softDelete is not null

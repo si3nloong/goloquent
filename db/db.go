@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 
 	"cloud.google.com/go/datastore"
@@ -18,6 +19,16 @@ func Connection(driver string) *goloquent.DB {
 		return v
 	}
 	return nil
+}
+
+// Raw :
+func Raw(stmt string, args ...interface{}) *sql.Row {
+	return defaultDB.Raw(stmt, args...)
+}
+
+// Exec :
+func Exec(stmt string, args ...interface{}) (sql.Result, error) {
+	return defaultDB.Exec(stmt, args...)
 }
 
 // Table :

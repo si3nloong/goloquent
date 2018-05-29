@@ -60,7 +60,7 @@ func normalize(f field, it interface{}) ([]Property, error) {
 
 func marshal(it interface{}) (interface{}, error) {
 	switch v := it.(type) {
-	case []interface{}, map[string]interface{}:
+	case []interface{}, map[string]interface{}, json.RawMessage:
 		b, err := json.Marshal(v)
 		if err != nil {
 			return nil, fmt.Errorf("goloquent: unable to marshal the value %v", v)

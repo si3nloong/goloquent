@@ -21,7 +21,7 @@ type Dialect interface {
 	GetColumns(tb string) (cols []string)
 	GetIndexes(tb string) (idxs []string)
 	OnConflictUpdate(cols []string) string
-	// AlterColumn(s Schema) string
+	AlterTable(tb string, cols []Column) error
 }
 
 var (

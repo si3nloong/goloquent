@@ -16,6 +16,10 @@ type dictionary map[string]bool
 func newDictionary(v []string) dictionary {
 	l := make(map[string]bool)
 	for _, vv := range v {
+		vv = strings.TrimSpace(vv)
+		if vv == "" {
+			continue
+		}
 		l[vv] = true
 	}
 	return dictionary(l)

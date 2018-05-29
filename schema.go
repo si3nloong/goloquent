@@ -1,5 +1,7 @@
 package goloquent
 
+import "reflect"
+
 var (
 	utf8CharSet    = &CharSet{"utf8", "utf8_unicode_ci"}
 	utf8mb4CharSet = &CharSet{"utf8mb4", "utf8mb4_unicode_ci"}
@@ -24,4 +26,9 @@ type Schema struct {
 	IsNullable   bool
 	IsIndexed    bool
 	*CharSet
+}
+
+// OmitEmpty :
+func (s Schema) OmitEmpty() bool {
+	return reflect.TypeOf(s.DefaultValue) == reflect.TypeOf(OmitDefault(nil))
 }

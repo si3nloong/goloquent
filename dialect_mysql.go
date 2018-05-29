@@ -72,6 +72,27 @@ func (s *mysql) DataType(sc Schema) string {
 	return buf.String()
 }
 
+func (s *mysql) dataType(sc Schema) string {
+	buf := new(bytes.Buffer)
+	buf.WriteString(sc.DataType)
+	if sc.IsUnsigned {
+		buf.WriteString(" UNSIGNED")
+	}
+	if sc.CharSet != nil {
+		buf.WriteString(fmt.Sprintf(" CHARACTER SET %s COLLATE %s",
+			s.Quote(sc.CharSet.Encoding),
+			s.Quote(sc.CharSet.Collation)))
+	}
+	if !sc.IsNullable {
+		buf.WriteString(" NOT NULL")
+		t := reflect.TypeOf(sc.DefaultValue)
+		if t != reflect.TypeOf(OmitDefault(nil)) {
+			buf.WriteString(fmt.Sprintf(" DEFAULT %s", s.toString(sc.DefaultValue)))
+		}
+	}
+	return buf.String()
+}
+
 func (s *mysql) OnConflictUpdate(cols []string) string {
 	buf := new(bytes.Buffer)
 	buf.WriteString("ON DUPLICATE KEY UPDATE ")
@@ -84,6 +105,53 @@ func (s *mysql) OnConflictUpdate(cols []string) string {
 	}
 	buf.Truncate(buf.Len() - 1)
 	return buf.String()
+}
+
+func (s *mysql) AlterTable(table string, columns []Column) error {
+	cols := newDictionary(s.GetColumns(table))
+	idxs := newDictionary(s.GetIndexes(table))
+
+	buf := new(bytes.Buffer)
+	buf.WriteString(fmt.Sprintf("ALTER TABLE %s", s.GetTable(table)))
+	suffix := "FIRST"
+	for _, c := range columns {
+		for _, ss := range s.GetSchema(c) {
+			action := "ADD"
+			if cols.has(ss.Name) {
+				action = "MODIFY"
+			}
+			buf.WriteString(fmt.Sprintf(" %s %s %s %s,",
+				action, s.Quote(ss.Name), s.dataType(ss), suffix))
+			suffix = fmt.Sprintf("AFTER %s", s.Quote(ss.Name))
+
+			if ss.IsIndexed {
+				idx := fmt.Sprintf("%s_%s_%s", table, ss.Name, "idx")
+				if idxs.has(idx) {
+					idxs.delete(idx)
+				} else {
+					buf.WriteString(fmt.Sprintf(" INDEX %s (%s),",
+						s.Quote(idx), s.Quote(ss.Name)))
+				}
+			}
+			cols.delete(ss.Name)
+		}
+	}
+
+	for _, col := range cols.keys() {
+		buf.WriteString(fmt.Sprintf(" DROP COLUMN %s,", s.Quote(col)))
+	}
+
+	for _, idx := range idxs.keys() {
+		buf.WriteString(fmt.Sprintf(
+			" DROP INDEX %s,", s.Quote(idx)))
+	}
+	buf.Truncate(buf.Len() - 1)
+	buf.WriteString(";")
+	fmt.Println(buf.String())
+	if _, err := s.db.Exec(buf.String()); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *mysql) toString(it interface{}) string {

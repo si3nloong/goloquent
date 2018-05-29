@@ -156,6 +156,9 @@ func (p *postgres) GetSchema(c Column) []Schema {
 				sc.DataType = "text"
 			}
 			sc.CharSet = utf8CharSet
+		case reflect.Bool:
+			sc.DefaultValue = false
+			sc.DataType = "bool"
 		case reflect.Int8:
 			sc.DefaultValue = int8(0)
 			sc.DataType = "smallint"
@@ -249,4 +252,76 @@ func (p *postgres) toString(it interface{}) string {
 		v = fmt.Sprintf("%v", vi)
 	}
 	return v
+}
+
+func (p *postgres) AlterTable(table string, columns []Column) error {
+	conn := p.db.(*sql.DB)
+	tx, err := conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	cols := newDictionary(p.GetColumns(table))
+	idxs := newDictionary(p.GetIndexes(table))
+
+	buf := new(bytes.Buffer)
+	buf.WriteString(fmt.Sprintf("ALTER TABLE %s ", p.GetTable(table)))
+	for _, c := range columns {
+		for _, ss := range p.GetSchema(c) {
+			prefix := fmt.Sprintf("ALTER COLUMN %s", p.Quote(ss.Name))
+			buf.WriteString(fmt.Sprintf("%s TYPE %s", prefix, ss.DataType))
+			if ss.CharSet != nil {
+				// buf.WriteString(fmt.Sprintf(" COLLATE %s",
+				// 	// p.Quote(ss.CharSet.Encoding),
+				// 	p.Quote(ss.CharSet.Encoding)))
+			}
+			buf.WriteString(",")
+			if ss.IsNullable {
+				buf.WriteString(prefix + " SET NOT NULL,")
+				if !ss.OmitEmpty() {
+					buf.WriteString(fmt.Sprintf("%s SET DEFAULT %s,",
+						prefix, p.toString(ss.DefaultValue)))
+				}
+			}
+			if ss.IsIndexed {
+				idx := fmt.Sprintf("%s_%s_%s", table, ss.Name, "idx")
+				if idxs.has(idx) {
+					idxs.delete(idx)
+				} else {
+
+					// buf.WriteString(fmt.Sprintf(
+					// 	" CREATE INDEX %s ON (%s);",
+					// 	p.Quote(idx),
+					// 	p.Quote(ss.Name)))
+				}
+			}
+			cols.delete(ss.Name)
+		}
+	}
+
+	for _, col := range cols.keys() {
+		buf.WriteString(fmt.Sprintf(" DROP COLUMN %s,", p.Quote(col)))
+	}
+
+	buf.Truncate(buf.Len() - 1)
+	fmt.Println(buf.String())
+	if _, err := tx.Exec(buf.String()); err != nil {
+		return err
+	}
+
+	for _, idx := range idxs.keys() {
+		stmt := fmt.Sprintf("DROP INDEX %s;", p.Quote(idx))
+		if _, err := tx.Exec(stmt); err != nil {
+			return err
+		}
+	}
+
+	// for _, idx := range idxs.keys() {
+	// 	stmt := fmt.Sprintf("CREATE INDEX %s ON %s ();", p.Quote(idx), p.Quote(table))
+	// 	if _, err := tx.Exec(stmt); err != nil {
+	// 		return err
+	// 	}
+	// }
+
+	return tx.Commit()
 }

@@ -53,7 +53,7 @@ func (s *sequel) Open(conf Config) (*sql.DB, error) {
 
 // CreateIndex :
 func (s *sequel) CreateIndex(idx string, cols []string) string {
-	return fmt.Sprintf("INDEX %s (%s)",
+	return fmt.Sprintf("CREATE INDEX %s (%s)",
 		s.Quote(idx),
 		s.Quote(strings.Join(cols, ",")))
 }
@@ -105,8 +105,7 @@ func (s *sequel) DataType(sc Schema) string {
 	}
 	if !sc.IsNullable {
 		buf.WriteString(" NOT NULL")
-		t := reflect.TypeOf(sc.DefaultValue)
-		if t != reflect.TypeOf(OmitDefault(nil)) {
+		if !sc.OmitEmpty() {
 			buf.WriteString(fmt.Sprintf(" DEFAULT %s", s.toString(sc.DefaultValue)))
 		}
 	}
@@ -117,7 +116,7 @@ func (s *sequel) toString(it interface{}) string {
 	var v string
 	switch vi := it.(type) {
 	case string:
-		v = fmt.Sprintf("%q", "")
+		v = fmt.Sprintf(`'%s'`, vi)
 	case bool:
 		v = fmt.Sprintf("%t", vi)
 	case uint, uint8, uint16, uint32, uint64:
@@ -127,9 +126,9 @@ func (s *sequel) toString(it interface{}) string {
 	case float32, float64:
 		v = fmt.Sprintf("%v", vi)
 	case time.Time:
-		v = fmt.Sprintf("%q", vi.Format("2006-01-02 15:04:05"))
+		v = fmt.Sprintf(`'%s'`, vi.Format("2006-01-02 15:04:05"))
 	case []interface{}:
-		v = fmt.Sprintf("%q", "[]")
+		v = fmt.Sprintf(`'%s'`, "[]")
 	case nil:
 		v = "NULL"
 	default:
@@ -313,55 +312,6 @@ func LoadStruct(src interface{}, data map[string]interface{}) error {
 	return nil
 }
 
-// func (s *sequel) updateMutation(query *Query, model interface{}) (*Stmt, error) {
-// 	v := reflect.Indirect(reflect.ValueOf(model))
-// 	if v.Len() <= 0 {
-// 		return new(Stmt), nil
-// 	}
-
-// 	ety, err := newEntity(model)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	table := ety.name
-// 	buf := new(bytes.Buffer)
-// 	args := make([]interface{}, 0)
-// 	buf.WriteString(fmt.Sprintf("UPDATE %s SET ", s.Quote(table)))
-// 	f := v.Index(0)
-// 	data, err := SaveStruct(f.Interface())
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	pk, isOk := data[keyFieldName].(*datastore.Key)
-// 	if !isOk || pk == nil {
-// 		return nil, fmt.Errorf("goloquent: entity has no primary key")
-// 	}
-
-// 	for k, v := range data {
-// 		if k == keyFieldName {
-// 			continue
-// 		}
-// 		it, err := interfaceToValue(v)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		it, _ = marshal(it)
-// 		buf.WriteString(fmt.Sprintf("%s = %s,", s.Quote(k), s.Bind(0)))
-// 		args = append(args, it)
-// 	}
-// 	buf.Truncate(buf.Len() - 1)
-// 	buf.WriteString(fmt.Sprintf(
-// 		" WHERE %s = %s AND %s = %s;",
-// 		s.Quote(keyColumn), s.Bind(0),
-// 		s.Quote(parentColumn), s.Bind(0)))
-// 	k, p := splitKey(pk)
-// 	args = append(args, k, p)
-
-// 	return &Stmt{
-// 		table:     table,
-// 		statement: buf,
-// 		arguments: args,
-// 	}, nil
-// }
+func (s *sequel) AlterTable(string, []Column) error {
+	return nil
+}

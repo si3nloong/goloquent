@@ -194,7 +194,7 @@ func interfaceToValue(it interface{}) (interface{}, error) {
 	return value, nil
 }
 
-func saveSliceField(prefix []string, f field, v reflect.Value) ([]interface{}, error) {
+func saveSliceField(f field, v reflect.Value) ([]interface{}, error) {
 	// if it's struct, f.StructCodec is not nil
 	if v.Len() <= 0 {
 		return make([]interface{}, 0), nil
@@ -262,7 +262,7 @@ func saveField(f field, v reflect.Value) (interface{}, error) {
 				it = v.Bytes()
 			} else {
 				v = initSlice(v) // initialize the slice if it's nil
-				return saveSliceField([]string{}, f, v)
+				return saveSliceField(f, v)
 			}
 		case reflect.Ptr:
 			elem := t.Elem()

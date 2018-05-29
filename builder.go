@@ -191,7 +191,7 @@ func (b *builder) createTableStmt(e *entity) (*Stmt, error) {
 	idx := make([]string, 0)
 	buf := new(bytes.Buffer)
 	buf.WriteString(fmt.Sprintf(
-		"CREATE TABLE IF NOT EXISTS %s (", b.dialect.GetTable(e.Name())))
+		"CREATE TABLE IF NOT EXISTS %s (", b.dialect.Quote(e.Name())))
 	for _, c := range e.columns {
 		for _, ss := range b.dialect.GetSchema(c) {
 			buf.WriteString(fmt.Sprintf("%s %s,",
@@ -229,61 +229,8 @@ func (b *builder) createTable(e *entity) error {
 	return b.execStmt(cmd)
 }
 
-func (b *builder) alterTableStmt(e *entity) (*Stmt, error) {
-	cols := newDictionary(b.dialect.GetColumns(e.Name()))
-	idxs := newDictionary(b.dialect.GetIndexes(e.Name()))
-	buf := new(bytes.Buffer)
-	buf.WriteString(fmt.Sprintf("ALTER TABLE %s", b.getTable(e.Name())))
-	suffix := "FIRST"
-	for _, c := range e.columns {
-		for _, ss := range b.dialect.GetSchema(c) {
-			action := "ADD"
-			if cols.has(ss.Name) {
-				action = "MODIFY"
-			}
-			buf.WriteString(fmt.Sprintf(" %s %s %s %s,",
-				action, b.dialect.Quote(ss.Name), b.dialect.DataType(ss), suffix))
-			suffix = fmt.Sprintf("AFTER %s", b.dialect.Quote(ss.Name))
-
-			if ss.IsIndexed {
-				idx := fmt.Sprintf("%s_%s_%s", e.Name(), ss.Name, "idx")
-				if idxs.has(idx) {
-					idxs.delete(idx)
-				} else {
-					buf.WriteString(fmt.Sprintf(
-						" ADD INDEX %s (%s),",
-						b.dialect.Quote(idx),
-						b.dialect.Quote(ss.Name)))
-				}
-			}
-			cols.delete(ss.Name)
-		}
-	}
-
-	for _, col := range cols.keys() {
-		buf.WriteString(fmt.Sprintf(
-			" DROP COLUMN %s,", b.dialect.Quote(col)))
-	}
-
-	for _, idx := range idxs.keys() {
-		buf.WriteString(fmt.Sprintf(
-			" DROP INDEX %s,", b.dialect.Quote(idx)))
-	}
-	buf.Truncate(buf.Len() - 1)
-	buf.WriteString(";")
-
-	return &Stmt{
-		statement: buf,
-		arguments: nil,
-	}, nil
-}
-
 func (b *builder) alterTable(e *entity) error {
-	cmd, err := b.alterTableStmt(e)
-	if err != nil {
-		return err
-	}
-	return b.execStmt(cmd)
+	return b.dialect.AlterTable(e.Name(), e.columns)
 }
 
 func (b *builder) migrate(models []interface{}) error {

@@ -181,11 +181,12 @@ func execStmt(db sqlCommon, stmt *Stmt) error {
 
 func (b *builder) execStmt(stmt *Stmt) error {
 	go consoleLog(*b, *stmt)
-	sql, err := b.db.Prepare(stmt.Raw())
+	conn, err := b.db.Prepare(stmt.Raw())
 	if err != nil {
 		return fmt.Errorf("goloquent: unable to prepare the sql statement: %v", err)
 	}
-	result, err := sql.Exec(stmt.arguments...)
+	defer conn.Close()
+	result, err := conn.Exec(stmt.arguments...)
 	if err != nil {
 		return fmt.Errorf("goloquent: %v", err)
 	}
@@ -845,9 +846,9 @@ func (b *builder) runInTransaction(cb TransactionHandler) error {
 	if err != nil {
 		return fmt.Errorf("goloquent: unable to begin transaction, %v", err)
 	}
-	if r := recover(); r != nil {
-		defer txn.Rollback()
-	}
+	// if r := recover(); r != nil {
+	// 	defer txn.Rollback()
+	// }
 	defer txn.Rollback()
 	if err := cb(NewDB(b.driver, txn, b.dialect, b.db.logger)); err != nil {
 		return err

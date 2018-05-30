@@ -7,9 +7,9 @@ import (
 
 // Dialect :
 type Dialect interface {
-	SetDB(db sqlCommon)
-	GetTable(ns string) string
 	Open(c Config) (*sql.DB, error)
+	SetDB(db Client)
+	GetTable(ns string) string
 	CreateIndex(ns string, cols []string) string
 	Version() (ver string)
 	CurrentDB() (n string)
@@ -20,8 +20,9 @@ type Dialect interface {
 	HasTable(tb string) bool
 	GetColumns(tb string) (cols []string)
 	GetIndexes(tb string) (idxs []string)
-	OnConflictUpdate(cols []string) string
+	CreateTable(tb string, cols []Column) error
 	AlterTable(tb string, cols []Column) error
+	OnConflictUpdate(cols []string) string
 }
 
 var (

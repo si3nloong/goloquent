@@ -25,10 +25,15 @@ type sqlCommon interface {
 	QueryRow(query string, args ...interface{}) *sql.Row
 }
 
+type sqlExtra interface {
+	sqlCommon
+	Log()
+}
+
 // sequel :
 type sequel struct {
 	dbName string
-	db     sqlCommon
+	db     Client
 }
 
 var _ Dialect = new(sequel)
@@ -38,7 +43,7 @@ func init() {
 }
 
 // SetDB :
-func (s *sequel) SetDB(db sqlCommon) {
+func (s *sequel) SetDB(db Client) {
 	s.db = db
 }
 
@@ -309,6 +314,10 @@ func LoadStruct(src interface{}, data map[string]interface{}) error {
 	}
 
 	v.Elem().Set(nv.Elem())
+	return nil
+}
+
+func (s *sequel) CreateTable(string, []Column) error {
 	return nil
 }
 

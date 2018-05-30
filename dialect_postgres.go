@@ -254,8 +254,51 @@ func (p *postgres) toString(it interface{}) string {
 	return v
 }
 
+func (p *postgres) CreateTable(table string, columns []Column) error {
+	idxs := make([]string, 0, len(columns))
+	conn := p.db.sqlCommon.(*sql.DB)
+	tx, err := conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	buf := new(bytes.Buffer)
+	buf.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (", p.GetTable(table)))
+	for _, c := range columns {
+		for _, ss := range p.GetSchema(c) {
+			buf.WriteString(fmt.Sprintf("%s %s,",
+				p.Quote(ss.Name),
+				p.DataType(ss)))
+
+			if ss.IsIndexed {
+				idx := fmt.Sprintf("%s_%s_%s", table, ss.Name, "Idx")
+				stmt := fmt.Sprintf("CREATE INDEX %s ON %s (%s);",
+					p.Quote(idx), p.GetTable(table), p.Quote(ss.Name))
+				idxs = append(idxs, stmt)
+			}
+		}
+	}
+	buf.WriteString(fmt.Sprintf("PRIMARY KEY (%s,%s)",
+		p.Quote(parentColumn), p.Quote(keyColumn)))
+	buf.WriteString(");")
+	fmt.Println(buf.String())
+
+	if _, err := tx.Exec(buf.String()); err != nil {
+		return err
+	}
+
+	for _, idx := range idxs {
+		if _, err := tx.Exec(idx); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
 func (p *postgres) AlterTable(table string, columns []Column) error {
-	conn := p.db.(*sql.DB)
+	conn := p.db.sqlCommon.(*sql.DB)
 	tx, err := conn.Begin()
 	if err != nil {
 		return err
@@ -263,7 +306,7 @@ func (p *postgres) AlterTable(table string, columns []Column) error {
 	defer tx.Rollback()
 	cols := newDictionary(p.GetColumns(table))
 	idxs := newDictionary(p.GetIndexes(table))
-
+	idxs.delete(fmt.Sprintf("%s_pkey", table))
 	buf := new(bytes.Buffer)
 	buf.WriteString(fmt.Sprintf("ALTER TABLE %s ", p.GetTable(table)))
 	for _, c := range columns {
@@ -304,14 +347,16 @@ func (p *postgres) AlterTable(table string, columns []Column) error {
 	}
 
 	buf.Truncate(buf.Len() - 1)
-	fmt.Println(buf.String())
+	p.db.ConsoleLog(&Stmt{buf, nil, nil})
 	if _, err := tx.Exec(buf.String()); err != nil {
 		return err
 	}
 
 	for _, idx := range idxs.keys() {
-		stmt := fmt.Sprintf("DROP INDEX %s;", p.Quote(idx))
-		if _, err := tx.Exec(stmt); err != nil {
+		buff := new(bytes.Buffer)
+		buff.WriteString(fmt.Sprintf("DROP INDEX %s;", p.Quote(idx)))
+		p.db.ConsoleLog(&Stmt{buff, nil, nil})
+		if _, err := tx.Exec(buff.String()); err != nil {
 			return err
 		}
 	}

@@ -1,6 +1,7 @@
 package goloquent
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"reflect"
@@ -59,28 +60,52 @@ type Replacer interface {
 	Save(model interface{}) error
 }
 
+// Client :
+type Client struct {
+	sqlCommon
+	logger LogHandler
+}
+
+// Exec :
+func (c Client) Exec(query string, args ...interface{}) (sql.Result, error) {
+	buf := new(bytes.Buffer)
+	buf.WriteString(query)
+	go c.ConsoleLog(&Stmt{buf, args, nil})
+	result, err := c.sqlCommon.Exec(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// ConsoleLog :
+func (c Client) ConsoleLog(stmt *Stmt) {
+	if c.logger != nil {
+		c.logger(stmt)
+	}
+}
+
 // DB :
 type DB struct {
 	id      string
 	driver  string
 	name    string
 	replica string
-	conn    sqlCommon
+	conn    Client
 	dialect Dialect
-	logger  LogHandler
 	omits   []string
 }
 
 // NewDB :
 func NewDB(driver string, conn sqlCommon, dialect Dialect, logHandler LogHandler) *DB {
-	name := dialect.CurrentDB()
+	client := Client{conn, logHandler}
+	dialect.SetDB(client)
 	return &DB{
 		id:      fmt.Sprintf("%s:%d", driver, time.Now().UnixNano()),
 		driver:  driver,
-		name:    name,
-		conn:    conn,
+		name:    dialect.CurrentDB(),
+		conn:    client,
 		dialect: dialect,
-		logger:  logHandler,
 	}
 }
 
@@ -93,7 +118,7 @@ func (db *DB) clone() *DB {
 		replica: fmt.Sprintf("%d", time.Now().Unix()),
 		conn:    db.conn,
 		dialect: db.dialect,
-		logger:  db.logger,
+		// logger:  db.logger,
 	}
 }
 
@@ -230,7 +255,7 @@ func (db *DB) RunInTransaction(cb TransactionHandler) error {
 
 // Close :
 func (db *DB) Close() error {
-	x, isOk := db.conn.(*sql.DB)
+	x, isOk := db.conn.sqlCommon.(*sql.DB)
 	if !isOk {
 		return nil
 	}

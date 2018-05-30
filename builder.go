@@ -14,10 +14,10 @@ import (
 type builder struct {
 	driver  string
 	dbName  string
-	db      sqlCommon
+	db      Client
 	dialect Dialect
-	logger  LogHandler
 	query   scope
+	// logger  LogHandler
 }
 
 func newBuilder(query *Query) *builder {
@@ -27,8 +27,8 @@ func newBuilder(query *Query) *builder {
 		dbName:  clone.name,
 		db:      clone.conn,
 		dialect: clone.dialect,
-		logger:  clone.logger,
 		query:   query.clone().scope,
+		// logger:  clone.logger,
 	}
 }
 
@@ -159,9 +159,24 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*Stmt, error) {
 }
 
 func consoleLog(b builder, stmt Stmt) {
-	if b.logger != nil {
-		b.logger(&stmt)
+	if b.db.logger != nil {
+		b.db.logger(&stmt)
 	}
+}
+
+func execStmt(db sqlCommon, stmt *Stmt) error {
+	// go consoleLog(*, *stmt)
+	conn, err := db.Prepare(stmt.Raw())
+	if err != nil {
+		return fmt.Errorf("goloquent: unable to prepare the sql statement: %v", err)
+	}
+	defer conn.Close()
+	result, err := conn.Exec(stmt.arguments...)
+	if err != nil {
+		return fmt.Errorf("goloquent: %v", err)
+	}
+	stmt.Result = result
+	return nil
 }
 
 func (b *builder) execStmt(stmt *Stmt) error {
@@ -187,46 +202,8 @@ func (b *builder) execQuery(stmt *Stmt) (*sql.Rows, error) {
 	return rows, nil
 }
 
-func (b *builder) createTableStmt(e *entity) (*Stmt, error) {
-	idx := make([]string, 0)
-	buf := new(bytes.Buffer)
-	buf.WriteString(fmt.Sprintf(
-		"CREATE TABLE IF NOT EXISTS %s (", b.dialect.Quote(e.Name())))
-	for _, c := range e.columns {
-		for _, ss := range b.dialect.GetSchema(c) {
-			buf.WriteString(fmt.Sprintf("%s %s,",
-				b.dialect.Quote(ss.Name),
-				b.dialect.DataType(ss)))
-
-			// if ss.IsIndexed {
-			// 	idx := fmt.Sprintf("%s_%s_%s", e.Name(), ss.Name, "Idx")
-			// 	buf.WriteString(b.dialect.CreateIndex(idx, []string{ss.Name}))
-			// 	buf.WriteString(",")
-			// }
-		}
-	}
-
-	if len(idx) > 0 {
-		buf.WriteString(strings.Join(idx, ",") + ",")
-	}
-	buf.WriteString(fmt.Sprintf("PRIMARY KEY (%s,%s)",
-		b.dialect.Quote(parentColumn), b.dialect.Quote(keyColumn)))
-	buf.WriteString(");")
-	// buf.WriteString(fmt.Sprintf(") ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s;",
-	// 	utf8CharSet.Encoding, utf8CharSet.Collation))
-
-	return &Stmt{
-		statement: buf,
-		arguments: nil,
-	}, nil
-}
-
 func (b *builder) createTable(e *entity) error {
-	cmd, err := b.createTableStmt(e)
-	if err != nil {
-		return err
-	}
-	return b.execStmt(cmd)
+	return b.dialect.CreateTable(e.Name(), e.columns)
 }
 
 func (b *builder) alterTable(e *entity) error {
@@ -860,7 +837,7 @@ func (b *builder) truncate(table string) error {
 }
 
 func (b *builder) runInTransaction(cb TransactionHandler) error {
-	conn, isOk := b.db.(*sql.DB)
+	conn, isOk := b.db.sqlCommon.(*sql.DB)
 	if !isOk {
 		return fmt.Errorf("goloquent: unable to initiate transaction")
 	}
@@ -872,7 +849,7 @@ func (b *builder) runInTransaction(cb TransactionHandler) error {
 		defer txn.Rollback()
 	}
 	defer txn.Rollback()
-	if err := cb(NewDB(b.driver, txn, b.dialect, b.logger)); err != nil {
+	if err := cb(NewDB(b.driver, txn, b.dialect, b.db.logger)); err != nil {
 		return err
 	}
 	return txn.Commit()

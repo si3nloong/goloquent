@@ -72,27 +72,6 @@ func (s *mysql) DataType(sc Schema) string {
 	return buf.String()
 }
 
-func (s *mysql) dataType(sc Schema) string {
-	buf := new(bytes.Buffer)
-	buf.WriteString(sc.DataType)
-	if sc.IsUnsigned {
-		buf.WriteString(" UNSIGNED")
-	}
-	if sc.CharSet != nil {
-		buf.WriteString(fmt.Sprintf(" CHARACTER SET %s COLLATE %s",
-			s.Quote(sc.CharSet.Encoding),
-			s.Quote(sc.CharSet.Collation)))
-	}
-	if !sc.IsNullable {
-		buf.WriteString(" NOT NULL")
-		t := reflect.TypeOf(sc.DefaultValue)
-		if t != reflect.TypeOf(OmitDefault(nil)) {
-			buf.WriteString(fmt.Sprintf(" DEFAULT %s", s.toString(sc.DefaultValue)))
-		}
-	}
-	return buf.String()
-}
-
 func (s *mysql) OnConflictUpdate(cols []string) string {
 	buf := new(bytes.Buffer)
 	buf.WriteString("ON DUPLICATE KEY UPDATE ")
@@ -105,6 +84,33 @@ func (s *mysql) OnConflictUpdate(cols []string) string {
 	}
 	buf.Truncate(buf.Len() - 1)
 	return buf.String()
+}
+
+func (s *mysql) CreateTable(table string, columns []Column) error {
+	buf := new(bytes.Buffer)
+	buf.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (", s.GetTable(table)))
+	for _, c := range columns {
+		for _, ss := range s.GetSchema(c) {
+			buf.WriteString(fmt.Sprintf("%s %s,",
+				s.Quote(ss.Name),
+				s.DataType(ss)))
+
+			if ss.IsIndexed {
+				idx := fmt.Sprintf("%s_%s_%s", table, ss.Name, "Idx")
+				buf.WriteString(fmt.Sprintf("INDEX %s (%s),", s.Quote(idx), s.Quote(ss.Name)))
+			}
+		}
+	}
+	buf.WriteString(fmt.Sprintf("PRIMARY KEY (%s,%s)",
+		s.Quote(parentColumn), s.Quote(keyColumn)))
+	buf.WriteString(fmt.Sprintf(") ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s;",
+		utf8CharSet.Encoding, utf8CharSet.Collation))
+
+	if _, err := s.db.Exec(buf.String()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *mysql) AlterTable(table string, columns []Column) error {
@@ -121,7 +127,7 @@ func (s *mysql) AlterTable(table string, columns []Column) error {
 				action = "MODIFY"
 			}
 			buf.WriteString(fmt.Sprintf(" %s %s %s %s,",
-				action, s.Quote(ss.Name), s.dataType(ss), suffix))
+				action, s.Quote(ss.Name), s.DataType(ss), suffix))
 			suffix = fmt.Sprintf("AFTER %s", s.Quote(ss.Name))
 
 			if ss.IsIndexed {
@@ -129,7 +135,7 @@ func (s *mysql) AlterTable(table string, columns []Column) error {
 				if idxs.has(idx) {
 					idxs.delete(idx)
 				} else {
-					buf.WriteString(fmt.Sprintf(" INDEX %s (%s),",
+					buf.WriteString(fmt.Sprintf(" ADD INDEX %s (%s),",
 						s.Quote(idx), s.Quote(ss.Name)))
 				}
 			}
@@ -147,7 +153,6 @@ func (s *mysql) AlterTable(table string, columns []Column) error {
 	}
 	buf.Truncate(buf.Len() - 1)
 	buf.WriteString(";")
-	fmt.Println(buf.String())
 	if _, err := s.db.Exec(buf.String()); err != nil {
 		return err
 	}

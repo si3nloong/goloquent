@@ -6,11 +6,15 @@ const (
 
 // Pagination :
 type Pagination struct {
+	query  *Query
 	Cursor string
-	Filter []Filter
-	Sort   []string
 	Limit  uint
 	count  uint
+}
+
+// SetQuery :
+func (p *Pagination) SetQuery(q *Query) {
+	p.query = q
 }
 
 // Reset :

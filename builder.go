@@ -48,7 +48,9 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*Stmt, error) {
 		if err != nil {
 			return nil, err
 		}
-		if f.field == keyFieldName {
+
+		switch f.field {
+		case keyFieldName:
 			name = fmt.Sprintf("concat(%s,%q,%s)",
 				b.dialect.Quote(parentColumn),
 				keyDelimeter,
@@ -56,6 +58,13 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*Stmt, error) {
 			v, err = interfaceKeyToString(f.value)
 			if err != nil {
 				return nil, err
+			}
+		case keyColumn:
+			switch vi := f.value.(type) {
+			case []byte:
+				v = fmt.Sprintf(`'%s'`, strings.Trim(string(vi), `'`))
+			case string:
+				v = fmt.Sprintf(`'%s'`, strings.Trim(vi, `'`))
 			}
 		}
 

@@ -99,6 +99,13 @@ func (q *Query) clone() *Query {
 	}
 }
 
+func (q *Query) append(query *Query) *Query {
+	q.scope.projection = append(q.scope.projection, query.scope.projection...)
+	q.scope.filters = append(q.scope.filters, query.scope.filters...)
+	q.scope.orders = append(q.scope.orders, query.scope.orders...)
+	return q
+}
+
 func (q *Query) getError() error {
 	if len(q.errs) > 0 {
 		buf := new(bytes.Buffer)
@@ -195,6 +202,9 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 		return err
 	}
 	q = q.clone()
+	if p.query != nil {
+		q = q.append(p.query)
+	}
 	if p.Limit > maxLimit {
 		return fmt.Errorf("goloquent: limit overflow : %d, maximum limit : %d", p.Limit, maxLimit)
 	}
@@ -206,8 +216,6 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 		}
 		q = q.Where(keyFieldName, ">", c)
 	}
-	q = q.Order(p.Sort...)
-	q.filters = append(q.filters, p.Filter...)
 	return newBuilder(q).paginate(p, model)
 }
 

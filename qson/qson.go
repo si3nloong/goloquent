@@ -1,9 +1,6 @@
 package qson
 
 import (
-	"bytes"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -53,18 +50,23 @@ func (p *Property) Name() string {
 
 // Field :
 type Field struct {
-	value    interface{}
+	name     string
 	operator string
-	*Property
+	value    interface{}
+}
+
+// Name :
+func (f Field) Name() string {
+	return f.name
 }
 
 // Operator :
-func (f *Field) Operator() string {
+func (f Field) Operator() string {
 	return f.operator
 }
 
 // Value :
-func (f *Field) Value() interface{} {
+func (f Field) Value() interface{} {
 	return f.value
 }
 
@@ -207,11 +209,6 @@ type structScan struct {
 	typeOf reflect.Type
 }
 
-// Structure :
-func Structure(t reflect.Type) map[string]*Property {
-	return getProperty(t)
-}
-
 func getProperty(t reflect.Type) map[string]*Property {
 	scans := append(make([]*structScan, 0), &structScan{nil, t})
 	props := make(map[string]*Property)
@@ -229,7 +226,8 @@ func getProperty(t reflect.Type) map[string]*Property {
 			}
 
 			name := strings.Split(f.Tag.Get("json"), ",")[0]
-			if name == "-" {
+			qson := strings.Split(f.Tag.Get("qson"), ",")[0]
+			if name == "-" || qson == "-" {
 				continue
 			}
 
@@ -264,88 +262,4 @@ func getProperty(t reflect.Type) map[string]*Property {
 	}
 
 	return props
-}
-
-func getField(query []byte, t reflect.Type) ([]*Field, error) {
-	l := make(map[string]interface{})
-	if err := json.Unmarshal(query, &l); err != nil {
-		return nil, fmt.Errorf("qson: unable to unmarshal query to json")
-	}
-
-	props := getProperty(t)
-	fields := make([]*Field, 0, len(props))
-	for k, v := range l {
-		p, isValid := props[k]
-		if !isValid {
-			continue
-		}
-
-		fmt.Println("QSON :: ", p.QSON())
-		if p.QSON() == "-" {
-			continue
-		}
-
-		switch vi := v.(type) {
-		case map[string]interface{}:
-			for op, vv := range vi {
-				if !validOperator(op) {
-					return nil, fmt.Errorf("qson: json key %q has invalid operator %q", k, op)
-				}
-
-				if op == in || op == nin {
-					x, isOk := vv.([]interface{})
-					if !isOk {
-						return nil, fmt.Errorf("qson: json key %q has invalid value %v", k, vv)
-					}
-
-					arr := reflect.MakeSlice(reflect.SliceOf(p.typeOf), len(x), len(x))
-					for i, xx := range x {
-						it, err := convertToInterface(p.typeOf, xx)
-						if err != nil {
-							return nil, err
-						}
-						arr.Index(i).Set(reflect.ValueOf(it))
-					}
-
-					fields = append(fields, &Field{arr.Interface(), op, p})
-					continue
-				}
-
-				it, err := convertToInterface(p.typeOf, vv)
-				if err != nil {
-					return nil, err
-				}
-
-				fields = append(fields, &Field{it, op, p})
-			}
-		default:
-			it, err := convertToInterface(p.typeOf, vi)
-			if err != nil {
-				return nil, err
-			}
-
-			fields = append(fields, &Field{it, eq, p})
-		}
-	}
-
-	return fields, nil
-}
-
-// Parse :
-func Parse(query []byte, layout interface{}) ([]*Field, error) {
-	query = bytes.TrimSpace(query)
-	if query == nil {
-		return nil, nil
-	}
-
-	v := reflect.Indirect(reflect.ValueOf(layout))
-	if v.Type().Kind() != reflect.Struct {
-		return nil, fmt.Errorf("qson: layout must be an struct")
-	}
-
-	if !bytes.HasPrefix(query, []byte(`{`)) && !bytes.HasSuffix(query, []byte(`}`)) {
-		query = []byte(base64.StdEncoding.EncodeToString(query))
-	}
-
-	return getField(query, v.Type())
 }

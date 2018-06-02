@@ -825,7 +825,7 @@ func (b *builder) delete(model interface{}) error {
 }
 
 func (b *builder) deleteByQuery(query *Query) error {
-	table := ""
+	table := query.table
 	cmd, err := b.buildWhere(b.query)
 	if err != nil {
 		return err

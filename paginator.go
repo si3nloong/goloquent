@@ -17,7 +17,7 @@ type Pagination struct {
 func (p *Pagination) Reset() {
 	pp := new(Pagination)
 	pp.Limit = defaultLimit
-	p = pp
+	*p = *pp
 }
 
 // Count :

@@ -48,4 +48,5 @@
 * add soft delete for get
 
 Bugs :
-softDelete is not null
+SoftDelete is not null
+Flatten struct childs values always null

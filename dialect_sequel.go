@@ -179,7 +179,6 @@ func (s *sequel) GetSchema(c Column) []Schema {
 		sc.DefaultValue = time.Time{}
 		sc.DataType = "datetime"
 	case typeOfSoftDelete:
-		fmt.Println("SOFTDELETE !!!", c.Name())
 		sc.DefaultValue = OmitDefault(nil)
 		sc.IsNullable = true
 		sc.DataType = "datetime"
@@ -237,6 +236,9 @@ func (s *sequel) GetSchema(c Column) []Schema {
 			}
 		default:
 			sc.DataType = "text"
+			// sc.DefaultValue = make(map[string]interface{})
+			// if f.isPtrChild {
+			// }
 			sc.DefaultValue = OmitDefault(nil)
 			sc.CharSet = utf8CharSet
 			if s.Version() >= "5.5" {

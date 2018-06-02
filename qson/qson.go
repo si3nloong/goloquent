@@ -191,7 +191,7 @@ func convertToInterface(t reflect.Type, v interface{}) (interface{}, error) {
 			it = x
 
 		default:
-			return nil, fmt.Errorf("qson: unsupported data type %v", t.Kind())
+			return nil, fmt.Errorf("qson: unsupported data type %v", t)
 		}
 	}
 
@@ -205,6 +205,11 @@ func unmatchDataType(o reflect.Type, p interface{}) error {
 type structScan struct {
 	name   []string
 	typeOf reflect.Type
+}
+
+// Structure :
+func Structure(t reflect.Type) map[string]*Property {
+	return getProperty(t)
 }
 
 func getProperty(t reflect.Type) map[string]*Property {
@@ -272,6 +277,11 @@ func getField(query []byte, t reflect.Type) ([]*Field, error) {
 	for k, v := range l {
 		p, isValid := props[k]
 		if !isValid {
+			continue
+		}
+
+		fmt.Println("QSON :: ", p.QSON())
+		if p.QSON() == "-" {
 			continue
 		}
 

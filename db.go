@@ -156,8 +156,9 @@ func (db *DB) Migrate(model ...interface{}) error {
 
 // Omit :
 func (db *DB) Omit(fields ...string) Replacer {
+	ff := newDictionary(fields)
 	clone := db.clone()
-	clone.omits = fields
+	clone.omits = ff.keys()
 	return clone
 }
 

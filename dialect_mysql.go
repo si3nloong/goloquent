@@ -176,6 +176,8 @@ func (s *mysql) toString(it interface{}) string {
 		v = fmt.Sprintf("%q", vi.Format("2006-01-02 15:04:05"))
 	case []interface{}:
 		v = fmt.Sprintf("%q", "[]")
+	case map[string]interface{}:
+		v = fmt.Sprintf("%q", "{}")
 	case nil:
 		v = "NULL"
 	default:

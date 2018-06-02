@@ -102,6 +102,11 @@ func isNameKey(strKey string) bool {
 	return strings.HasPrefix(lastPath, "'") || strings.HasSuffix(lastPath, "'")
 }
 
+// ParseKey :
+func ParseKey(str string) (*datastore.Key, error) {
+	return parseKey(str)
+}
+
 // parseKey will parse any key string to *datastore.Key,
 // it will return null *datastore.Key if the key string is empty
 func parseKey(str string) (*datastore.Key, error) {

@@ -1,6 +1,7 @@
 package qson
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -32,10 +33,16 @@ func New(src interface{}) (*Parser, error) {
 
 // Parse :
 func (p *Parser) Parse(b []byte) ([]Field, error) {
+	b = bytes.TrimSpace(b)
+	if len(b) <= 0 || string(b) == `{}` {
+		return nil, nil
+	}
+
 	l := make(map[string]interface{})
 	if err := json.Unmarshal(b, &l); err != nil {
 		return nil, fmt.Errorf("qson: unable to unmarshal query to json")
 	}
+
 	fields := make([]Field, 0)
 	for k, v := range l {
 		p, isValid := p.codec[k]

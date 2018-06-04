@@ -17,6 +17,11 @@ func (p *Pagination) SetQuery(q *Query) {
 	p.query = q
 }
 
+// Next :
+func (p *Pagination) Next() bool {
+	return p.Cursor != ""
+}
+
 // Reset :
 func (p *Pagination) Reset() {
 	pp := new(Pagination)

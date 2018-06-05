@@ -699,7 +699,10 @@ func (b *builder) updateMulti(v interface{}) error {
 	vi := reflect.Indirect(reflect.ValueOf(v))
 	args := make([]interface{}, 0)
 	buf := new(bytes.Buffer)
-	table := strings.Replace(b.query.table, "", vi.Type().Name(), 1)
+	table := b.query.table
+	if table == "" {
+		table = vi.Type().Name()
+	}
 	if table == "" {
 		return fmt.Errorf("goloquent: missing table name")
 	}

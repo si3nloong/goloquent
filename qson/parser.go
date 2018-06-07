@@ -116,7 +116,6 @@ func (s Sort) IsAscending() bool {
 func (p *Parser) ParseSort(fields []string) ([]Sort, error) {
 	sorts := make([]Sort, 0, len(fields))
 	dict := make(map[string]bool)
-	fmt.Println("debug now :: ", fields)
 	for _, ff := range fields {
 		ff = strings.Trim(strings.TrimSpace(ff), `"`)
 		dir := ascending

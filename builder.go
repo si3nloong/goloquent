@@ -111,7 +111,11 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*Stmt, error) {
 			if !isOk {
 				x = append(x, v)
 			}
-			vv = fmt.Sprintf("(%s)", vv)
+			vv = fmt.Sprintf("(%s)", strings.TrimRight(
+				strings.Repeat(b.dialect.Bind(0)+",", len(x)), ","))
+			wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vv))
+			args = append(args, x...)
+			continue
 		}
 		wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vv))
 		args = append(args, v)

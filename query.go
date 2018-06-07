@@ -223,9 +223,9 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 func (q *Query) DistinctOn(fields ...string) *Query {
 	q = q.clone()
 	dict := newDictionary(append(q.distinctOn, fields...))
-	dict.delete(keyFieldName)
-	dict.add(keyColumn)
-	dict.add(parentColumn)
+	// dict.delete(keyFieldName)
+	// dict.add(keyColumn)
+	// dict.add(parentColumn)
 	q.distinctOn = dict.keys()
 	return q
 }

@@ -52,6 +52,9 @@ func (d dictionary) keys() []string {
 
 // StringKey :
 func StringKey(key *datastore.Key) string {
+	if key == nil {
+		return ""
+	}
 	if key.Name != "" {
 		return key.Name
 	}
@@ -178,6 +181,9 @@ func stringifyKey(key *datastore.Key) string {
 }
 
 func splitKey(k *datastore.Key) (key string, parent string) {
+	if k == nil {
+		return "", ""
+	}
 	if k.ID > 0 {
 		return fmt.Sprintf("%d", k.ID), stringifyKey(k.Parent)
 	}

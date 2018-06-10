@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
@@ -251,7 +252,18 @@ func (b *builder) getCommand(e *entity) (*Stmt, error) {
 		scope = b.dialect.Quote(strings.Join(query.projection, b.dialect.Quote(",")))
 	}
 	if len(query.distinctOn) > 0 {
-		scope = "DISTINCT " + b.dialect.Quote(strings.Join(query.distinctOn, b.dialect.Quote(",")))
+		distinctOn := make([]string, len(query.distinctOn), len(query.distinctOn))
+		copy(distinctOn, query.distinctOn)
+		for i := 0; i < len(query.distinctOn); i++ {
+			vv := distinctOn[i]
+			regex, _ := regexp.Compile(`.+ as .+`)
+			vv = strings.Replace(vv, "`", (b.dialect.Quote(vv))[:1], -1)
+			if !regex.MatchString(vv) {
+				vv = b.dialect.Quote(vv)
+			}
+			distinctOn[i] = vv
+		}
+		scope = "DISTINCT " + strings.Join(distinctOn, ",")
 	}
 	buf.WriteString(fmt.Sprintf("SELECT %s FROM %s", scope, b.getTable(e.Name())))
 	if e.hasSoftDelete() {

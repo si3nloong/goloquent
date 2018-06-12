@@ -19,6 +19,7 @@ type LogHandler func(*Stmt)
 
 // public constant variables :
 const (
+	pkColumn         = "$PrimaryKey"
 	keyColumn        = "$Key"
 	parentColumn     = "$Parent"
 	softDeleteColumn = "$Deleted"

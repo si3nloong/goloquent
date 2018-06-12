@@ -101,8 +101,7 @@ func (s *mysql) CreateTable(table string, columns []Column) error {
 			}
 		}
 	}
-	buf.WriteString(fmt.Sprintf("PRIMARY KEY (%s,%s)",
-		s.Quote(parentColumn), s.Quote(keyColumn)))
+	buf.WriteString(fmt.Sprintf("PRIMARY KEY (%s)", s.Quote(pkColumn)))
 	buf.WriteString(fmt.Sprintf(") ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s;",
 		utf8CharSet.Encoding, utf8CharSet.Collation))
 

@@ -145,7 +145,7 @@ func (p *postgres) GetSchema(c Column) []Schema {
 		sc.DataType = "bytea"
 	case typeOfTime:
 		sc.DefaultValue = time.Time{}
-		sc.DataType = "timestamptz"
+		sc.DataType = "timestamp"
 	default:
 		switch t.Kind() {
 		case reflect.String:
@@ -191,7 +191,7 @@ func (p *postgres) GetSchema(c Column) []Schema {
 			sc.DefaultValue = float64(0)
 			sc.DataType = "real"
 		default:
-			sc.DataType = "text"
+			sc.DataType = "json"
 			sc.CharSet = utf8CharSet
 		}
 	}

@@ -34,9 +34,7 @@ func newBuilder(query *Query) *builder {
 }
 
 func (b *builder) getTable(table string) string {
-	return fmt.Sprintf("%s.%s",
-		b.dialect.Quote(b.dbName),
-		b.dialect.Quote(table))
+	return b.dialect.GetTable(table)
 }
 
 func (b *builder) buildWhere(query scope, args ...interface{}) (*Stmt, error) {
@@ -503,7 +501,7 @@ func (b *builder) putStmt(parentKey []*datastore.Key, e *entity) (*Stmt, error) 
 		}
 
 		buf.WriteString("(")
-		for j := 0; j < len(cols); j++ {
+		for j := 1; j <= len(cols); j++ {
 			buf.WriteString(b.dialect.Bind(i*len(cols)+j) + ",")
 		}
 		buf.Truncate(buf.Len() - 1)

@@ -45,7 +45,7 @@ func (p *postgres) Open(conf Config) (*sql.DB, error) {
 
 // GetTable :
 func (p *postgres) GetTable(name string) string {
-	return fmt.Sprintf("%q", name)
+	return p.Quote(name)
 }
 
 // CurrentDB :
@@ -68,7 +68,7 @@ func (p *postgres) CreateIndex(idx string, cols []string) string {
 }
 
 func (p *postgres) Quote(n string) string {
-	return fmt.Sprintf("%q", n)
+	return fmt.Sprintf(`"%s"`, n)
 }
 
 func (p *postgres) Bind(i int) string {
@@ -89,12 +89,6 @@ func (p *postgres) DataType(sc Schema) string {
 			buf.WriteString(fmt.Sprintf(" DEFAULT %s", p.toString(sc.DefaultValue)))
 		}
 	}
-	// if sc.CharSet != nil {
-	// 	buf.WriteString(fmt.Sprintf(" CHARACTER SET %s COLLATE %s",
-	// 		p.Quote(sc.CharSet.Encoding),
-	// 		p.Quote(sc.CharSet.Collation)))
-	// }
-
 	return buf.String()
 }
 
@@ -313,13 +307,8 @@ func (p *postgres) AlterTable(table string, columns []Column) error {
 		for _, ss := range p.GetSchema(c) {
 			prefix := fmt.Sprintf("ALTER COLUMN %s", p.Quote(ss.Name))
 			buf.WriteString(fmt.Sprintf("%s TYPE %s", prefix, ss.DataType))
-			if ss.CharSet != nil {
-				// buf.WriteString(fmt.Sprintf(" COLLATE %s",
-				// 	// p.Quote(ss.CharSet.Encoding),
-				// 	p.Quote(ss.CharSet.Encoding)))
-			}
 			buf.WriteString(",")
-			if ss.IsNullable {
+			if !ss.IsNullable {
 				buf.WriteString(prefix + " SET NOT NULL,")
 				if !ss.OmitEmpty() {
 					buf.WriteString(fmt.Sprintf("%s SET DEFAULT %s,",
@@ -352,14 +341,14 @@ func (p *postgres) AlterTable(table string, columns []Column) error {
 		return err
 	}
 
-	for _, idx := range idxs.keys() {
-		buff := new(bytes.Buffer)
-		buff.WriteString(fmt.Sprintf("DROP INDEX %s;", p.Quote(idx)))
-		p.db.ConsoleLog(&Stmt{buff, nil, nil})
-		if _, err := tx.Exec(buff.String()); err != nil {
-			return err
-		}
-	}
+	// for _, idx := range idxs.keys() {
+	// 	buff := new(bytes.Buffer)
+	// 	buff.WriteString(fmt.Sprintf("DROP INDEX %s;", p.Quote(idx)))
+	// 	p.db.ConsoleLog(&Stmt{buff, nil, nil})
+	// 	if _, err := tx.Exec(buff.String()); err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	// for _, idx := range idxs.keys() {
 	// 	stmt := fmt.Sprintf("CREATE INDEX %s ON %s ();", p.Quote(idx), p.Quote(table))

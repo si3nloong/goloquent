@@ -238,7 +238,7 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 				default:
 					if elem.Kind() == reflect.Struct {
 						sc := newStructCodec(reflect.New(ft))
-						f := newField(st, first.field, []int{i}, sf.Type, first.isPtrChild, sc)
+						f := newField(st, first.field, append(first.path, i), sf.Type, first.isPtrChild, sc)
 						fields = append(fields, f)
 						structScans = append(structScans, structScan{[]int{}, elem, &f, isPtr, sc})
 						continue
@@ -281,6 +281,8 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 
 		// Sort the column follow by the sequence of struct property
 		sort.Slice(fields, func(i, j int) bool {
+			// return strings.Trim(strings.Join(strings.Fields(fmt.Sprint(fields[i])), ","), "[]") <
+			// 	strings.Trim(strings.Join(strings.Fields(fmt.Sprint(fields[j])), ","), "[]")
 			return fields[i].paths[0] < fields[j].paths[0]
 		})
 

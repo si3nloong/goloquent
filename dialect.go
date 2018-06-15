@@ -14,7 +14,8 @@ type Dialect interface {
 	Version() (ver string)
 	CurrentDB() (n string)
 	Quote(n string) string
-	Bind(i int) string
+	Bind(i uint) string
+	Value(n string) string
 	GetSchema(c Column) []Schema
 	DataType(s Schema) string
 	HasTable(tb string) bool

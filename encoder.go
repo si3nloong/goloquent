@@ -156,7 +156,7 @@ func interfaceToValue(it interface{}) (interface{}, error) {
 		}
 		value = (*SoftDelete(vi)).Format("2006-01-02 15:04:05")
 	case time.Time:
-		value = vi.Format("2006-01-02 15:04:05")
+		value = vi.UTC().Format("2006-01-02 15:04:05")
 	case geoLocation:
 		b, _ := json.Marshal(vi)
 		value = json.RawMessage(b)

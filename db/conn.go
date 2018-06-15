@@ -50,7 +50,7 @@ func Open(driver string, conf Config) (*goloquent.DB, error) {
 		return nil, err
 	}
 	if err := conn.Ping(); err != nil {
-		return nil, fmt.Errorf("goloquent: mysql server has not response")
+		return nil, fmt.Errorf("goloquent: %s server has not response", driver)
 	}
 	db := goloquent.NewDB(driver, conn, dialect, conf.Logger)
 	pool[conf.Database] = db

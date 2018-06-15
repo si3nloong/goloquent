@@ -8,6 +8,7 @@ import (
 type tag struct {
 	name    string
 	options map[string]bool
+	others  map[string]string
 }
 
 // TODO: Eager loading tag
@@ -41,6 +42,7 @@ func newTag(r reflect.StructField) tag {
 	return tag{
 		name:    name,
 		options: options,
+		// others:  paths,
 	}
 }
 

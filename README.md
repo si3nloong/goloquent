@@ -6,7 +6,8 @@ This repo still under development. We accept any pull request. ^\_^
 
 ## Database Support
 
-* [x] MySQL
+- [x] MySQL
+- [x] Postgres
 
 ## Installation
 
@@ -18,7 +19,7 @@ This repo still under development. We accept any pull request. ^\_^
   $ go get -u github.com/si3nloong/goloquent
 ```
 
-* **Import the library**
+- **Import the library**
 
 ```go
   import "github.com/si3nloong/goloquent"
@@ -147,7 +148,7 @@ func (x *User) Save() (error) {
 
 ### Retrieve Record
 
-* **Get Single Record using Primary Key**
+- **Get Single Record using Primary Key**
 
 ```go
     // Example
@@ -164,7 +165,7 @@ func (x *User) Save() (error) {
     }
 ```
 
-* **Get Single Record**
+- **Get Single Record**
 
 ```go
     import "github.com/si3nloong/goloquent/db"
@@ -201,7 +202,7 @@ func (x *User) Save() (error) {
     }
 ```
 
-* **Get Multiple Record**
+- **Get Multiple Record**
 
 ```go
     import "github.com/si3nloong/goloquent/db"
@@ -230,7 +231,7 @@ func (x *User) Save() (error) {
     }
 ```
 
-* **Get Record with Ordering**
+- **Get Record with Ordering**
 
 ```go
     import "github.com/si3nloong/goloquent/db"
@@ -251,7 +252,7 @@ func (x *User) Save() (error) {
     }
 ```
 
-* **Pagination Record**
+- **Pagination Record**
 
 ```go
     import "github.com/si3nloong/goloquent/db"
@@ -285,7 +286,7 @@ func (x *User) Save() (error) {
 
 ### Delete Record
 
-* **Delete using Primary Key**
+- **Delete using Primary Key**
 
 ```go
     import "github.com/si3nloong/goloquent/db"
@@ -295,7 +296,7 @@ func (x *User) Save() (error) {
     }
 ```
 
-* **Delete using Where statement**
+- **Delete using Where statement**
 
 ```go
     // Delete user table record which account type not equal to "PREMIUM" or "MONTLY"
@@ -325,7 +326,7 @@ func (x *User) Save() (error) {
     }
 ```
 
-* **Table Locking (only effective inside RunInTransaction)**
+- **Table Locking (only effective inside RunInTransaction)**
 
 ```go
     // Example
@@ -358,7 +359,7 @@ func (x *User) Save() (error) {
     }
 ```
 
-* **Database Migration**
+- **Database Migration**
 
 ```go
     // Example
@@ -372,17 +373,7 @@ func (x *User) Save() (error) {
     }
 ```
 
-* **Sum Column**
-
-```go
-    // Example
-    n, err := db.Table("User").Sum("Age")
-    if err != nil {
-        log.Println(err) // error while sum record
-    }
-```
-
-* **Filter Query**
+- **Filter Query**
 
 ```go
     // Update single record
@@ -401,7 +392,7 @@ func (x *User) Save() (error) {
     }
 ```
 
-* **Update Query**
+- **Update Query**
 
 ```go
     // Update single record
@@ -435,7 +426,7 @@ func (x *User) Save() (error) {
     }
 ```
 
-* **Extra Schema Option**
+- **Extra Schema Option**
 
 ```go
 type datetime struct {

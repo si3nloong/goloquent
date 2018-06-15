@@ -54,9 +54,12 @@ func (it *Iterator) put(pos int, k string, v interface{}) error {
 		it.results = append(it.results, make(map[string][]byte))
 	}
 	l := it.results[pos]
+
 	var b []byte
 	switch vi := v.(type) {
 	case nil:
+	case time.Time:
+		b = []byte(vi.Format("2006-01-02 15:04:05"))
 	case []byte:
 		b = vi
 	default:

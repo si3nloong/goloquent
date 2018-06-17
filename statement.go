@@ -7,29 +7,55 @@ import (
 	"strings"
 )
 
-// Stmt :
-type Stmt struct {
+type stmt struct {
 	statement *bytes.Buffer
 	arguments []interface{}
-	Result    sql.Result
+}
+
+func (s *stmt) string() string {
+	return s.statement.String()
+}
+
+type replacer interface {
+	Bind(uint) string
+	Value(interface{}) string
+}
+
+// Stmt :
+type Stmt struct {
+	stmt
+	Result   sql.Result
+	replacer replacer
+}
+
+func (s *Stmt) startTrace() {
+
 }
 
 // Raw :
 func (s *Stmt) Raw() string {
-	return s.statement.String()
+	buf := new(bytes.Buffer)
+	arr := strings.Split(s.string(), "??")
+	for i := 0; i < len(arr); i++ {
+		str := arr[i] + s.replacer.Bind(uint(i+1))
+		if i >= len(arr)-1 {
+			str = arr[i]
+		}
+		buf.WriteString(str)
+	}
+	return buf.String()
 }
 
 // String :
 func (s *Stmt) String() string {
-	str := strings.Replace(s.Raw(), "?", "?|", -1)
-	arr := strings.Split(str, "|")
+	buf := new(bytes.Buffer)
+	arr := strings.Split(s.string(), "??")
 	for i, aa := range s.arguments {
-		if i >= len(arr) {
-			break
-		}
-		arr[i] = strings.Replace(arr[i], "?", toString(aa), 1)
+		str := arr[i] + s.replacer.Value(aa)
+		buf.WriteString(str)
 	}
-	return strings.Join(arr, "")
+	buf.WriteString(arr[len(arr)-1])
+	return buf.String()
 }
 
 // Arguments :

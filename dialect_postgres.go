@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 	"time"
@@ -28,7 +29,8 @@ func (p *postgres) Open(conf Config) (*sql.DB, error) {
 	if conf.UnixSocket != "" {
 		addr += fmt.Sprintf("unix(%s)", conf.UnixSocket)
 	} else {
-		if conf.Host != "" && conf.Port != "" {
+		if conf.Host != "" && conf.Port != "" &&
+			conf.Host != "localhost" && conf.Host != "127.0.0.1" {
 			addr += fmt.Sprintf("tcp(%s:%s)", conf.Host, conf.Port)
 		}
 	}
@@ -44,8 +46,8 @@ func (p *postgres) Open(conf Config) (*sql.DB, error) {
 }
 
 // GetTable :
-func (p *postgres) GetTable(name string) string {
-	return fmt.Sprintf("%q", name)
+func (p postgres) GetTable(name string) string {
+	return p.Quote(name)
 }
 
 // CurrentDB :
@@ -61,22 +63,38 @@ func (p *postgres) CurrentDB() (name string) {
 }
 
 // CreateIndex :
-func (p *postgres) CreateIndex(idx string, cols []string) string {
+func (p postgres) CreateIndex(idx string, cols []string) string {
 	return fmt.Sprintf("CREATE INDEX %s (%s)",
-		p.Quote(idx),
-		p.Quote(strings.Join(cols, ",")))
+		p.Quote(idx), p.Quote(strings.Join(cols, ",")))
 }
 
-func (p *postgres) Quote(n string) string {
-	return fmt.Sprintf("%q", n)
+func (p postgres) Quote(n string) string {
+	return fmt.Sprintf(`"%s"`, n)
 }
 
-func (p *postgres) Bind(i int) string {
+func (p postgres) Bind(i uint) string {
 	return fmt.Sprintf("$%d", i)
 }
 
+func (p postgres) escapeQuote(v string) string {
+	return strings.Replace(v, `'`, `''`, -1)
+}
+
+func (p postgres) Value(it interface{}) string {
+	var str string
+	switch vi := it.(type) {
+	case nil:
+		str = "NULL"
+	case string, []byte:
+		str = fmt.Sprintf(`'%s'`, p.escapeQuote(fmt.Sprintf(`%s`, vi)))
+	default:
+		str = fmt.Sprintf("%v", vi)
+	}
+	return str
+}
+
 // DataType :
-func (p *postgres) DataType(sc Schema) string {
+func (p postgres) DataType(sc Schema) string {
 	buf := new(bytes.Buffer)
 	buf.WriteString(sc.DataType)
 	if sc.IsUnsigned {
@@ -86,31 +104,23 @@ func (p *postgres) DataType(sc Schema) string {
 		buf.WriteString(" NOT NULL")
 		t := reflect.TypeOf(sc.DefaultValue)
 		if t != reflect.TypeOf(OmitDefault(nil)) {
-			buf.WriteString(fmt.Sprintf(" DEFAULT %s", p.toString(sc.DefaultValue)))
+			buf.WriteString(fmt.Sprintf(" DEFAULT %s", p.ToString(sc.DefaultValue)))
 		}
 	}
-	// if sc.CharSet != nil {
-	// 	buf.WriteString(fmt.Sprintf(" CHARACTER SET %s COLLATE %s",
-	// 		p.Quote(sc.CharSet.Encoding),
-	// 		p.Quote(sc.CharSet.Collation)))
-	// }
-
 	return buf.String()
 }
 
-func (p *postgres) OnConflictUpdate(cols []string) string {
+func (p postgres) OnConflictUpdate(table string, cols []string) string {
 	buf := new(bytes.Buffer)
-	buf.WriteString(fmt.Sprintf(
-		"ON CONFLICT (%s,%s) UPDATE SET",
-		p.Quote(parentColumn),
-		p.Quote(keyColumn)))
+	buf.WriteString(fmt.Sprintf("ON CONFLICT (%s) DO UPDATE SET ", p.Quote(pkColumn)))
 	for _, c := range cols {
-		buf.WriteString(fmt.Sprintf("%s = %s", p.Quote(c), p.Quote(c)))
+		buf.WriteString(fmt.Sprintf("%s = %s.%s,", p.Quote(c), p.GetTable(table), p.Quote(c)))
 	}
+	buf.Truncate(buf.Len() - 1)
 	return buf.String()
 }
 
-func (p *postgres) GetSchema(c Column) []Schema {
+func (p postgres) GetSchema(c Column) []Schema {
 	f := c.field
 	t := f.getRoot().typeOf
 	if f.isFlatten() {
@@ -127,8 +137,9 @@ func (p *postgres) GetSchema(c Column) []Schema {
 		if t == typeOfPtrKey {
 			if f.name == keyFieldName {
 				return []Schema{
-					Schema{keyColumn, fmt.Sprintf("varchar(%d)", 50), OmitDefault(nil), false, false, false, latin2CharSet},
-					Schema{parentColumn, fmt.Sprintf("varchar(%d)", 512), OmitDefault(nil), false, false, false, latin2CharSet},
+					Schema{pkColumn, fmt.Sprintf("varchar(%d)", 512), OmitDefault(nil), false, false, false, latin2CharSet},
+					// Schema{keyColumn, fmt.Sprintf("varchar(%d)", 50), OmitDefault(nil), false, false, false, latin2CharSet},
+					// Schema{parentColumn, fmt.Sprintf("varchar(%d)", 512), OmitDefault(nil), false, false, false, latin2CharSet},
 				}
 			}
 			sc.IsIndexed = true
@@ -145,7 +156,7 @@ func (p *postgres) GetSchema(c Column) []Schema {
 		sc.DataType = "bytea"
 	case typeOfTime:
 		sc.DefaultValue = time.Time{}
-		sc.DataType = "timestamptz"
+		sc.DataType = "timestamp"
 	default:
 		switch t.Kind() {
 		case reflect.String:
@@ -191,7 +202,7 @@ func (p *postgres) GetSchema(c Column) []Schema {
 			sc.DefaultValue = float64(0)
 			sc.DataType = "real"
 		default:
-			sc.DataType = "text"
+			sc.DataType = "json"
 			sc.CharSet = utf8CharSet
 		}
 	}
@@ -229,9 +240,11 @@ func (p *postgres) HasTable(table string) bool {
 	return count > 0
 }
 
-func (p *postgres) toString(it interface{}) string {
+func (p *postgres) ToString(it interface{}) string {
 	var v string
 	switch vi := it.(type) {
+	case nil:
+		v = "NULL"
 	case string:
 		v = fmt.Sprintf(`'%s'`, "")
 	case bool:
@@ -246,8 +259,6 @@ func (p *postgres) toString(it interface{}) string {
 		v = fmt.Sprintf(`'%s'`, vi.Format("2006-01-02 15:04:05"))
 	case []interface{}:
 		v = fmt.Sprintf(`'%s'`, "[]")
-	case nil:
-		v = "NULL"
 	default:
 		v = fmt.Sprintf("%v", vi)
 	}
@@ -279,11 +290,9 @@ func (p *postgres) CreateTable(table string, columns []Column) error {
 			}
 		}
 	}
-	buf.WriteString(fmt.Sprintf("PRIMARY KEY (%s,%s)",
-		p.Quote(parentColumn), p.Quote(keyColumn)))
+	buf.WriteString(fmt.Sprintf("PRIMARY KEY (%s)", p.Quote(pkColumn)))
 	buf.WriteString(");")
-	fmt.Println(buf.String())
-
+	log.Println(buf.String())
 	if _, err := tx.Exec(buf.String()); err != nil {
 		return err
 	}
@@ -313,17 +322,12 @@ func (p *postgres) AlterTable(table string, columns []Column) error {
 		for _, ss := range p.GetSchema(c) {
 			prefix := fmt.Sprintf("ALTER COLUMN %s", p.Quote(ss.Name))
 			buf.WriteString(fmt.Sprintf("%s TYPE %s", prefix, ss.DataType))
-			if ss.CharSet != nil {
-				// buf.WriteString(fmt.Sprintf(" COLLATE %s",
-				// 	// p.Quote(ss.CharSet.Encoding),
-				// 	p.Quote(ss.CharSet.Encoding)))
-			}
 			buf.WriteString(",")
-			if ss.IsNullable {
+			if !ss.IsNullable {
 				buf.WriteString(prefix + " SET NOT NULL,")
 				if !ss.OmitEmpty() {
 					buf.WriteString(fmt.Sprintf("%s SET DEFAULT %s,",
-						prefix, p.toString(ss.DefaultValue)))
+						prefix, p.ToString(ss.DefaultValue)))
 				}
 			}
 			if ss.IsIndexed {
@@ -347,19 +351,20 @@ func (p *postgres) AlterTable(table string, columns []Column) error {
 	}
 
 	buf.Truncate(buf.Len() - 1)
-	p.db.ConsoleLog(&Stmt{buf, nil, nil})
+	// p.db.ConsoleLog(&Stmt{buf, nil, nil})
+	log.Println(buf.String())
 	if _, err := tx.Exec(buf.String()); err != nil {
 		return err
 	}
 
-	for _, idx := range idxs.keys() {
-		buff := new(bytes.Buffer)
-		buff.WriteString(fmt.Sprintf("DROP INDEX %s;", p.Quote(idx)))
-		p.db.ConsoleLog(&Stmt{buff, nil, nil})
-		if _, err := tx.Exec(buff.String()); err != nil {
-			return err
-		}
-	}
+	// for _, idx := range idxs.keys() {
+	// 	buff := new(bytes.Buffer)
+	// 	buff.WriteString(fmt.Sprintf("DROP INDEX %s;", p.Quote(idx)))
+	// 	p.db.ConsoleLog(&Stmt{buff, nil, nil})
+	// 	if _, err := tx.Exec(buff.String()); err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	// for _, idx := range idxs.keys() {
 	// 	stmt := fmt.Sprintf("CREATE INDEX %s ON %s ();", p.Quote(idx), p.Quote(table))

@@ -48,15 +48,37 @@ func (it *Iterator) mergeKey() {
 	it.results[pos] = l
 }
 
+func (it *Iterator) patchKey() {
+	pos := len(it.results) - 1
+	l := it.results[pos]
+	if _, isOk := l[pkColumn]; !isOk {
+		return
+	}
+	paths := bytes.Split(l[pkColumn], []byte(`/`))
+	last := len(paths) - 1
+	kk := paths[last]
+	paths = paths[:last]
+	buf := new(bytes.Buffer)
+	buf.Write(bytes.Join(paths, []byte(keyDelimeter)))
+	buf.WriteString(keyDelimeter)
+	buf.WriteString(it.table + ",")
+	buf.Write(kk)
+	l[keyFieldName] = buf.Bytes()
+	it.results[pos] = l
+}
+
 func (it *Iterator) put(pos int, k string, v interface{}) error {
 	diff := pos - len(it.results) + 1
 	for i := 0; i < diff; i++ {
 		it.results = append(it.results, make(map[string][]byte))
 	}
 	l := it.results[pos]
+
 	var b []byte
 	switch vi := v.(type) {
 	case nil:
+	case time.Time:
+		b = []byte(vi.Format("2006-01-02 15:04:05"))
 	case []byte:
 		b = vi
 	default:

@@ -14,7 +14,8 @@ type Dialect interface {
 	Version() (ver string)
 	CurrentDB() (n string)
 	Quote(n string) string
-	Bind(i int) string
+	Bind(i uint) string
+	Value(v interface{}) string
 	GetSchema(c Column) []Schema
 	DataType(s Schema) string
 	HasTable(tb string) bool
@@ -22,7 +23,7 @@ type Dialect interface {
 	GetIndexes(tb string) (idxs []string)
 	CreateTable(tb string, cols []Column) error
 	AlterTable(tb string, cols []Column) error
-	OnConflictUpdate(cols []string) string
+	OnConflictUpdate(tb string, cols []string) string
 }
 
 var (

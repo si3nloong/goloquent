@@ -189,3 +189,8 @@ func splitKey(k *datastore.Key) (key string, parent string) {
 	}
 	return fmt.Sprintf(`'%s'`, k.Name), stringifyKey(k.Parent)
 }
+
+func stringPk(k *datastore.Key) string {
+	kk, pp := splitKey(k)
+	return strings.Trim(fmt.Sprintf("%s%s%s", pp, keyDelimeter, kk), keyDelimeter)
+}

@@ -92,8 +92,21 @@ func (s *sequel) Quote(n string) string {
 }
 
 // Bind :
-func (s *sequel) Bind(int) string {
+func (s *sequel) Bind(uint) string {
 	return "?"
+}
+
+func (s *sequel) Value(it interface{}) string {
+	var str string
+	switch vi := it.(type) {
+	case nil:
+		str = "NULL"
+	case string, []byte:
+		str = fmt.Sprintf("%q", vi)
+	default:
+		str = fmt.Sprintf("%v", vi)
+	}
+	return str
 }
 
 // DataType :
@@ -111,13 +124,13 @@ func (s *sequel) DataType(sc Schema) string {
 	if !sc.IsNullable {
 		buf.WriteString(" NOT NULL")
 		if !sc.OmitEmpty() {
-			buf.WriteString(fmt.Sprintf(" DEFAULT %s", s.toString(sc.DefaultValue)))
+			buf.WriteString(fmt.Sprintf(" DEFAULT %s", s.ToString(sc.DefaultValue)))
 		}
 	}
 	return buf.String()
 }
 
-func (s *sequel) toString(it interface{}) string {
+func (s *sequel) ToString(it interface{}) string {
 	var v string
 	switch vi := it.(type) {
 	case string:
@@ -160,8 +173,8 @@ func (s *sequel) GetSchema(c Column) []Schema {
 			if f.name == keyFieldName {
 				return []Schema{
 					Schema{pkColumn, fmt.Sprintf("varchar(%d)", 512), OmitDefault(nil), false, false, false, latin2CharSet},
-					Schema{keyColumn, fmt.Sprintf("varchar(%d)", 50), OmitDefault(nil), false, false, false, latin2CharSet},
-					Schema{parentColumn, fmt.Sprintf("varchar(%d)", 512), OmitDefault(nil), false, false, false, latin2CharSet},
+					// Schema{keyColumn, fmt.Sprintf("varchar(%d)", 50), OmitDefault(nil), false, false, false, latin2CharSet},
+					// Schema{parentColumn, fmt.Sprintf("varchar(%d)", 512), OmitDefault(nil), false, false, false, latin2CharSet},
 				}
 			}
 			sc.IsIndexed = true
@@ -231,21 +244,14 @@ func (s *sequel) GetSchema(c Column) []Schema {
 			if isBaseType(t.Elem()) {
 				sc.CharSet = latin2CharSet
 			}
-			if s.Version() >= "5.5" {
-				sc.DataType = "json"
-				sc.CharSet = nil
-			}
+			sc.DataType = "json"
+			sc.CharSet = nil
 		default:
 			sc.DataType = "text"
-			// sc.DefaultValue = make(map[string]interface{})
-			// if f.isPtrChild {
-			// }
 			sc.DefaultValue = OmitDefault(nil)
 			sc.CharSet = utf8CharSet
-			if s.Version() >= "5.5" {
-				sc.DataType = "json"
-				sc.CharSet = nil
-			}
+			sc.DataType = "json"
+			sc.CharSet = nil
 		}
 	}
 
@@ -283,7 +289,7 @@ func (s *sequel) HasTable(table string) bool {
 }
 
 // OnConflictUpdate :
-func (s *sequel) OnConflictUpdate(cols []string) string {
+func (s *sequel) OnConflictUpdate(table string, cols []string) string {
 	buf := new(bytes.Buffer)
 	buf.WriteString("ON DUPLICATE KEY UPDATE ")
 	for _, c := range cols {

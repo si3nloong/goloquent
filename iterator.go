@@ -30,23 +30,23 @@ type Iterator struct {
 	cursor   *datastore.Key
 }
 
-func (it *Iterator) mergeKey() {
-	pos := len(it.results) - 1
-	l := it.results[pos]
-	if _, isOk := l[parentColumn]; !isOk {
-		return
-	}
-	if _, isOk := l[keyColumn]; !isOk {
-		return
-	}
-	buf := new(bytes.Buffer)
-	buf.Write(l[parentColumn])
-	buf.WriteString(keyDelimeter)
-	buf.WriteString(it.table + ",")
-	buf.Write(l[keyColumn])
-	l[keyFieldName] = buf.Bytes()
-	it.results[pos] = l
-}
+// func (it *Iterator) mergeKey() {
+// 	pos := len(it.results) - 1
+// 	l := it.results[pos]
+// 	if _, isOk := l[parentColumn]; !isOk {
+// 		return
+// 	}
+// 	if _, isOk := l[keyColumn]; !isOk {
+// 		return
+// 	}
+// 	buf := new(bytes.Buffer)
+// 	buf.Write(l[parentColumn])
+// 	buf.WriteString(keyDelimeter)
+// 	buf.WriteString(it.table + ",")
+// 	buf.Write(l[keyColumn])
+// 	l[keyFieldName] = buf.Bytes()
+// 	it.results[pos] = l
+// }
 
 func (it *Iterator) patchKey() {
 	pos := len(it.results) - 1

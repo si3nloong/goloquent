@@ -173,8 +173,6 @@ func (s *sequel) GetSchema(c Column) []Schema {
 			if f.name == keyFieldName {
 				return []Schema{
 					Schema{pkColumn, fmt.Sprintf("varchar(%d)", pkLen), OmitDefault(nil), false, false, false, latin2CharSet},
-					// Schema{keyColumn, fmt.Sprintf("varchar(%d)", 50), OmitDefault(nil), false, false, false, latin2CharSet},
-					// Schema{parentColumn, fmt.Sprintf("varchar(%d)", pkLen), OmitDefault(nil), false, false, false, latin2CharSet},
 				}
 			}
 			sc.IsIndexed = true
@@ -293,7 +291,7 @@ func (s *sequel) OnConflictUpdate(table string, cols []string) string {
 	buf := new(bytes.Buffer)
 	buf.WriteString("ON DUPLICATE KEY UPDATE ")
 	for _, c := range cols {
-		if c == keyColumn || c == parentColumn {
+		if c == pkColumn {
 			continue
 		}
 		buf.WriteString(fmt.Sprintf("%s=values(%s),",

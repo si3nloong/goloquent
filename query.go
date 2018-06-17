@@ -132,8 +132,7 @@ func (q *Query) Select(fields ...string) *Query {
 	// Primary key is always selected
 	dict := newDictionary(append(q.projection, arr...))
 	dict.delete(keyFieldName)
-	dict.add(keyColumn)
-	dict.add(parentColumn)
+	dict.add(pkColumn)
 	q.projection = dict.keys()
 	return q
 }
@@ -150,11 +149,10 @@ func (q *Query) Omit(fields ...string) *Query {
 		}
 		arr = append(arr, f)
 	}
-	// Primary key is always not omited
+	// Primary key cannot be omited
 	dict := newDictionary(append(q.projection, arr...))
 	dict.delete(keyFieldName)
-	dict.delete(keyColumn)
-	dict.delete(parentColumn)
+	dict.delete(pkColumn)
 	q.omits = dict.keys()
 	return q
 }
@@ -223,9 +221,6 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 func (q *Query) DistinctOn(fields ...string) *Query {
 	q = q.clone()
 	dict := newDictionary(append(q.distinctOn, fields...))
-	// dict.delete(keyFieldName)
-	// dict.add(keyColumn)
-	// dict.add(parentColumn)
 	// TODO: convert to sequence array (bug)
 	q.distinctOn = dict.keys()
 	return q

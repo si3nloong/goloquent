@@ -114,6 +114,9 @@ func (p postgres) OnConflictUpdate(table string, cols []string) string {
 	buf := new(bytes.Buffer)
 	buf.WriteString(fmt.Sprintf("ON CONFLICT (%s) DO UPDATE SET ", p.Quote(pkColumn)))
 	for _, c := range cols {
+		if c == pkColumn {
+			continue
+		}
 		buf.WriteString(fmt.Sprintf("%s = %s.%s,", p.Quote(c), p.GetTable(table), p.Quote(c)))
 	}
 	buf.Truncate(buf.Len() - 1)
@@ -138,8 +141,6 @@ func (p postgres) GetSchema(c Column) []Schema {
 			if f.name == keyFieldName {
 				return []Schema{
 					Schema{pkColumn, fmt.Sprintf("varchar(%d)", pkLen), OmitDefault(nil), false, false, false, latin2CharSet},
-					// Schema{keyColumn, fmt.Sprintf("varchar(%d)", 50), OmitDefault(nil), false, false, false, latin2CharSet},
-					// Schema{parentColumn, fmt.Sprintf("varchar(%d)", pkLen), OmitDefault(nil), false, false, false, latin2CharSet},
 				}
 			}
 			sc.IsIndexed = true

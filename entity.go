@@ -130,7 +130,6 @@ func (e *entity) Columns() (cols []string) {
 	cols = make([]string, 0, len(e.columns))
 	for _, c := range e.columns {
 		if c.Name() == keyFieldName {
-			// cols = append(cols, pkColumn, keyColumn, parentColumn)
 			cols = append(cols, pkColumn)
 			continue
 		}

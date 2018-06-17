@@ -85,9 +85,6 @@ func (s mysql) OnConflictUpdate(table string, cols []string) string {
 	buf := new(bytes.Buffer)
 	buf.WriteString("ON DUPLICATE KEY UPDATE ")
 	for _, c := range cols {
-		if c == pkColumn {
-			continue
-		}
 		buf.WriteString(fmt.Sprintf("%s=VALUES(%s),", s.Quote(c), s.Quote(c)))
 	}
 	buf.Truncate(buf.Len() - 1)

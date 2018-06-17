@@ -114,9 +114,6 @@ func (p postgres) OnConflictUpdate(table string, cols []string) string {
 	buf := new(bytes.Buffer)
 	buf.WriteString(fmt.Sprintf("ON CONFLICT (%s) DO UPDATE SET ", p.Quote(pkColumn)))
 	for _, c := range cols {
-		if c == pkColumn {
-			continue
-		}
 		buf.WriteString(fmt.Sprintf("%s = %s.%s,", p.Quote(c), p.GetTable(table), p.Quote(c)))
 	}
 	buf.Truncate(buf.Len() - 1)

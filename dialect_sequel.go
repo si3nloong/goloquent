@@ -291,9 +291,6 @@ func (s *sequel) OnConflictUpdate(table string, cols []string) string {
 	buf := new(bytes.Buffer)
 	buf.WriteString("ON DUPLICATE KEY UPDATE ")
 	for _, c := range cols {
-		if c == pkColumn {
-			continue
-		}
 		buf.WriteString(fmt.Sprintf("%s=values(%s),",
 			s.Quote(c), s.Quote(c)))
 	}

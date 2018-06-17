@@ -18,6 +18,8 @@ func init() {
 	RegisterDialect("mysql", new(mysql))
 }
 
+const minVersion = "5.5"
+
 // Open :
 func (s *mysql) Open(conf Config) (*sql.DB, error) {
 	conf.trimSpace()
@@ -40,8 +42,8 @@ func (s *mysql) Open(conf Config) (*sql.DB, error) {
 	}
 	var version string
 	client.QueryRow("SELECT VERSION();").Scan(&version)
-	if version < "5.5" {
-		return nil, fmt.Errorf("minimum 5.5 version of mysql")
+	if minVersion < "5.5" {
+		return nil, fmt.Errorf("require at least %s version of mysql", minVersion)
 	}
 	return client, nil
 }

@@ -76,7 +76,7 @@ func newPrimaryKey(table string, parentKey *datastore.Key) *datastore.Key {
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	var id = rand.Int63n(maxSeed-minSeed) + minSeed
+	id := rand.Int63n(maxSeed-minSeed) + minSeed
 	key := new(datastore.Key)
 	key.Kind = table
 	key.ID = id

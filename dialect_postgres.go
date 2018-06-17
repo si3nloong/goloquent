@@ -28,7 +28,8 @@ func (p *postgres) Open(conf Config) (*sql.DB, error) {
 	if conf.UnixSocket != "" {
 		addr += fmt.Sprintf("unix(%s)", conf.UnixSocket)
 	} else {
-		if conf.Host != "" && conf.Port != "" {
+		if conf.Host != "" && conf.Port != "" &&
+			conf.Host != "localhost" && conf.Host != "127.0.0.1" {
 			addr += fmt.Sprintf("tcp(%s:%s)", conf.Host, conf.Port)
 		}
 	}
@@ -71,8 +72,12 @@ func (p *postgres) Quote(n string) string {
 	return fmt.Sprintf(`"%s"`, n)
 }
 
-func (p *postgres) Bind(i int) string {
+func (p *postgres) Bind(i uint) string {
 	return fmt.Sprintf("$%d", i)
+}
+
+func (p *postgres) Value(n string) string {
+	return fmt.Sprintf(`'%s'`, n)
 }
 
 // DataType :
@@ -86,7 +91,7 @@ func (p *postgres) DataType(sc Schema) string {
 		buf.WriteString(" NOT NULL")
 		t := reflect.TypeOf(sc.DefaultValue)
 		if t != reflect.TypeOf(OmitDefault(nil)) {
-			buf.WriteString(fmt.Sprintf(" DEFAULT %s", p.toString(sc.DefaultValue)))
+			buf.WriteString(fmt.Sprintf(" DEFAULT %s", p.ToString(sc.DefaultValue)))
 		}
 	}
 	return buf.String()
@@ -223,9 +228,11 @@ func (p *postgres) HasTable(table string) bool {
 	return count > 0
 }
 
-func (p *postgres) toString(it interface{}) string {
+func (p *postgres) ToString(it interface{}) string {
 	var v string
 	switch vi := it.(type) {
+	case nil:
+		v = "NULL"
 	case string:
 		v = fmt.Sprintf(`'%s'`, "")
 	case bool:
@@ -240,8 +247,6 @@ func (p *postgres) toString(it interface{}) string {
 		v = fmt.Sprintf(`'%s'`, vi.Format("2006-01-02 15:04:05"))
 	case []interface{}:
 		v = fmt.Sprintf(`'%s'`, "[]")
-	case nil:
-		v = "NULL"
 	default:
 		v = fmt.Sprintf("%v", vi)
 	}
@@ -312,7 +317,7 @@ func (p *postgres) AlterTable(table string, columns []Column) error {
 				buf.WriteString(prefix + " SET NOT NULL,")
 				if !ss.OmitEmpty() {
 					buf.WriteString(fmt.Sprintf("%s SET DEFAULT %s,",
-						prefix, p.toString(ss.DefaultValue)))
+						prefix, p.ToString(ss.DefaultValue)))
 				}
 			}
 			if ss.IsIndexed {
@@ -336,7 +341,7 @@ func (p *postgres) AlterTable(table string, columns []Column) error {
 	}
 
 	buf.Truncate(buf.Len() - 1)
-	p.db.ConsoleLog(&Stmt{buf, nil, nil})
+	// p.db.ConsoleLog(&Stmt{buf, nil, nil})
 	if _, err := tx.Exec(buf.String()); err != nil {
 		return err
 	}

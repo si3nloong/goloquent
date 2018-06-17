@@ -18,6 +18,8 @@ func init() {
 	RegisterDialect("mysql", new(mysql))
 }
 
+const minVersion = "5.5"
+
 // Open :
 func (s *mysql) Open(conf Config) (*sql.DB, error) {
 	conf.trimSpace()
@@ -32,10 +34,16 @@ func (s *mysql) Open(conf Config) (*sql.DB, error) {
 	}
 	buf.WriteString(addr)
 	buf.WriteString(fmt.Sprintf("/%s", conf.Database))
+	buf.WriteString("?parseTime=true")
 	fmt.Println("Connection String :: ", buf.String())
 	client, err := sql.Open("mysql", buf.String())
 	if err != nil {
 		return nil, err
+	}
+	var version string
+	client.QueryRow("SELECT VERSION();").Scan(&version)
+	if minVersion < "5.5" {
+		return nil, fmt.Errorf("require at least %s version of mysql", minVersion)
 	}
 	return client, nil
 }
@@ -46,7 +54,7 @@ func (s *mysql) Quote(n string) string {
 }
 
 // Bind :
-func (s *mysql) Bind(int) string {
+func (s *mysql) Bind(uint) string {
 	return "?"
 }
 
@@ -66,7 +74,7 @@ func (s *mysql) DataType(sc Schema) string {
 		buf.WriteString(" NOT NULL")
 		t := reflect.TypeOf(sc.DefaultValue)
 		if t != reflect.TypeOf(OmitDefault(nil)) {
-			buf.WriteString(fmt.Sprintf(" DEFAULT %s", s.toString(sc.DefaultValue)))
+			buf.WriteString(fmt.Sprintf(" DEFAULT %s", s.ToString(sc.DefaultValue)))
 		}
 	}
 	return buf.String()
@@ -159,7 +167,7 @@ func (s *mysql) AlterTable(table string, columns []Column) error {
 	return nil
 }
 
-func (s *mysql) toString(it interface{}) string {
+func (s *mysql) ToString(it interface{}) string {
 	var v string
 	switch vi := it.(type) {
 	case string:
@@ -173,11 +181,11 @@ func (s *mysql) toString(it interface{}) string {
 	case float32, float64:
 		v = fmt.Sprintf("%v", vi)
 	case time.Time:
-		v = fmt.Sprintf("%q", vi.Format("2006-01-02 15:04:05"))
+		v = fmt.Sprintf(`"%s"`, vi.Format("2006-01-02 15:04:05"))
 	case []interface{}:
-		v = fmt.Sprintf("%q", "[]")
+		v = fmt.Sprintf(`"%s"`, "[]")
 	case map[string]interface{}:
-		v = fmt.Sprintf("%q", "{}")
+		v = fmt.Sprintf(`"%s"`, "{}")
 	case nil:
 		v = "NULL"
 	default:

@@ -226,6 +226,7 @@ func (q *Query) DistinctOn(fields ...string) *Query {
 	// dict.delete(keyFieldName)
 	// dict.add(keyColumn)
 	// dict.add(parentColumn)
+	// TODO: convert to sequence array (bug)
 	q.distinctOn = dict.keys()
 	return q
 }

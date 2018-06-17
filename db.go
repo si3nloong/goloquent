@@ -44,7 +44,7 @@ type Config struct {
 
 func (c Config) trimSpace() {
 	c.Username = strings.TrimSpace(c.Username)
-	c.Host = strings.TrimSpace(c.Host)
+	c.Host = strings.TrimSpace(strings.ToLower(c.Host))
 	c.Port = strings.TrimSpace(c.Port)
 	c.Database = strings.TrimSpace(c.Database)
 	c.UnixSocket = strings.TrimSpace(c.UnixSocket)
@@ -70,7 +70,7 @@ type Client struct {
 func (c Client) Exec(query string, args ...interface{}) (sql.Result, error) {
 	buf := new(bytes.Buffer)
 	buf.WriteString(query)
-	go c.ConsoleLog(&Stmt{buf, args, nil})
+	// go c.ConsoleLog(&Stmt{buf, args, nil})
 	result, err := c.sqlCommon.Exec(query, args...)
 	if err != nil {
 		return nil, err

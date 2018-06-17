@@ -92,8 +92,12 @@ func (s *sequel) Quote(n string) string {
 }
 
 // Bind :
-func (s *sequel) Bind(int) string {
+func (s *sequel) Bind(uint) string {
 	return "?"
+}
+
+func (s *sequel) Value(n string) string {
+	return fmt.Sprintf("%q", n)
 }
 
 // DataType :
@@ -111,13 +115,13 @@ func (s *sequel) DataType(sc Schema) string {
 	if !sc.IsNullable {
 		buf.WriteString(" NOT NULL")
 		if !sc.OmitEmpty() {
-			buf.WriteString(fmt.Sprintf(" DEFAULT %s", s.toString(sc.DefaultValue)))
+			buf.WriteString(fmt.Sprintf(" DEFAULT %s", s.ToString(sc.DefaultValue)))
 		}
 	}
 	return buf.String()
 }
 
-func (s *sequel) toString(it interface{}) string {
+func (s *sequel) ToString(it interface{}) string {
 	var v string
 	switch vi := it.(type) {
 	case string:
@@ -230,21 +234,14 @@ func (s *sequel) GetSchema(c Column) []Schema {
 			if isBaseType(t.Elem()) {
 				sc.CharSet = latin2CharSet
 			}
-			if s.Version() >= "5.5" {
-				sc.DataType = "json"
-				sc.CharSet = nil
-			}
+			sc.DataType = "json"
+			sc.CharSet = nil
 		default:
 			sc.DataType = "text"
-			// sc.DefaultValue = make(map[string]interface{})
-			// if f.isPtrChild {
-			// }
 			sc.DefaultValue = OmitDefault(nil)
 			sc.CharSet = utf8CharSet
-			if s.Version() >= "5.5" {
-				sc.DataType = "json"
-				sc.CharSet = nil
-			}
+			sc.DataType = "json"
+			sc.CharSet = nil
 		}
 	}
 

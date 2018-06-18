@@ -121,11 +121,8 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*stmt, error) {
 	}
 
 	for _, aa := range query.ancestors {
-		wheres = append(wheres, fmt.Sprintf("(%s = %s OR %s LIKE %s)",
-			b.dialect.Quote(parentColumn), variable,
-			b.dialect.Quote(parentColumn), variable))
-		k := stringifyKey(aa)
-		args = append(args, k, "%"+k+"%")
+		wheres = append(wheres, fmt.Sprintf("%s LIKE %s", b.dialect.Quote(pkColumn), variable))
+		args = append(args, fmt.Sprintf("%%%s/%%", stringifyKey(aa)))
 	}
 
 	if len(wheres) > 0 {

@@ -76,7 +76,7 @@ func newPrimaryKey(table string, parentKey *datastore.Key) *datastore.Key {
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	var id = rand.Int63n(maxSeed-minSeed) + minSeed
+	id := rand.Int63n(maxSeed-minSeed) + minSeed
 	key := new(datastore.Key)
 	key.Kind = table
 	key.ID = id
@@ -188,4 +188,9 @@ func splitKey(k *datastore.Key) (key string, parent string) {
 		return fmt.Sprintf("%d", k.ID), stringifyKey(k.Parent)
 	}
 	return fmt.Sprintf(`'%s'`, k.Name), stringifyKey(k.Parent)
+}
+
+func stringPk(k *datastore.Key) string {
+	kk, pp := splitKey(k)
+	return strings.Trim(fmt.Sprintf("%s%s%s", pp, keyDelimeter, kk), keyDelimeter)
 }

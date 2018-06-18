@@ -96,8 +96,17 @@ func (s *sequel) Bind(uint) string {
 	return "?"
 }
 
-func (s *sequel) Value(n string) string {
-	return fmt.Sprintf("%q", n)
+func (s *sequel) Value(it interface{}) string {
+	var str string
+	switch vi := it.(type) {
+	case nil:
+		str = "NULL"
+	case string, []byte:
+		str = fmt.Sprintf("%q", vi)
+	default:
+		str = fmt.Sprintf("%v", vi)
+	}
+	return str
 }
 
 // DataType :
@@ -163,12 +172,11 @@ func (s *sequel) GetSchema(c Column) []Schema {
 		if t == typeOfPtrKey {
 			if f.name == keyFieldName {
 				return []Schema{
-					Schema{keyColumn, fmt.Sprintf("varchar(%d)", 50), OmitDefault(nil), false, false, false, latin2CharSet},
-					Schema{parentColumn, fmt.Sprintf("varchar(%d)", 512), OmitDefault(nil), false, false, false, latin2CharSet},
+					Schema{pkColumn, fmt.Sprintf("varchar(%d)", pkLen), OmitDefault(nil), false, false, false, latin2CharSet},
 				}
 			}
 			sc.IsIndexed = true
-			sc.DataType = fmt.Sprintf("varchar(%d)", 512)
+			sc.DataType = fmt.Sprintf("varchar(%d)", pkLen)
 			sc.CharSet = latin2CharSet
 			return []Schema{sc}
 		}
@@ -279,13 +287,10 @@ func (s *sequel) HasTable(table string) bool {
 }
 
 // OnConflictUpdate :
-func (s *sequel) OnConflictUpdate(cols []string) string {
+func (s *sequel) OnConflictUpdate(table string, cols []string) string {
 	buf := new(bytes.Buffer)
 	buf.WriteString("ON DUPLICATE KEY UPDATE ")
 	for _, c := range cols {
-		if c == keyColumn || c == parentColumn {
-			continue
-		}
 		buf.WriteString(fmt.Sprintf("%s=values(%s),",
 			s.Quote(c), s.Quote(c)))
 	}

@@ -473,21 +473,25 @@ The supported data type are :
 - slices of any of the above
 ```
 
-| Data Type          | Schema                    | Default Value       |
-| :----------------- | :------------------------ | :------------------ |
-| \*datastore.Key    | varchar(50), varchar(512) |                     |
-| datastore.GeoPoint | varchar(50)               | {Lat: 0, Lng: 0}    |
-| string             | varchar(191)              | ""                  |
-| []byte             | mediumblob                |                     |
-| bool               | boolean                   | false               |
-| float32            | double                    | 0                   |
-| float64            | double                    | 0                   |
-| int8               | smallint                  | 0                   |
-| int8, int16, int32 | int                       | 0                   |
-| int, int64         | big integer               | 0                   |
-| slice or array     | text                      | ""                  |
-| struct             | text                      | ""                  |
-| time.Time          | datetime                  | 0001-01-01 00:00:00 |
+| Data Type            | Schema               | Default Value       |
+| :------------------- | :------------------- | :------------------ |
+| \*datastore.Key      | varchar(512)         |                     |
+| datastore.GeoPoint   | varchar(50)          | {Lat: 0, Lng: 0}    |
+| string               | varchar(191)         | ""                  |
+| []byte               | mediumblob           |                     |
+| bool                 | boolean              | false               |
+| float32              | double               | 0                   |
+| float64              | double               | 0                   |
+| int8                 | smallint             | 0                   |
+| int16, int32, int    | int                  | 0                   |
+| int64                | big integer          | 0                   |
+| uint8                | unsigned smallint    | 0                   |
+| uint16, uint32, uint | unsigned int         | 0                   |
+| uint64               | unsigned big integer | 0                   |
+| slice or array       | json                 | ""                  |
+| struct               | json                 | ""                  |
+| time.Time            | datetime             | 0001-01-01 00:00:00 |
+| SoftDelete           | datetime (ISNULL)    | NULL                |
 
 **$Key**, **$Parent** and **$Deleted** are reserved words, please avoid to use these words as your column name
 

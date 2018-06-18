@@ -48,10 +48,11 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*stmt, error) {
 
 		switch f.field {
 		case keyFieldName:
-			name = fmt.Sprintf("concat(%s,%s,%s)",
-				b.dialect.Quote(parentColumn),
-				b.dialect.Value(keyDelimeter),
-				b.dialect.Quote(keyColumn))
+			// name = fmt.Sprintf("concat(%s,%q,%s)",
+			// 	b.dialect.Quote(parentColumn),
+			// 	keyDelimeter,
+			// 	b.dialect.Quote(keyColumn))
+			name = b.dialect.Quote(pkColumn)
 			v, err = interfaceKeyToString(f.value)
 			if err != nil {
 				return nil, err
@@ -138,8 +139,7 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*stmt, error) {
 		for _, o := range query.orders {
 			name := b.dialect.Quote(o.field)
 			if o.field == keyFieldName {
-				name = fmt.Sprintf("concat(%s,%s)",
-					b.dialect.Quote(parentColumn), b.dialect.Quote(keyColumn))
+				name = b.dialect.Quote(pkColumn)
 			}
 			suffix := " ASC"
 			if o.direction != ascending {
@@ -187,7 +187,7 @@ func execStmt(db sqlCommon, stmt *Stmt) error {
 func (b *builder) execStmt(s *stmt) error {
 	ss := &Stmt{
 		stmt:     *s,
-		replacer: b.dialect.Bind,
+		replacer: b.dialect,
 	}
 	go consoleLog(*b, ss)
 	conn, err := b.db.Prepare(ss.Raw())
@@ -206,7 +206,7 @@ func (b *builder) execStmt(s *stmt) error {
 func (b *builder) execQuery(s *stmt) (*sql.Rows, error) {
 	ss := &Stmt{
 		stmt:     *s,
-		replacer: b.dialect.Bind,
+		replacer: b.dialect,
 	}
 	go consoleLog(*b, ss)
 	var rows, err = b.db.Query(ss.Raw(), ss.arguments...)
@@ -322,7 +322,8 @@ func (b *builder) run(table string, cmd *stmt) (*Iterator, error) {
 		for j, name := range cols {
 			it.put(i, name, m[j])
 		}
-		it.mergeKey()
+		// it.mergeKey()
+		it.patchKey()
 		i++
 	}
 
@@ -482,9 +483,10 @@ func (b *builder) putStmt(parentKey []*datastore.Key, e *entity) (*stmt, error) 
 			pk = newPrimaryKey(e.Name(), kk)
 		}
 
-		k, p := splitKey(pk)
-		props[keyColumn] = Property{[]string{keyColumn}, typeOfPtrKey, k}
-		props[parentColumn] = Property{[]string{parentColumn}, typeOfPtrKey, p}
+		// k, p := splitKey(pk)
+		props[pkColumn] = Property{[]string{pkColumn}, typeOfPtrKey, stringPk(pk)}
+		// props[keyColumn] = Property{[]string{keyColumn}, typeOfPtrKey, k}
+		// props[parentColumn] = Property{[]string{parentColumn}, typeOfPtrKey, p}
 		fv := mustGetField(f, e.field(keyFieldName))
 		if !fv.IsValid() || fv.Type() != typeOfPtrKey {
 			return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
@@ -545,7 +547,7 @@ func (b *builder) upsert(model interface{}, parentKey []*datastore.Key) error {
 	cols := e.Columns()
 	omits := newDictionary(b.query.omits)
 	for i, c := range cols {
-		if !omits.has(c) {
+		if !omits.has(c) || c == pkColumn {
 			continue
 		}
 		cols = append(cols[:i], cols[i+1:]...)
@@ -553,7 +555,7 @@ func (b *builder) upsert(model interface{}, parentKey []*datastore.Key) error {
 	cmd.statement.Truncate(cmd.statement.Len() - 1)
 	buf := new(bytes.Buffer)
 	buf.WriteString(cmd.string())
-	buf.WriteString(" " + b.dialect.OnConflictUpdate(cols))
+	buf.WriteString(" " + b.dialect.OnConflictUpdate(e.Name(), cols))
 	buf.WriteString(";")
 	cmd.statement = buf
 	return b.execStmt(cmd)
@@ -608,12 +610,14 @@ func (b *builder) saveMutation(model interface{}) (*stmt, error) {
 		j++
 	}
 	buf.Truncate(buf.Len() - 1)
-	buf.WriteString(fmt.Sprintf(
-		" WHERE %s = %s AND %s = %s;",
-		b.dialect.Quote(keyColumn), variable,
-		b.dialect.Quote(parentColumn), variable))
-	k, p := splitKey(pk)
-	args = append(args, k, p)
+	// buf.WriteString(fmt.Sprintf(
+	// 	" WHERE %s = %s AND %s = %s;",
+	// 	b.dialect.Quote(keyColumn), b.dialect.Bind(len(args)),
+	// 	b.dialect.Quote(parentColumn), b.dialect.Bind(len(args))))
+	buf.WriteString(fmt.Sprintf(" WHERE %s = %s;",
+		b.dialect.Quote(pkColumn), variable))
+	// k, p := splitKey(pk)
+	args = append(args, stringPk(pk))
 
 	return &stmt{
 		statement: buf,
@@ -765,9 +769,9 @@ func (b *builder) concatKeys(e *entity) (*stmt, error) {
 		if kk.Incomplete() {
 			return nil, fmt.Errorf("goloquent: entity %q has incomplete key", f.Type().Name())
 		}
-		k, p := splitKey(kk)
+		// k, p := splitKey(kk)
 		buf.WriteString(variable)
-		args = append(args, p+keyDelimeter+k)
+		args = append(args, stringPk(kk))
 	}
 	buf.WriteString(")")
 	return &stmt{
@@ -779,13 +783,10 @@ func (b *builder) concatKeys(e *entity) (*stmt, error) {
 func (b *builder) softDeleteStmt(e *entity) (*stmt, error) {
 	buf, args := new(bytes.Buffer), make([]interface{}, 0)
 	buf.WriteString(fmt.Sprintf("UPDATE %s SET ", b.dialect.GetTable(e.Name())))
-	buf.WriteString(fmt.Sprintf("%s = %s WHERE concat(%s) IN ",
+	buf.WriteString(fmt.Sprintf("%s = %s WHERE %s IN ",
 		b.dialect.Quote(softDeleteColumn),
 		variable,
-		fmt.Sprintf("%s,%s,%s",
-			b.dialect.Quote(parentColumn),
-			b.dialect.Value("/"),
-			b.dialect.Quote(keyColumn))))
+		b.dialect.Quote(pkColumn)))
 	args = append(args, time.Now().UTC().Format("2006-01-02 15:04:05"))
 	ss, err := b.concatKeys(e)
 	if err != nil {
@@ -804,13 +805,9 @@ func (b *builder) deleteStmt(e *entity) (*stmt, error) {
 	if e.hasSoftDelete() {
 		return b.softDeleteStmt(e)
 	}
-	buf.WriteString(fmt.Sprintf(
-		"DELETE FROM %s WHERE concat(%s) IN ",
+	buf.WriteString(fmt.Sprintf("DELETE FROM %s WHERE %s IN ",
 		b.dialect.GetTable(e.Name()),
-		fmt.Sprintf("%s,%q,%s",
-			b.dialect.Quote(parentColumn),
-			keyDelimeter,
-			b.dialect.Quote(keyColumn))))
+		b.dialect.Quote(pkColumn)))
 	ss, err := b.concatKeys(e)
 	if err != nil {
 		return nil, err
@@ -883,8 +880,9 @@ func interfaceKeyToString(it interface{}) (interface{}, error) {
 	case nil:
 		v = vi
 	case *datastore.Key:
-		k, p := splitKey(vi)
-		v = p + keyDelimeter + k
+		// k, p := splitKey(vi)
+		// v = p + keyDelimeter + k
+		v = stringPk(vi)
 	case string:
 		v = vi
 	case []byte:

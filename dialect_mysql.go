@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"log"
 	"reflect"
 	"time"
 )
@@ -12,13 +13,13 @@ type mysql struct {
 	sequel
 }
 
+const minVersion = "5.7"
+
 var _ Dialect = new(mysql)
 
 func init() {
 	RegisterDialect("mysql", new(mysql))
 }
-
-const minVersion = "5.5"
 
 // Open :
 func (s *mysql) Open(conf Config) (*sql.DB, error) {
@@ -42,24 +43,24 @@ func (s *mysql) Open(conf Config) (*sql.DB, error) {
 	}
 	var version string
 	client.QueryRow("SELECT VERSION();").Scan(&version)
-	if minVersion < "5.5" {
+	if version < minVersion {
 		return nil, fmt.Errorf("require at least %s version of mysql", minVersion)
 	}
 	return client, nil
 }
 
 // Quote :
-func (s *mysql) Quote(n string) string {
+func (s mysql) Quote(n string) string {
 	return fmt.Sprintf("`%s`", n)
 }
 
 // Bind :
-func (s *mysql) Bind(uint) string {
+func (s mysql) Bind(uint) string {
 	return "?"
 }
 
 // DataType :
-func (s *mysql) DataType(sc Schema) string {
+func (s mysql) DataType(sc Schema) string {
 	buf := new(bytes.Buffer)
 	buf.WriteString(sc.DataType)
 	if sc.IsUnsigned {
@@ -80,44 +81,35 @@ func (s *mysql) DataType(sc Schema) string {
 	return buf.String()
 }
 
-func (s *mysql) OnConflictUpdate(cols []string) string {
+func (s mysql) OnConflictUpdate(table string, cols []string) string {
 	buf := new(bytes.Buffer)
 	buf.WriteString("ON DUPLICATE KEY UPDATE ")
 	for _, c := range cols {
-		if c == keyColumn || c == parentColumn {
-			continue
-		}
-		buf.WriteString(fmt.Sprintf("%s=values(%s),",
-			s.Quote(c), s.Quote(c)))
+		buf.WriteString(fmt.Sprintf("%s=VALUES(%s),", s.Quote(c), s.Quote(c)))
 	}
 	buf.Truncate(buf.Len() - 1)
 	return buf.String()
 }
 
-func (s *mysql) CreateTable(table string, columns []Column) error {
+func (s mysql) CreateTable(table string, columns []Column) error {
 	buf := new(bytes.Buffer)
 	buf.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (", s.GetTable(table)))
 	for _, c := range columns {
 		for _, ss := range s.GetSchema(c) {
-			buf.WriteString(fmt.Sprintf("%s %s,",
-				s.Quote(ss.Name),
-				s.DataType(ss)))
-
+			buf.WriteString(fmt.Sprintf("%s %s,", s.Quote(ss.Name), s.DataType(ss)))
 			if ss.IsIndexed {
 				idx := fmt.Sprintf("%s_%s_%s", table, ss.Name, "Idx")
 				buf.WriteString(fmt.Sprintf("INDEX %s (%s),", s.Quote(idx), s.Quote(ss.Name)))
 			}
 		}
 	}
-	buf.WriteString(fmt.Sprintf("PRIMARY KEY (%s,%s)",
-		s.Quote(parentColumn), s.Quote(keyColumn)))
+	buf.WriteString(fmt.Sprintf("PRIMARY KEY (%s)", s.Quote(pkColumn)))
 	buf.WriteString(fmt.Sprintf(") ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s;",
 		utf8CharSet.Encoding, utf8CharSet.Collation))
-
+	log.Println(buf.String())
 	if _, err := s.db.Exec(buf.String()); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -134,7 +126,7 @@ func (s *mysql) AlterTable(table string, columns []Column) error {
 			if cols.has(ss.Name) {
 				action = "MODIFY"
 			}
-			buf.WriteString(fmt.Sprintf(" %s %s %s %s,",
+			buf.WriteString(fmt.Sprintf("%s %s %s %s,",
 				action, s.Quote(ss.Name), s.DataType(ss), suffix))
 			suffix = fmt.Sprintf("AFTER %s", s.Quote(ss.Name))
 
@@ -161,13 +153,14 @@ func (s *mysql) AlterTable(table string, columns []Column) error {
 	}
 	buf.Truncate(buf.Len() - 1)
 	buf.WriteString(";")
+	log.Println(buf.String())
 	if _, err := s.db.Exec(buf.String()); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *mysql) ToString(it interface{}) string {
+func (s mysql) ToString(it interface{}) string {
 	var v string
 	switch vi := it.(type) {
 	case string:

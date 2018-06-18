@@ -16,13 +16,16 @@ func (s *stmt) string() string {
 	return s.statement.String()
 }
 
-type binder func(uint) string
+type replacer interface {
+	Bind(uint) string
+	Value(interface{}) string
+}
 
 // Stmt :
 type Stmt struct {
 	stmt
 	Result   sql.Result
-	replacer binder
+	replacer replacer
 }
 
 func (s *Stmt) startTrace() {
@@ -34,7 +37,7 @@ func (s *Stmt) Raw() string {
 	buf := new(bytes.Buffer)
 	arr := strings.Split(s.string(), "??")
 	for i := 0; i < len(arr); i++ {
-		str := arr[i] + s.replacer(uint(i+1))
+		str := arr[i] + s.replacer.Bind(uint(i+1))
 		if i >= len(arr)-1 {
 			str = arr[i]
 		}
@@ -48,7 +51,7 @@ func (s *Stmt) String() string {
 	buf := new(bytes.Buffer)
 	arr := strings.Split(s.string(), "??")
 	for i, aa := range s.arguments {
-		str := arr[i] + toString(aa)
+		str := arr[i] + s.replacer.Value(aa)
 		buf.WriteString(str)
 	}
 	buf.WriteString(arr[len(arr)-1])

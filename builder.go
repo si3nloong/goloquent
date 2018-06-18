@@ -902,13 +902,15 @@ func (b *builder) scan(dest ...interface{}) error {
 		return err
 	}
 	buf.WriteString(ss.string())
-	// log.Println(buf.String())
-	cmd, err := b.db.Prepare(buf.String())
+	rows, err := b.execQuery(&stmt{
+		statement: buf,
+		arguments: ss.arguments,
+	})
 	if err != nil {
 		return err
 	}
-	defer cmd.Close()
-	return cmd.QueryRow(ss.arguments...).Scan(dest...)
+	defer rows.Close()
+	return rows.Scan(dest...)
 }
 
 func (b *builder) runInTransaction(cb TransactionHandler) error {

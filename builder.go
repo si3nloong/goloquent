@@ -200,6 +200,15 @@ func (b *builder) execStmt(s *stmt) error {
 	return nil
 }
 
+func (b *builder) execQueryRows(s *stmt) *sql.Row {
+	ss := &Stmt{
+		stmt:     *s,
+		replacer: b.dialect,
+	}
+	go consoleLog(*b, ss)
+	return b.db.QueryRow(ss.Raw(), ss.arguments...)
+}
+
 func (b *builder) execQuery(s *stmt) (*sql.Rows, error) {
 	ss := &Stmt{
 		stmt:     *s,
@@ -902,15 +911,10 @@ func (b *builder) scan(dest ...interface{}) error {
 		return err
 	}
 	buf.WriteString(ss.string())
-	rows, err := b.execQuery(&stmt{
+	return b.execQueryRows(&stmt{
 		statement: buf,
 		arguments: ss.arguments,
-	})
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	return rows.Scan(dest...)
+	}).Scan(dest...)
 }
 
 func (b *builder) runInTransaction(cb TransactionHandler) error {

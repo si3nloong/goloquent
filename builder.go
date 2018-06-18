@@ -248,7 +248,18 @@ func (b *builder) getCommand(e *entity) (*stmt, error) {
 	buf := new(bytes.Buffer)
 	scope := "*"
 	if len(query.projection) > 0 {
-		scope = b.dialect.Quote(strings.Join(query.projection, b.dialect.Quote(",")))
+		projection := make([]string, len(query.projection), len(query.projection))
+		copy(projection, query.projection)
+		for i := 0; i < len(query.projection); i++ {
+			vv := projection[i]
+			regex, _ := regexp.Compile(`\w+\(.+\)`)
+			// vv = strings.Replace(vv, "`", (b.dialect.Quote(vv))[:1], -1)
+			if !regex.MatchString(vv) {
+				vv = b.dialect.Quote(vv)
+			}
+			projection[i] = vv
+		}
+		scope = strings.Join(projection, ",")
 	}
 	if len(query.distinctOn) > 0 {
 		distinctOn := make([]string, len(query.distinctOn), len(query.distinctOn))
@@ -833,8 +844,8 @@ func (b *builder) delete(model interface{}) error {
 	return b.execStmt(cmd)
 }
 
-func (b *builder) deleteByQuery(query *Query) error {
-	table := query.table
+func (b *builder) deleteByQuery() error {
+	table := b.query.table
 	cmd, err := b.buildWhere(b.query)
 	if err != nil {
 		return err
@@ -853,6 +864,54 @@ func (b *builder) truncate(table string) error {
 	return b.execStmt(&stmt{
 		statement: buf,
 	})
+}
+
+func (b *builder) scan(dest ...interface{}) error {
+	query := b.query
+	table := query.table
+	buf := new(bytes.Buffer)
+	scope := "*"
+	if len(query.projection) > 0 {
+		projection := make([]string, len(query.projection), len(query.projection))
+		copy(projection, query.projection)
+		for i := 0; i < len(query.projection); i++ {
+			vv := projection[i]
+			regex, _ := regexp.Compile(`\w+\(.+\)`)
+			// vv = strings.Replace(vv, "`", (b.dialect.Quote(vv))[:1], -1)
+			if !regex.MatchString(vv) {
+				vv = b.dialect.Quote(vv)
+			}
+			projection[i] = vv
+		}
+		scope = strings.Join(projection, ",")
+	}
+	if len(query.distinctOn) > 0 {
+		distinctOn := make([]string, len(query.distinctOn), len(query.distinctOn))
+		copy(distinctOn, query.distinctOn)
+		for i := 0; i < len(query.distinctOn); i++ {
+			vv := distinctOn[i]
+			regex, _ := regexp.Compile(`.+ as .+`)
+			vv = strings.Replace(vv, "`", (b.dialect.Quote(vv))[:1], -1)
+			if !regex.MatchString(vv) {
+				vv = b.dialect.Quote(vv)
+			}
+			distinctOn[i] = vv
+		}
+		scope = "DISTINCT " + strings.Join(distinctOn, ",")
+	}
+	buf.WriteString(fmt.Sprintf("SELECT %s FROM %s", scope, b.dialect.GetTable(table)))
+	ss, err := b.buildWhere(b.query)
+	if err != nil {
+		return err
+	}
+	buf.WriteString(ss.string())
+	// log.Println(buf.String())
+	cmd, err := b.db.Prepare(buf.String())
+	if err != nil {
+		return err
+	}
+	defer cmd.Close()
+	return cmd.QueryRow(ss.arguments...).Scan(dest...)
 }
 
 func (b *builder) runInTransaction(cb TransactionHandler) error {

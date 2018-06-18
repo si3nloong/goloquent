@@ -132,7 +132,7 @@ func (q *Query) Select(fields ...string) *Query {
 	// Primary key is always selected
 	dict := newDictionary(append(q.projection, arr...))
 	dict.delete(keyFieldName)
-	dict.add(pkColumn)
+	// dict.add(pkColumn)
 	q.projection = dict.keys()
 	return q
 }
@@ -382,5 +382,10 @@ func (q *Query) Flush() error {
 	if q.table == "" {
 		return fmt.Errorf("goloquent: unable to perform delete without table name")
 	}
-	return newBuilder(q).deleteByQuery(q.clone())
+	return newBuilder(q).deleteByQuery()
+}
+
+// Scan :
+func (q *Query) Scan(dest ...interface{}) error {
+	return newBuilder(q).scan(dest...)
 }

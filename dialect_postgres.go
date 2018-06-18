@@ -200,7 +200,7 @@ func (p postgres) GetSchema(c Column) []Schema {
 			sc.DefaultValue = float64(0)
 			sc.DataType = "real"
 		default:
-			sc.DataType = "json"
+			sc.DataType = "jsonb"
 			sc.CharSet = utf8CharSet
 		}
 	}

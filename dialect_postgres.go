@@ -137,12 +137,12 @@ func (p postgres) GetSchema(c Column) []Schema {
 		if t == typeOfPtrKey {
 			if f.name == keyFieldName {
 				return []Schema{
-					Schema{pkColumn, fmt.Sprintf("varchar(%d)", pkLen), OmitDefault(nil), false, false, false, latin2CharSet},
+					Schema{pkColumn, fmt.Sprintf("varchar(%d)", pkLen), OmitDefault(nil), false, false, false, latin1CharSet},
 				}
 			}
 			sc.IsIndexed = true
 			sc.DataType = fmt.Sprintf("varchar(%d)", pkLen)
-			sc.CharSet = latin2CharSet
+			sc.CharSet = latin1CharSet
 			return []Schema{sc}
 		}
 		t = t.Elem()

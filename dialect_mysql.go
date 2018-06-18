@@ -152,7 +152,9 @@ func (s *mysql) AlterTable(table string, columns []Column) error {
 		buf.WriteString(fmt.Sprintf(
 			" DROP INDEX %s,", s.Quote(idx)))
 	}
-	buf.Truncate(buf.Len() - 1)
+	buf.WriteString("CONVERT TO ")
+	buf.WriteString(fmt.Sprintf("CHARACTER SET %s ", s.Quote(utf8mb4CharSet.Encoding)))
+	buf.WriteString(fmt.Sprintf("COLLATE %s", s.Quote(utf8mb4CharSet.Collation)))
 	buf.WriteString(";")
 	log.Println(buf.String())
 	if _, err := s.db.Exec(buf.String()); err != nil {

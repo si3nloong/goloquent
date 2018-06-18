@@ -105,7 +105,7 @@ func (s mysql) CreateTable(table string, columns []Column) error {
 	}
 	buf.WriteString(fmt.Sprintf("PRIMARY KEY (%s)", s.Quote(pkColumn)))
 	buf.WriteString(fmt.Sprintf(") ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s;",
-		utf8CharSet.Encoding, utf8CharSet.Collation))
+		utf8mb4CharSet.Encoding, utf8mb4CharSet.Collation))
 	log.Println(buf.String())
 	if _, err := s.db.Exec(buf.String()); err != nil {
 		return err

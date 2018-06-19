@@ -48,18 +48,12 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*stmt, error) {
 			return nil, err
 		}
 
-		// TODO: primary key should consists specific data type
 		switch f.field {
 		case keyFieldName:
 			name = b.dialect.Quote(pkColumn)
-		case pkColumn:
-			switch vi := f.value.(type) {
-			case []byte:
-				v = fmt.Sprintf(`'%s'`, strings.Trim(string(vi), `'`))
-			case string:
-				v = fmt.Sprintf(`'%s'`, strings.Trim(vi, `'`))
-			default:
-				return nil, fmt.Errorf("goloquent: invalid data type %v for primary key", vi)
+			v, err = interfaceKeyToString(f.value)
+			if err != nil {
+				return nil, err
 			}
 		}
 
@@ -943,13 +937,17 @@ func interfaceKeyToString(it interface{}) (interface{}, error) {
 	case nil:
 		v = vi
 	case *datastore.Key:
-		// k, p := splitKey(vi)
-		// v = p + keyDelimeter + k
 		v = stringPk(vi)
 	case string:
 		v = vi
 	case []byte:
 		v = string(vi)
+	case []*datastore.Key:
+		arr := make([]interface{}, 0)
+		for _, kk := range vi {
+			arr = append(arr, stringPk(kk))
+		}
+		v = arr
 	default:
 		return nil, fmt.Errorf("goloquent: primary key has invalid data type %v", reflect.TypeOf(vi))
 	}

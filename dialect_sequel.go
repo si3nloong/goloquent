@@ -158,9 +158,12 @@ func (s *sequel) ToString(it interface{}) string {
 // GetSchema :
 func (s *sequel) GetSchema(c Column) []Schema {
 	f := c.field
-	t := f.getRoot().typeOf
-	if f.isFlatten() {
-		t = f.typeOf
+	root := f.getRoot()
+	t := root.typeOf
+	if root.isFlatten() {
+		if !root.isSlice() {
+			t = f.typeOf
+		}
 	}
 
 	sc := Schema{

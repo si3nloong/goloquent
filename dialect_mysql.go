@@ -119,7 +119,7 @@ func (s *mysql) AlterTable(table string, columns []Column) error {
 	idxs := newDictionary(s.GetIndexes(table))
 
 	buf := new(bytes.Buffer)
-	buf.WriteString(fmt.Sprintf("ALTER TABLE %s", s.GetTable(table)))
+	buf.WriteString(fmt.Sprintf("ALTER TABLE %s ", s.GetTable(table)))
 	suffix := "FIRST"
 	for _, c := range columns {
 		for _, ss := range s.GetSchema(c) {

@@ -4,9 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
 	"reflect"
-	"strings"
 	"time"
 
 	"cloud.google.com/go/datastore"
@@ -83,7 +81,6 @@ func SaveStruct(src interface{}) (map[string]Property, error) {
 		return nil, err
 	}
 
-	log.Println("debug " + strings.Repeat("-", 50))
 	data := make(map[string]Property)
 	for _, f := range ety.codec.fields {
 		fv := getFieldByIndex(vv.Elem(), f.paths)

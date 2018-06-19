@@ -282,7 +282,7 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 		// Sort the column follow by the sequence of struct property
 		sort.Slice(fields, func(i, j int) bool {
 			// return strings.Trim(strings.Join(strings.Fields(fmt.Sprint(fields[i])), ","), "[]") <
-			// 	strings.Trim(strings.Join(strings.Fields(fmt.Sprint(fields[j])), ","), "[]")
+			// strings.Trim(strings.Join(strings.Fields(fmt.Sprint(fields[j])), ","), "[]")
 			return fields[i].paths[0] < fields[j].paths[0]
 		})
 

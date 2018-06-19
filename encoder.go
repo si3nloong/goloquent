@@ -4,7 +4,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"reflect"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/datastore"
@@ -49,7 +51,7 @@ func normalize(f field, it interface{}) ([]Property, error) {
 		}
 
 		for k, vv := range flatMap(it.(map[string]interface{})) {
-			props = append(props, Property{[]string{k}, f.typeOf, vv})
+			props = append(props, Property{[]string{f.name, k}, f.typeOf, vv})
 		}
 		return props, nil
 	}
@@ -81,6 +83,7 @@ func SaveStruct(src interface{}) (map[string]Property, error) {
 		return nil, err
 	}
 
+	log.Println("debug " + strings.Repeat("-", 50))
 	data := make(map[string]Property)
 	for _, f := range ety.codec.fields {
 		fv := getFieldByIndex(vv.Elem(), f.paths)

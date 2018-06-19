@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -48,10 +49,6 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*stmt, error) {
 
 		switch f.field {
 		case keyFieldName:
-			// name = fmt.Sprintf("concat(%s,%q,%s)",
-			// 	b.dialect.Quote(parentColumn),
-			// 	keyDelimeter,
-			// 	b.dialect.Quote(keyColumn))
 			name = b.dialect.Quote(pkColumn)
 			v, err = interfaceKeyToString(f.value)
 			if err != nil {
@@ -129,6 +126,8 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*stmt, error) {
 		buf.WriteString(" WHERE ")
 		buf.WriteString(strings.Join(wheres, " AND "))
 	}
+
+	sort.Strings(wheres)
 
 	// __key__ sorting, filter
 	if len(query.orders) > 0 {

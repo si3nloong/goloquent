@@ -22,6 +22,8 @@ func (p *Pagination) Next() bool {
 	return p.Cursor != ""
 }
 
+// func (p *Pagination) NextCursor() {}
+
 // Reset :
 func (p *Pagination) Reset() {
 	pp := new(Pagination)

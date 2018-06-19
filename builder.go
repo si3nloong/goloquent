@@ -43,12 +43,23 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*stmt, error) {
 	i := len(args) + 1
 	for _, f := range query.filters {
 		name := b.dialect.Quote(f.field)
-		if f.field == keyFieldName {
-			name = b.dialect.Quote(pkColumn)
-		}
 		v, err := f.Interface()
 		if err != nil {
 			return nil, err
+		}
+
+		switch f.field {
+		case keyFieldName:
+			name = b.dialect.Quote(pkColumn)
+		case keyColumn:
+			switch vi := f.value.(type) {
+			case []byte:
+				v = fmt.Sprintf(`'%s'`, strings.Trim(string(vi), `'`))
+			case string:
+				v = fmt.Sprintf(`'%s'`, strings.Trim(vi, `'`))
+			default:
+				return nil, fmt.Errorf("goloquent: invalid data type %v for primary key", vi)
+			}
 		}
 
 		op, vv := "=", variable

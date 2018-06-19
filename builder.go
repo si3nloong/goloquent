@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"log"
 	"reflect"
 	"regexp"
 	"sort"
@@ -42,25 +43,12 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*stmt, error) {
 	i := len(args) + 1
 	for _, f := range query.filters {
 		name := b.dialect.Quote(f.field)
+		if f.field == keyFieldName {
+			name = b.dialect.Quote(pkColumn)
+		}
 		v, err := f.Interface()
 		if err != nil {
 			return nil, err
-		}
-
-		switch f.field {
-		case keyFieldName:
-			name = b.dialect.Quote(pkColumn)
-			v, err = interfaceKeyToString(f.value)
-			if err != nil {
-				return nil, err
-			}
-		case keyColumn:
-			switch vi := f.value.(type) {
-			case []byte:
-				v = fmt.Sprintf(`'%s'`, strings.Trim(string(vi), `'`))
-			case string:
-				v = fmt.Sprintf(`'%s'`, strings.Trim(vi, `'`))
-			}
 		}
 
 		op, vv := "=", variable
@@ -426,6 +414,8 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 	if err != nil {
 		return err
 	}
+
+	log.Println(cmd.string())
 
 	v := reflect.Indirect(reflect.ValueOf(model))
 	isPtr, t := checkMultiPtr(v)

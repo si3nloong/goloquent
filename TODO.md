@@ -52,5 +52,6 @@
 - add soft delete for get
 
 Bugs :
-Flatten struct childs values always null
+Flatten struct childs values always null (fixed)
+Flatten []struct childs values always null
 Geolocation

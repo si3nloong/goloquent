@@ -48,10 +48,11 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*stmt, error) {
 			return nil, err
 		}
 
+		// TODO: primary key should consists specific data type
 		switch f.field {
 		case keyFieldName:
 			name = b.dialect.Quote(pkColumn)
-		case keyColumn:
+		case pkColumn:
 			switch vi := f.value.(type) {
 			case []byte:
 				v = fmt.Sprintf(`'%s'`, strings.Trim(string(vi), `'`))

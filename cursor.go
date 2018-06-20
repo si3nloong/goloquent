@@ -7,6 +7,18 @@ import (
 	"strings"
 )
 
+type sorter struct {
+	order
+	Value interface{} `json:"value"`
+}
+
+type cursor struct {
+	Kind   string   `json:"kind"`
+	Filter []string `json:"filter"`
+	Sort   []sorter `json:"sort"`
+	Cursor string   `json:"cursor"`
+}
+
 // Cursor :
 type Cursor struct {
 	cc []byte

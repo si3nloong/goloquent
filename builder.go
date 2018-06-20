@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 
@@ -119,7 +118,6 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 	}
 
 	if len(wheres) > 0 {
-		sort.Strings(wheres)
 		buf.WriteString(" WHERE ")
 		buf.WriteString(strings.Join(wheres, " AND "))
 	} else {
@@ -139,12 +137,12 @@ func (b *builder) buildOrder(query scope) *stmt {
 	if len(query.orders) > 0 {
 		arr := make([]string, 0, len(query.orders))
 		for _, o := range query.orders {
-			name := b.dialect.Quote(o.field)
-			if o.field == keyFieldName {
+			name := b.dialect.Quote(o.Field)
+			if o.Field == keyFieldName {
 				name = b.dialect.Quote(pkColumn)
 			}
 			suffix := " ASC"
-			if o.direction != ascending {
+			if o.Direction != ascending {
 				suffix = " DESC"
 			}
 			arr = append(arr, name+suffix)

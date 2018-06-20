@@ -7,7 +7,6 @@ var (
 	utf8mb4CharSet = &CharSet{"utf8mb4", "utf8mb4_unicode_ci"}
 	latin2CharSet  = &CharSet{"latin2", "latin2_general_ci"}
 	latin1CharSet  = &CharSet{"latin1", "latin1_bin"}
-	// enCharSet = &CharSet{""}
 )
 
 // OmitDefault :

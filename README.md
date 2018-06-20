@@ -284,6 +284,16 @@ func (x *User) Save() (error) {
     }
 ```
 
+### Save Record
+
+```go
+    import "github.com/si3nloong/goloquent/db"
+    // Example
+    if err := db.Save(user); err != nil {
+        log.Println(err) // fail to delete record
+    }
+```
+
 ### Delete Record
 
 - **Delete using Primary Key**
@@ -301,10 +311,9 @@ func (x *User) Save() (error) {
 ```go
     // Delete user table record which account type not equal to "PREMIUM" or "MONTLY"
     if err := db.Table("User").
-        Where("AccountType", "!=", []string{
+        WhereNotIn("AccountType", []interface{}{
             "PREMIUM", "MONTLY",
-        }).
-        Delete(); err != nil {
+        }).Flush(); err != nil {
         log.Println(err) // fail to delete record
     }
 ```
@@ -379,7 +388,7 @@ func (x *User) Save() (error) {
     // Update single record
     user := new(User)
     if err := db.NewQuery().
-        WhereIn("Status", []string{"active", "pending"}).
+        WhereIn("Status", []interface{}{"active", "pending"}).
         First(user); err != nil {
         log.Println(err) // error while retrieving record or record not found
     }

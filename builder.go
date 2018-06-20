@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"log"
 	"reflect"
 	"regexp"
 	"sort"
@@ -37,10 +36,14 @@ func newBuilder(query *Query) *builder {
 	}
 }
 
-func (b *builder) buildWhere(query scope, args ...interface{}) (*stmt, error) {
+func (b *builder) buildSelect() {
+
+}
+
+func (b *builder) buildWhere(query scope) (*stmt, error) {
 	buf := new(bytes.Buffer)
 	wheres := make([]string, 0)
-	i := len(args) + 1
+	args := make([]interface{}, 0)
 	for _, f := range query.filters {
 		name := b.dialect.Quote(f.field)
 		v, err := f.Interface()
@@ -49,7 +52,7 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*stmt, error) {
 		}
 
 		switch f.field {
-		case keyFieldName:
+		case keyFieldName, pkColumn:
 			name = b.dialect.Quote(pkColumn)
 			v, err = interfaceKeyToString(f.value)
 			if err != nil {
@@ -108,7 +111,6 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*stmt, error) {
 		}
 		wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vv))
 		args = append(args, v)
-		i++
 	}
 
 	for _, aa := range query.ancestors {
@@ -117,11 +119,21 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*stmt, error) {
 	}
 
 	if len(wheres) > 0 {
+		sort.Strings(wheres)
 		buf.WriteString(" WHERE ")
 		buf.WriteString(strings.Join(wheres, " AND "))
+	} else {
+		buf.Reset()
 	}
 
-	sort.Strings(wheres)
+	return &stmt{
+		statement: buf,
+		arguments: args,
+	}, nil
+}
+
+func (b *builder) buildOrder(query scope) *stmt {
+	buf := new(bytes.Buffer)
 
 	// __key__ sorting, filter
 	if len(query.orders) > 0 {
@@ -137,16 +149,34 @@ func (b *builder) buildWhere(query scope, args ...interface{}) (*stmt, error) {
 			}
 			arr = append(arr, name+suffix)
 		}
-		buf.WriteString(" ORDER BY " + strings.Join(arr, ","))
+		buf.WriteString("ORDER BY " + strings.Join(arr, ","))
 	}
 
+	return &stmt{
+		statement: buf,
+	}
+}
+
+func (b *builder) buildStmt(query scope, args ...interface{}) (*stmt, error) {
+	buf := new(bytes.Buffer)
+	cmd, err := b.buildWhere(query)
+	if err != nil {
+		return nil, err
+	}
+	if !cmd.canSkip() {
+		args = append(args, cmd.arguments...)
+		buf.WriteString(cmd.string())
+	}
+	cmd = b.buildOrder(query)
+	if !cmd.canSkip() {
+		buf.WriteString(" " + cmd.string())
+	}
 	if query.limit > 0 {
 		buf.WriteString(fmt.Sprintf(" LIMIT %d", query.limit))
 	}
 	if query.offset > 0 {
 		buf.WriteString(fmt.Sprintf(" OFFSET %d", query.offset))
 	}
-
 	return &stmt{
 		statement: buf,
 		arguments: args,
@@ -159,20 +189,20 @@ func consoleLog(b builder, s *Stmt) {
 	}
 }
 
-func execStmt(db sqlCommon, stmt *Stmt) error {
-	// go consoleLog(*, *stmt)
-	conn, err := db.Prepare(stmt.Raw())
-	if err != nil {
-		return fmt.Errorf("goloquent: unable to prepare the sql statement: %v", err)
-	}
-	defer conn.Close()
-	result, err := conn.Exec(stmt.arguments...)
-	if err != nil {
-		return fmt.Errorf("goloquent: %v", err)
-	}
-	stmt.Result = result
-	return nil
-}
+// func execStmt(db sqlCommon, stmt *Stmt) error {
+// 	// go consoleLog(*, *stmt)
+// 	conn, err := db.Prepare(stmt.Raw())
+// 	if err != nil {
+// 		return fmt.Errorf("goloquent: unable to prepare the sql statement: %v", err)
+// 	}
+// 	defer conn.Close()
+// 	result, err := conn.Exec(stmt.arguments...)
+// 	if err != nil {
+// 		return fmt.Errorf("goloquent: %v", err)
+// 	}
+// 	stmt.Result = result
+// 	return nil
+// }
 
 func (b *builder) execStmt(s *stmt) error {
 	ss := &Stmt{
@@ -282,7 +312,7 @@ func (b *builder) getCommand(e *entity) (*stmt, error) {
 			value:    nil,
 		})
 	}
-	cmd, err := b.buildWhere(query)
+	cmd, err := b.buildStmt(query)
 	if err != nil {
 		return nil, err
 	}
@@ -314,6 +344,7 @@ func (b *builder) run(table string, cmd *stmt) (*Iterator, error) {
 
 	it := Iterator{
 		table:    table,
+		scope:    b.query,
 		position: -1,
 		columns:  cols,
 	}
@@ -395,7 +426,6 @@ func (b *builder) getMulti(model interface{}) error {
 		if err != nil {
 			return err
 		}
-
 		if !isPtr {
 			vi = vi.Elem()
 		}
@@ -416,31 +446,43 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		return err
 	}
 
+	if p.Cursor != "" {
+		c, err := DecodeCursor(p.Cursor)
+		if err != nil {
+			return err
+		}
+
+		offset := c.offset()
+		if offset > 0 {
+			b.query.offset = offset
+			cmd.statement.Truncate(cmd.statement.Len() - 1)
+			cmd.statement.WriteString(fmt.Sprintf(" OFFSET %d;", offset))
+		}
+	}
+
 	it, err := b.run(e.Name(), cmd)
 	if err != nil {
 		return err
 	}
-
-	log.Println(cmd.string())
 
 	v := reflect.Indirect(reflect.ValueOf(model))
 	isPtr, t := checkMultiPtr(v)
 	i := uint(1)
 	for it.Next() {
 		vi := reflect.New(t)
-		data, err := it.scan(vi.Interface())
+		_, err := it.scan(vi.Interface())
 		if err != nil {
 			return err
 		}
-		pk, isOk := data[keyFieldName].(*datastore.Key)
-		if !isOk || pk == nil {
-			return fmt.Errorf("goloquent: missing primary key")
-		}
-		p.Cursor = pk.Encode()
+		// pk, isOk := data[keyFieldName].(*datastore.Key)
+		// if !isOk || pk == nil {
+		// 	return fmt.Errorf("goloquent: missing primary key")
+		// }
+		cc, _ := it.Cursor()
+		p.nxtCursor = cc
 		if i > p.Limit {
 			continue
 		}
-
 		if !isPtr {
 			vi = vi.Elem()
 		}
@@ -450,7 +492,7 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 
 	count := it.Count()
 	if count <= p.Limit {
-		p.Cursor = ""
+		p.nxtCursor = Cursor{}
 	}
 	p.count = count
 	return nil
@@ -753,7 +795,7 @@ func (b *builder) updateMulti(v interface{}) error {
 	default:
 		return fmt.Errorf("goloquent: unsupported data type %v on `Update`", vi.Type())
 	}
-	cmd, err := b.buildWhere(b.query)
+	cmd, err := b.buildStmt(b.query)
 	if err != nil {
 		return err
 	}
@@ -847,7 +889,7 @@ func (b *builder) delete(model interface{}) error {
 
 func (b *builder) deleteByQuery() error {
 	table := b.query.table
-	cmd, err := b.buildWhere(b.query)
+	cmd, err := b.buildStmt(b.query)
 	if err != nil {
 		return err
 	}
@@ -901,7 +943,7 @@ func (b *builder) scan(dest ...interface{}) error {
 		scope = "DISTINCT " + strings.Join(distinctOn, ",")
 	}
 	buf.WriteString(fmt.Sprintf("SELECT %s FROM %s", scope, b.dialect.GetTable(table)))
-	ss, err := b.buildWhere(b.query)
+	ss, err := b.buildStmt(b.query)
 	if err != nil {
 		return err
 	}

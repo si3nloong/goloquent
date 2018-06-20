@@ -21,13 +21,16 @@ type Saver interface {
 	Save() error
 }
 
+// type miniScope struct {
+// }
+
 // Iterator :
 type Iterator struct {
 	table    string
+	scope    scope
 	position int
 	columns  []string
 	results  []map[string][]byte
-	cursor   *datastore.Key
 }
 
 func (it *Iterator) patchKey() {
@@ -91,20 +94,23 @@ func (it *Iterator) Last() *Iterator {
 }
 
 // Get : get value by key
-func (it *Iterator) Get(k string) []byte {
+func (it Iterator) Get(k string) []byte {
 	l := it.results[it.position]
 	return l[k]
 }
 
 // Count : return the records count
-func (it *Iterator) Count() uint {
+func (it Iterator) Count() uint {
 	return uint(len(it.results))
 }
 
-// // Cursor :
-// func (it *Iterator) Cursor() (*datastore.Key, error) {
-// 	return &datastore.Key{}, nil
-// }
+// Cursor :
+func (it Iterator) Cursor() (Cursor, error) {
+	offset := uint64(it.scope.offset) + uint64(len(it.results)) + 1
+	return Cursor{
+		cc: []byte(fmt.Sprintf("offset=%d", offset)),
+	}, nil
+}
 
 // Next : go next record
 func (it *Iterator) Next() bool {

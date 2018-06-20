@@ -16,6 +16,10 @@ func (s *stmt) string() string {
 	return s.statement.String()
 }
 
+func (s *stmt) canSkip() bool {
+	return !(s.statement.Len() > 0)
+}
+
 type replacer interface {
 	Bind(uint) string
 	Value(interface{}) string

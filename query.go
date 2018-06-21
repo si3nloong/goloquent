@@ -130,11 +130,7 @@ func (q *Query) Select(fields ...string) *Query {
 		}
 		arr = append(arr, f)
 	}
-	// Primary key is always selected
-	dict := newDictionary(append(q.projection, arr...))
-	dict.delete(keyFieldName)
-	// dict.add(pkColumn)
-	q.projection = dict.keys()
+	q.projection = append(q.projection, arr...)
 	return q
 }
 

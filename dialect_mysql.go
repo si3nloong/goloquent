@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"regexp"
 	"time"
 )
 
@@ -13,7 +14,7 @@ type mysql struct {
 	sequel
 }
 
-const minVersion = "5.7"
+const minVersion = "5.7.0"
 
 var _ Dialect = new(mysql)
 
@@ -36,17 +37,19 @@ func (s *mysql) Open(conf Config) (*sql.DB, error) {
 	buf.WriteString(addr)
 	buf.WriteString(fmt.Sprintf("/%s", conf.Database))
 	buf.WriteString("?parseTime=true")
-	fmt.Println("Connection String :: ", buf.String())
+	log.Println("Connection String :", buf.String())
 	client, err := sql.Open("mysql", buf.String())
 	if err != nil {
 		return nil, err
 	}
 	var version string
+	verRgx := regexp.MustCompile(`(\d\.\d.\d)`)
 	client.QueryRow("SELECT VERSION();").Scan(&version)
-	if version < minVersion {
+	if compareVersion(verRgx.FindStringSubmatch(version)[0], minVersion) > 0 {
 		return nil, fmt.Errorf("require at least %s version of mysql", minVersion)
 	}
 	client.Exec("SET NAMES utf8mb4;")
+	log.Println("MySQL version :", verRgx.FindStringSubmatch(version)[0])
 	return client, nil
 }
 

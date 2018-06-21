@@ -37,7 +37,7 @@ func (p *postgres) Open(conf Config) (*sql.DB, error) {
 	buf.WriteString(addr)
 	buf.WriteString(fmt.Sprintf("/%s", conf.Database))
 	buf.WriteString("?sslmode=disable")
-	fmt.Println("Connection String :: ", buf.String())
+	log.Println("Connection String :", buf.String())
 	client, err := sql.Open("postgres", buf.String())
 	if err != nil {
 		return nil, err

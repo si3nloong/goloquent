@@ -14,7 +14,7 @@ type mysql struct {
 	sequel
 }
 
-const minVersion = "5.7.0"
+const minVersion = "5.7"
 
 var _ Dialect = new(mysql)
 
@@ -43,7 +43,7 @@ func (s *mysql) Open(conf Config) (*sql.DB, error) {
 		return nil, err
 	}
 	var version string
-	verRgx := regexp.MustCompile(`(\d\.\d.\d)`)
+	verRgx := regexp.MustCompile(`(\d\.\d)`)
 	client.QueryRow("SELECT VERSION();").Scan(&version)
 	if compareVersion(verRgx.FindStringSubmatch(version)[0], minVersion) > 0 {
 		return nil, fmt.Errorf("require at least %s version of mysql", minVersion)

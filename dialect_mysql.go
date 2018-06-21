@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"regexp"
 	"time"
 )
 
@@ -43,11 +42,11 @@ func (s *mysql) Open(conf Config) (*sql.DB, error) {
 		return nil, err
 	}
 	var version string
-	verRgx := regexp.MustCompile(`(\d\.\d)`)
+	// verRgx := regexp.MustCompile(`(\d\.\d)`)
 	client.QueryRow("SELECT VERSION();").Scan(&version)
-	if compareVersion(verRgx.FindStringSubmatch(version)[0], minVersion) > 0 {
-		return nil, fmt.Errorf("require at least %s version of mysql", minVersion)
-	}
+	// if compareVersion(verRgx.FindStringSubmatch(version)[0], minVersion) > 0 {
+	// 	return nil, fmt.Errorf("require at least %s version of mysql", minVersion)
+	// }
 	client.Exec("SET NAMES utf8mb4;")
 	log.Println("MySQL version :", version)
 	return client, nil

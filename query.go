@@ -124,17 +124,13 @@ func (q *Query) Select(fields ...string) *Query {
 	arr := make([]string, 0, len(fields))
 	for _, f := range fields {
 		f := strings.TrimSpace(f)
-		if f == "" || f == "*" {
+		if f == "" {
 			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid selection value %v", f))
 			return q
 		}
 		arr = append(arr, f)
 	}
-	// Primary key is always selected
-	dict := newDictionary(append(q.projection, arr...))
-	dict.delete(keyFieldName)
-	// dict.add(pkColumn)
-	q.projection = dict.keys()
+	q.projection = append(q.projection, arr...)
 	return q
 }
 

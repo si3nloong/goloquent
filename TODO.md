@@ -15,8 +15,9 @@
 - Cursor
 - Filter json
 - Filter geolocation
+- Support option tag shorthand `index`
 
 Bugs :
 Flatten struct childs values always null (fixed)
+Selected fields should follow sequence (fixed)
 Flatten []struct childs values always null
-Selected fields should follow sequence

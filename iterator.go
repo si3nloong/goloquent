@@ -36,7 +36,7 @@ func (it *Iterator) patchKey() {
 	if _, isOk := l[pkColumn]; !isOk {
 		return
 	}
-	paths := bytes.Split(l[pkColumn], []byte(`/`))
+	paths := bytes.Split(l[pkColumn], []byte(keyDelimeter))
 	last := len(paths) - 1
 	kk := paths[last]
 	paths = paths[:last]

@@ -2,13 +2,17 @@ package goloquent
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 )
 
 type cursor struct {
-	Cursor string `json:"cursor"`
+	ProjectID string `json:"projectId"`
+	Signature string `json:"signature"`
+	Cursor    string `json:"cursor"`
 }
 
 // Cursor :
@@ -41,5 +45,8 @@ func DecodeCursor(c string) (Cursor, error) {
 	if err != nil {
 		return Cursor{}, fmt.Errorf("goloquent: invalid cursor")
 	}
+	var m map[string]interface{}
+	json.Unmarshal(b, &m)
+	log.Println(m)
 	return Cursor{b}, nil
 }

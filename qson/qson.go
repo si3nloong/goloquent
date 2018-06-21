@@ -5,10 +5,12 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"cloud.google.com/go/datastore"
 )
 
 func isBaseType(t reflect.Type) bool {
-	return t == typeOfTime
+	return t == typeOfTime || t == typeOfPtrKey
 }
 
 // Property :
@@ -92,14 +94,25 @@ func validOperator(op string) (isOk bool) {
 }
 
 var (
-	typeOfByte = reflect.TypeOf([]byte(nil))
-	typeOfTime = reflect.TypeOf(time.Time{})
+	typeOfByte   = reflect.TypeOf([]byte(nil))
+	typeOfTime   = reflect.TypeOf(time.Time{})
+	typeOfPtrKey = reflect.TypeOf(new(datastore.Key))
 )
 
 func convertToInterface(t reflect.Type, v interface{}) (interface{}, error) {
 	var it interface{}
 
 	switch t {
+	case typeOfPtrKey:
+		x, isOk := v.(string)
+		if !isOk {
+			return nil, unmatchDataType(t, x)
+		}
+		var err error
+		it, err = datastore.DecodeKey(x)
+		if err != nil {
+			return nil, fmt.Errorf("qson: unable to decode %s to %v", x, t)
+		}
 	case typeOfByte:
 		x, isOk := v.(string)
 		if !isOk {

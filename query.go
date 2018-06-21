@@ -207,16 +207,19 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 	if p.Limit > maxLimit {
 		return fmt.Errorf("goloquent: limit overflow : %d, maximum limit : %d", p.Limit, maxLimit)
 	}
-	q = q.Limit(int(p.Limit) + 1).Order(keyFieldName)
+	q = q.Limit(int(p.Limit) + 1)
 	if p.Cursor != "" {
+		log.Println(strings.Repeat("-", 100))
 		log.Println(p.Cursor)
 		c, err := DecodeCursor(p.Cursor)
 		if err != nil {
 			return err
 		}
+		sql, _ := newBuilder(q).buildStmt(q.scope)
+		log.Println(sql.string())
 		log.Println(c)
+		log.Println(strings.Repeat("-", 100))
 		// 	c, err := datastore.DecodeKey(p.Cursor)
-
 		// 	q = q.Where(keyFieldName, ">", c)
 	}
 	return newBuilder(q).paginate(p, model)

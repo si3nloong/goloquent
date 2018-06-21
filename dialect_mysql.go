@@ -49,7 +49,7 @@ func (s *mysql) Open(conf Config) (*sql.DB, error) {
 		return nil, fmt.Errorf("require at least %s version of mysql", minVersion)
 	}
 	client.Exec("SET NAMES utf8mb4;")
-	log.Println("MySQL version :", verRgx.FindStringSubmatch(version)[0])
+	log.Println("MySQL version :", version)
 	return client, nil
 }
 

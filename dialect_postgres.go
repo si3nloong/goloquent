@@ -167,7 +167,14 @@ func (p postgres) GetSchema(c Column) []Schema {
 				sc.DefaultValue = nil
 				sc.DataType = "text"
 			}
+			if f.get("datatype") != "" {
+				sc.DataType = f.get("datatype")
+			}
 			sc.CharSet = utf8CharSet
+			charset := f.get("charset")
+			if charset != "" {
+				sc.CharSet.Encoding = charset
+			}
 		case reflect.Bool:
 			sc.DefaultValue = false
 			sc.DataType = "bool"

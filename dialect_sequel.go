@@ -116,7 +116,7 @@ func (s *sequel) DataType(sc Schema) string {
 	if sc.IsUnsigned {
 		buf.WriteString(" UNSIGNED")
 	}
-	if sc.CharSet != nil {
+	if sc.CharSet.Encoding != "" && sc.CharSet.Collation != "" {
 		buf.WriteString(fmt.Sprintf(" CHARACTER SET %s COLLATE %s",
 			s.Quote(sc.CharSet.Encoding),
 			s.Quote(sc.CharSet.Collation)))
@@ -206,7 +206,18 @@ func (s *sequel) GetSchema(c Column) []Schema {
 				sc.DefaultValue = nil
 				sc.DataType = "text"
 			}
+			if f.get("datatype") != "" {
+				sc.DataType = f.get("datatype")
+			}
 			sc.CharSet = utf8mb4CharSet
+			charset := f.get("charset")
+			if charset != "" {
+				sc.CharSet.Encoding = charset
+				sc.CharSet.Collation = fmt.Sprintf("%s_general_ci", charset)
+				if f.get("collate") != "" {
+					sc.CharSet.Collation = f.get("collate")
+				}
+			}
 		case reflect.Bool:
 			sc.DefaultValue = false
 			sc.DataType = "boolean"
@@ -240,14 +251,10 @@ func (s *sequel) GetSchema(c Column) []Schema {
 			sc.IsUnsigned = f.isUnsigned()
 		case reflect.Slice, reflect.Array:
 			sc.DefaultValue = OmitDefault(nil)
-			sc.CharSet = utf8CharSet
 			sc.DataType = "json"
-			sc.CharSet = nil
 		default:
 			sc.DefaultValue = OmitDefault(nil)
-			sc.CharSet = utf8CharSet
 			sc.DataType = "json"
-			sc.CharSet = nil
 		}
 	}
 

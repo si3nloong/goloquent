@@ -19,5 +19,4 @@
 Bugs :
 Flatten struct childs values always null (fixed)
 Flatten []struct childs values always null
-Geolocation
 Selected fields should follow sequence

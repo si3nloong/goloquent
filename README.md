@@ -448,9 +448,10 @@ type User struct {
     Key     *datastore.Key `goloquent:"__key__"` // Primary Key
     Name    string `goloquent:",longtext"` // Using `TEXT` datatype instead of `VARCHAR(255)` by default
     Age     int    `goloquent:",unsigned"` // Unsigned option only applicable for int data type
-    PhoneNumber string `goloquent:",nullable"`
+    PhoneNumber string `goloquent:",charset=utf8,collate=utf8_bin,datatype=char(20)"`
     Email   string `goloquent:",unique"`   // Make column `Email` as unique field
     Extra   string `goloquent:"-"` // Skip this field to store in db
+
     DefaultAddress struct {
         AddressLine1 string // `DefaultAddress.AddressLine1`
         AddressLine2 string // `DefaultAddress.AddressLine2`

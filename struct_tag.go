@@ -2,6 +2,7 @@ package goloquent
 
 import (
 	"reflect"
+	"regexp"
 	"strings"
 )
 
@@ -30,20 +31,31 @@ func newTag(r reflect.StructField) tag {
 		"longtext":  false,
 	}
 
-	// sync tag option
+	others := make(map[string]string)
 	paths = paths[1:]
 	for _, k := range paths {
 		k = strings.ToLower(k)
 		if _, isValid := options[k]; isValid {
 			options[k] = true
+		} else {
+			rgx := regexp.MustCompile(`datatype=|charset=|collate=\w+`)
+			if rgx.MatchString(k) {
+				rgx = regexp.MustCompile(`(\w+)=(\w+)`)
+				result := rgx.FindStringSubmatch(k)
+				others[result[1]] = result[2]
+			}
 		}
 	}
 
 	return tag{
 		name:    name,
 		options: options,
-		// others:  paths,
+		others:  others,
 	}
+}
+
+func (t tag) get(k string) string {
+	return t.others[k]
 }
 
 func (t tag) isPrimaryKey() bool {

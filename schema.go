@@ -3,10 +3,10 @@ package goloquent
 import "reflect"
 
 var (
-	utf8CharSet    = &CharSet{"utf8", "utf8_unicode_ci"}
-	utf8mb4CharSet = &CharSet{"utf8mb4", "utf8mb4_unicode_ci"}
-	latin2CharSet  = &CharSet{"latin2", "latin2_general_ci"}
-	latin1CharSet  = &CharSet{"latin1", "latin1_bin"}
+	utf8CharSet    = CharSet{"utf8", "utf8_unicode_ci"}
+	utf8mb4CharSet = CharSet{"utf8mb4", "utf8mb4_unicode_ci"}
+	latin2CharSet  = CharSet{"latin2", "latin2_general_ci"}
+	latin1CharSet  = CharSet{"latin1", "latin1_bin"}
 )
 
 // OmitDefault :
@@ -26,7 +26,7 @@ type Schema struct {
 	IsUnsigned   bool
 	IsNullable   bool
 	IsIndexed    bool
-	*CharSet
+	CharSet
 }
 
 // OmitEmpty :

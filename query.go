@@ -215,8 +215,8 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 		if err != nil {
 			return err
 		}
-		sql, _ := newBuilder(q).buildStmt(q.scope)
-		log.Println(sql.string())
+		// sql, _ := newBuilder(q).buildStmt(q.scope)
+		// log.Println(sql.string())
 		log.Println(c)
 		log.Println(strings.Repeat("-", 100))
 		// 	c, err := datastore.DecodeKey(p.Cursor)

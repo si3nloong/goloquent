@@ -67,7 +67,7 @@ func (s mysql) DataType(sc Schema) string {
 	if sc.IsUnsigned {
 		buf.WriteString(" UNSIGNED")
 	}
-	if sc.CharSet != nil {
+	if sc.CharSet.Encoding != "" && sc.CharSet.Collation != "" {
 		buf.WriteString(fmt.Sprintf(" CHARACTER SET %s COLLATE %s",
 			s.Quote(sc.CharSet.Encoding),
 			s.Quote(sc.CharSet.Collation)))
@@ -83,6 +83,9 @@ func (s mysql) DataType(sc Schema) string {
 }
 
 func (s mysql) OnConflictUpdate(table string, cols []string) string {
+	if len(cols) <= 0 {
+		return ""
+	}
 	buf := new(bytes.Buffer)
 	buf.WriteString("ON DUPLICATE KEY UPDATE ")
 	for _, c := range cols {
@@ -147,12 +150,10 @@ func (s *mysql) AlterTable(table string, columns []Column) error {
 	for _, col := range cols.keys() {
 		buf.WriteString(fmt.Sprintf(" DROP COLUMN %s,", s.Quote(col)))
 	}
-
 	for _, idx := range idxs.keys() {
-		buf.WriteString(fmt.Sprintf(
-			" DROP INDEX %s,", s.Quote(idx)))
+		buf.WriteString(fmt.Sprintf(" DROP INDEX %s,", s.Quote(idx)))
 	}
-	buf.WriteString("CONVERT TO ")
+
 	buf.WriteString(fmt.Sprintf("CHARACTER SET %s ", s.Quote(utf8mb4CharSet.Encoding)))
 	buf.WriteString(fmt.Sprintf("COLLATE %s", s.Quote(utf8mb4CharSet.Collation)))
 	buf.WriteString(";")

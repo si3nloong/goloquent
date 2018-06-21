@@ -12,6 +12,7 @@
 - (2018-06-19) Fix flatten struct bug, flatten column using root data type instead of the subsequent data type
 - (2018-06-19) Fix primary key bug when using `WHERE $Key IN (?)`, key is not convert to primary key format
 - (2018-06-21) Fix alter table character set and collation bug, change from `ALTER TABLE xxx CONVERT TO CHARACTER SET utf8` to `ALTER TABLE xxx CHARACTER SET utf8`
+- (2018-06-21) Fix mysql panic even is 5.7 or above `eg: GAE return 5.7.14-google-log instead 5.7.14` will mismatch in the string comparison
 
 # Breaking Changes
 
@@ -32,6 +33,7 @@
 - (2018-06-16) No longer support mysql 5.6 and below (at least 5.7)
 - (2018-06-19) Table is now by default using `utf8mb4` encoding
 - (2018-06-21) Support extra option `datatype`, `charset`, `collate` on struct property, but it only limited to datatype of `string`
+- (2018-06-21) Allow `*` on func `Select`
 
 # New Features
 

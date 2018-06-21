@@ -124,7 +124,7 @@ func (q *Query) Select(fields ...string) *Query {
 	arr := make([]string, 0, len(fields))
 	for _, f := range fields {
 		f := strings.TrimSpace(f)
-		if f == "" || f == "*" {
+		if f == "" {
 			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid selection value %v", f))
 			return q
 		}

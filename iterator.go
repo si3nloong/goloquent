@@ -21,14 +21,11 @@ type Saver interface {
 	Save() error
 }
 
-// type miniScope struct {
-// }
-
 // Iterator :
 type Iterator struct {
 	table    string
 	scope    scope
-	position int
+	position int // current record position
 	columns  []string
 	results  []map[string][]byte
 }

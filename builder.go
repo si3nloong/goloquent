@@ -221,7 +221,7 @@ func (b *builder) execStmt(s *stmt) error {
 	return nil
 }
 
-func (b *builder) execQueryRows(s *stmt) *sql.Row {
+func (b *builder) execQueryRow(s *stmt) *sql.Row {
 	ss := &Stmt{
 		stmt:     *s,
 		replacer: b.dialect,
@@ -939,7 +939,7 @@ func (b *builder) scan(dest ...interface{}) error {
 		return err
 	}
 	buf.WriteString(ss.string())
-	return b.execQueryRows(&stmt{
+	return b.execQueryRow(&stmt{
 		statement: buf,
 		arguments: ss.arguments,
 	}).Scan(dest...)

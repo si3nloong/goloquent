@@ -3,6 +3,7 @@ package goloquent
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 
@@ -207,13 +208,17 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 		return fmt.Errorf("goloquent: limit overflow : %d, maximum limit : %d", p.Limit, maxLimit)
 	}
 	q = q.Limit(int(p.Limit) + 1).Order(keyFieldName)
-	// if p.Cursor != "" {
-	// 	c, err := datastore.DecodeKey(p.Cursor)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	q = q.Where(keyFieldName, ">", c)
-	// }
+	if p.Cursor != "" {
+		log.Println(p.Cursor)
+		c, err := DecodeCursor(p.Cursor)
+		if err != nil {
+			return err
+		}
+		log.Println(c)
+		// 	c, err := datastore.DecodeKey(p.Cursor)
+
+		// 	q = q.Where(keyFieldName, ">", c)
+	}
 	return newBuilder(q).paginate(p, model)
 }
 

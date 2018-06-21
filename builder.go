@@ -491,6 +491,8 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 	count := it.Count()
 	if count <= p.Limit {
 		p.nxtCursor = Cursor{}
+	} else {
+		count--
 	}
 	p.count = count
 	return nil

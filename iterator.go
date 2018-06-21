@@ -106,7 +106,7 @@ func (it Iterator) Count() uint {
 
 // Cursor :
 func (it Iterator) Cursor() (Cursor, error) {
-	offset := uint64(it.scope.offset) + uint64(len(it.results)) + 1
+	offset := uint64(it.scope.offset) + uint64(len(it.results))
 	return Cursor{
 		cc: []byte(fmt.Sprintf("offset=%d", offset)),
 	}, nil

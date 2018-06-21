@@ -137,12 +137,12 @@ func (b *builder) buildOrder(query scope) *stmt {
 	if len(query.orders) > 0 {
 		arr := make([]string, 0, len(query.orders))
 		for _, o := range query.orders {
-			name := b.dialect.Quote(o.Field)
-			if o.Field == keyFieldName {
+			name := b.dialect.Quote(o.field)
+			if o.field == keyFieldName {
 				name = b.dialect.Quote(pkColumn)
 			}
 			suffix := " ASC"
-			if o.Direction != ascending {
+			if o.direction != ascending {
 				suffix = " DESC"
 			}
 			arr = append(arr, name+suffix)
@@ -537,10 +537,7 @@ func (b *builder) putStmt(parentKey []*datastore.Key, e *entity) (*stmt, error) 
 			pk = newPrimaryKey(e.Name(), kk)
 		}
 
-		// k, p := splitKey(pk)
 		props[pkColumn] = Property{[]string{pkColumn}, typeOfPtrKey, stringPk(pk)}
-		// props[keyColumn] = Property{[]string{keyColumn}, typeOfPtrKey, k}
-		// props[parentColumn] = Property{[]string{parentColumn}, typeOfPtrKey, p}
 		fv := mustGetField(f, e.field(keyFieldName))
 		if !fv.IsValid() || fv.Type() != typeOfPtrKey {
 			return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
@@ -664,13 +661,7 @@ func (b *builder) saveMutation(model interface{}) (*stmt, error) {
 		j++
 	}
 	buf.Truncate(buf.Len() - 1)
-	// buf.WriteString(fmt.Sprintf(
-	// 	" WHERE %s = %s AND %s = %s;",
-	// 	b.dialect.Quote(keyColumn), b.dialect.Bind(len(args)),
-	// 	b.dialect.Quote(parentColumn), b.dialect.Bind(len(args))))
-	buf.WriteString(fmt.Sprintf(" WHERE %s = %s;",
-		b.dialect.Quote(pkColumn), variable))
-	// k, p := splitKey(pk)
+	buf.WriteString(fmt.Sprintf(" WHERE %s = %s;", b.dialect.Quote(pkColumn), variable))
 	args = append(args, stringPk(pk))
 
 	return &stmt{

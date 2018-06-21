@@ -32,8 +32,8 @@ const (
 )
 
 type order struct {
-	Field     string        `json:"field"`
-	Direction sortDirection `json:"direction"`
+	field     string
+	direction sortDirection
 }
 
 type locked int
@@ -341,8 +341,8 @@ func (q *Query) Order(fields ...string) *Query {
 		}
 
 		q.orders = append(q.orders, order{
-			Field:     name,
-			Direction: dir,
+			field:     name,
+			direction: dir,
 		})
 	}
 	return q

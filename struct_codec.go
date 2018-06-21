@@ -128,8 +128,8 @@ func isValidFieldName(name string) bool {
 
 func isReserveFieldName(name string) bool {
 	m := map[string]bool{
-		strings.ToLower(keyColumn):    true,
-		strings.ToLower(parentColumn): true,
+		strings.ToLower(pkColumn):         true,
+		strings.ToLower(softDeleteColumn): true,
 	}
 	return m[strings.ToLower(name)]
 }

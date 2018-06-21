@@ -19,10 +19,8 @@ type LogHandler func(*Stmt)
 
 // public constant variables :
 const (
-	pkColumn         = "$Key"
-	keyColumn        = "$Key"
-	parentColumn     = "$Parent"
 	pkLen            = 512
+	pkColumn         = "$Key"
 	softDeleteColumn = "$Deleted"
 	keyDelimeter     = "/"
 )
@@ -120,7 +118,6 @@ func (db *DB) clone() *DB {
 		replica: fmt.Sprintf("%d", time.Now().Unix()),
 		conn:    db.conn,
 		dialect: db.dialect,
-		// logger:  db.logger,
 	}
 }
 

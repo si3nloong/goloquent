@@ -210,7 +210,7 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 	q = q.Limit(int(p.Limit) + 1)
 	if p.Cursor != "" {
 		log.Println(strings.Repeat("-", 100))
-		log.Println(p.Cursor)
+		// log.Println(p.Cursor)
 		c, err := DecodeCursor(p.Cursor)
 		if err != nil {
 			return err

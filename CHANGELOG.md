@@ -13,7 +13,7 @@
 - (2018-06-19) Fix primary key bug when using `WHERE $Key IN (?)`, key is not convert to primary key format
 - (2018-06-21) Fix alter table character set and collation bug, change from `ALTER TABLE xxx CONVERT TO CHARACTER SET utf8` to `ALTER TABLE xxx CHARACTER SET utf8`
 - (2018-06-21) Fix mysql panic even is 5.7 or above `eg: GAE return 5.7.14-google-log instead 5.7.14` will mismatch in the string comparison
-- (2018-06-22) Fix `Pagination` bug, model slice is appending instead of replaced
+- (2018-06-22) Fix `Paginate` bug, model slice is appending instead of get replace
 
 # Breaking Changes
 

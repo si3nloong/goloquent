@@ -3,6 +3,7 @@ package goloquent
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 
@@ -201,8 +202,11 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 	}
 	if p.Limit > maxLimit {
 		return fmt.Errorf("goloquent: limit overflow : %d, maximum limit : %d", p.Limit, maxLimit)
+	} else if p.Limit <= 0 {
+		p.Limit = defaultLimit
 	}
 	q = q.Limit(int(p.Limit) + 1)
+	log.Println("pagination!!!")
 	if p.Cursor != "" {
 		// log.Println("DEBUG CURSOR " + strings.Repeat("-", 100))
 		// c, err := DecodeCursor(p.Cursor)

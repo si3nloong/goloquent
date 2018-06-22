@@ -24,7 +24,7 @@ type Saver interface {
 // Iterator :
 type Iterator struct {
 	table    string
-	scope    scope
+	query    string
 	position int // current record position
 	columns  []string
 	results  []map[string][]byte
@@ -103,10 +103,19 @@ func (it Iterator) Count() uint {
 
 // Cursor :
 func (it Iterator) Cursor() (Cursor, error) {
-	offset := uint64(it.scope.offset) + uint64(len(it.results))
-	return Cursor{
-		cc: []byte(fmt.Sprintf("offset=%d", offset)),
-	}, nil
+	if it.position > len(it.results)-1 {
+		return Cursor{}, fmt.Errorf("goloquent: interator out of index result range")
+	}
+	key, err := parseKey(string(it.results[it.position][pkColumn]))
+	if err != nil {
+		return Cursor{}, fmt.Errorf("goloquent: missing cursor key")
+	}
+	c := Cursor{
+		Signature: sha1Sign(it.query),
+		Key:       key,
+	}
+	c.cc, _ = json.Marshal(c)
+	return c, nil
 }
 
 // Next : go next record

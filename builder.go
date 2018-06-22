@@ -2,7 +2,9 @@ package goloquent
 
 import (
 	"bytes"
+	"crypto/sha1"
 	"database/sql"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"reflect"
@@ -346,7 +348,7 @@ func (b *builder) run(table string, cmd *stmt) (*Iterator, error) {
 
 	it := Iterator{
 		table:    table,
-		scope:    b.query,
+		query:    cmd.string(),
 		position: -1,
 		columns:  cols,
 	}
@@ -447,60 +449,67 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		return err
 	}
 
+	log.Println("1")
 	if p.Cursor != "" {
-		c, err := DecodeCursor(p.Cursor)
-		if err != nil {
-			return err
-		}
-		log.Println(c)
-		buf, args := new(bytes.Buffer), make([]interface{}, 0)
-		buf.WriteString(fmt.Sprintf(" FROM %s", b.dialect.GetTable(e.Name())))
-		query := b.query
-		cmd, err := b.buildWhere(query)
-		if err != nil {
-			return err
-		}
-		if !cmd.isZero() {
-			args = append(args, cmd.arguments...)
-			buf.WriteString(cmd.string() + " AND ")
-		}
-		orders := query.orders
-		values, or := make([]interface{}, len(orders)), make([]string, 0)
-		for i := 0; i < len(values); i++ {
-			values[i] = &values[i]
-		}
-		for i, o := range orders {
-			op := ">="
-			if o.direction == descending {
-				op = "<="
-			}
-			buf.WriteString(fmt.Sprintf("%s %s %s AND",
-				b.dialect.Quote(o.field), op, variable))
-			or = append(or, fmt.Sprintf("%s %s %s",
-				b.dialect.Quote(o.field),
-				strings.Trim(op, "="),
-				variable))
-			args = append(args, values[i])
-		}
-		buf.WriteString("(" + strings.Join(or, " OR ") + ")")
-		query.orders = append(query.orders, order{keyFieldName, ascending})
-		cmd = b.buildOrder(query)
-		if !cmd.isZero() {
-			buf.WriteString(" " + cmd.string())
-		}
-		if query.limit > 0 {
-			buf.WriteString(fmt.Sprintf(" LIMIT %d", query.limit))
-		}
-		buf.WriteString(";")
-		log.Println(buf.String())
+		// c, err := DecodeCursor(p.Cursor)
+		// if err != nil {
+		// 	return err
+		// }
+
+		// if sha1Sign(cmd.string()) != c.Signature {
+		// 	return fmt.Errorf("goloquent: invalid cursor signature")
+		// }
+		// log.Println(c)
+		// buf, args := new(bytes.Buffer), make([]interface{}, 0)
+		// buf.WriteString(fmt.Sprintf(" FROM %s", b.dialect.GetTable(e.Name())))
+		// query := b.query
+		// cmd, err := b.buildWhere(query)
+		// if err != nil {
+		// 	return err
+		// }
+		// if !cmd.isZero() {
+		// 	args = append(args, cmd.arguments...)
+		// 	buf.WriteString(cmd.string() + " AND ")
+		// }
+		// orders := query.orders
+		// values, or := make([]interface{}, len(orders)), make([]string, 0)
+		// for i := 0; i < len(values); i++ {
+		// 	values[i] = &values[i]
+		// }
+		// for i, o := range orders {
+		// 	op := ">="
+		// 	if o.direction == descending {
+		// 		op = "<="
+		// 	}
+		// 	buf.WriteString(fmt.Sprintf("%s %s %s AND",
+		// 		b.dialect.Quote(o.field), op, variable))
+		// 	or = append(or, fmt.Sprintf("%s %s %s",
+		// 		b.dialect.Quote(o.field),
+		// 		strings.Trim(op, "="),
+		// 		variable))
+		// 	args = append(args, values[i])
+		// }
+		// buf.WriteString("(" + strings.Join(or, " OR ") + ")")
+		// query.orders = append(query.orders, order{keyFieldName, ascending})
+		// cmd = b.buildOrder(query)
+		// if !cmd.isZero() {
+		// 	buf.WriteString(" " + cmd.string())
+		// }
+		// if query.limit > 0 {
+		// 	buf.WriteString(fmt.Sprintf(" LIMIT %d", query.limit))
+		// }
+		// buf.WriteString(";")
+		// log.Println(buf.String())
 	}
 
+	log.Println("2")
 	it, err := b.run(e.Name(), cmd)
 	if err != nil {
 		return err
 	}
 
 	v := reflect.Indirect(reflect.ValueOf(model))
+	// vv := reflect.MakeSlice(v.Type(), 0, 0)
 	isPtr, t := checkMultiPtr(v)
 	i := uint(1)
 	for it.Next() {
@@ -509,15 +518,11 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		if err != nil {
 			return err
 		}
-		// pk, isOk := data[keyFieldName].(*datastore.Key)
-		// if !isOk || pk == nil {
-		// 	return fmt.Errorf("goloquent: missing primary key")
-		// }
 		cc, _ := it.Cursor()
 		p.nxtCursor = cc
-		if i > p.Limit {
-			continue
-		}
+		// if i > p.Limit {
+		// 	continue
+		// }
 		if !isPtr {
 			vi = vi.Elem()
 		}
@@ -525,9 +530,12 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		i++
 	}
 
+	// v.Set(vv)
 	count := it.Count()
+
+	log.Println("Count :", count)
 	if count <= p.Limit {
-		p.nxtCursor = Cursor{}
+		// p.nxtCursor = Cursor{}
 	} else {
 		count--
 	}
@@ -999,6 +1007,14 @@ func (b *builder) runInTransaction(cb TransactionHandler) error {
 		return err
 	}
 	return txn.Commit()
+}
+
+func sha1Sign(query string) string {
+	h, rgx := sha1.New(), regexp.MustCompile(`(?i)FROM.+?(LIMIT)`)
+	bb := bytes.TrimSpace(bytes.TrimLeft(bytes.TrimRight(rgx.Find([]byte(query)), "LIMIT"), "FROM"))
+	log.Println("Signature :", string(bb))
+	h.Write(bb)
+	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
 func interfaceKeyToString(it interface{}) (interface{}, error) {

@@ -845,9 +845,9 @@ func (b *builder) softDeleteStmt(e *entity) (*stmt, error) {
 	}, nil
 }
 
-func (b *builder) deleteStmt(e *entity) (*stmt, error) {
+func (b *builder) deleteStmt(e *entity, isSoftDelete bool) (*stmt, error) {
 	buf, args := new(bytes.Buffer), make([]interface{}, 0)
-	if e.hasSoftDelete() {
+	if isSoftDelete && e.hasSoftDelete() {
 		return b.softDeleteStmt(e)
 	}
 	buf.WriteString(fmt.Sprintf("DELETE FROM %s WHERE %s IN ",
@@ -865,13 +865,13 @@ func (b *builder) deleteStmt(e *entity) (*stmt, error) {
 	}, nil
 }
 
-func (b *builder) delete(model interface{}) error {
+func (b *builder) delete(model interface{}, isSoftDelete bool) error {
 	e, err := newEntity(model)
 	if err != nil {
 		return err
 	}
 	e.setName(b.query.table)
-	cmd, err := b.deleteStmt(e)
+	cmd, err := b.deleteStmt(e, isSoftDelete)
 	if err != nil {
 		return err
 	}

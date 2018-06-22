@@ -2,14 +2,15 @@ package test
 
 import (
 	"log"
-	"strings"
 	"testing"
 
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/jinzhu/copier"
 	"github.com/si3nloong/goloquent"
 	"github.com/si3nloong/goloquent/db"
 )
 
-var mysqlConn *goloquent.DB
+var mysql *goloquent.DB
 
 func TestMysqlConn(t *testing.T) {
 	conn, err := db.Open("mysql", db.Config{
@@ -22,18 +23,41 @@ func TestMysqlConn(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	mysqlConn = conn
+	mysql = conn
 }
 
 func TestMigration(t *testing.T) {
-	log.Println(strings.Repeat("-", 100))
-	log.Println("DEBUG MYSQL MIGRATION ")
-	log.Println(strings.Repeat("-", 100))
-	// if err := mysqlConn.Migrate(&i); err != nil {
-	// 	fmt.Println("Error ::", err)
-	// }
+	if err := mysql.Migrate(new(User)); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func TestCreate(t *testing.T) {
+	var u User
+	copier.Copy(&u, &user)
+	if err := mysql.Create(&u); err != nil {
+		log.Fatal(err)
+	}
+}
 
+func TestSoftDelete(t *testing.T) {
+	var u User
+	copier.Copy(&u, &user)
+	if err := mysql.Create(&u); err != nil {
+		log.Fatal(err)
+	}
+	if err := mysql.Delete(&u); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func TestHardDelete(t *testing.T) {
+	var u User
+	copier.Copy(&u, &user)
+	if err := mysql.Create(&u); err != nil {
+		log.Fatal(err)
+	}
+	if err := mysql.Delete(&u); err != nil {
+		log.Fatal(err)
+	}
 }

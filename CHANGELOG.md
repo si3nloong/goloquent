@@ -49,3 +49,4 @@
 - Support any pointer of base data type and struct
 - (2018-06-14) Support **Postgres**.
 - (2018-06-18) Introduced `Scan` func.
+- (2018-06-22) Introduced hard delete func `Destroy`.

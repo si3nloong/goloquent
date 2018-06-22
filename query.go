@@ -3,7 +3,6 @@ package goloquent
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 
@@ -205,18 +204,37 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 	}
 	q = q.Limit(int(p.Limit) + 1)
 	if p.Cursor != "" {
-		log.Println(strings.Repeat("-", 100))
-		// log.Println(p.Cursor)
-		c, err := DecodeCursor(p.Cursor)
-		if err != nil {
-			return err
-		}
-		// sql, _ := newBuilder(q).buildStmt(q.scope)
-		// log.Println(sql.string())
-		log.Println(c)
-		log.Println(strings.Repeat("-", 100))
-		// 	c, err := datastore.DecodeKey(p.Cursor)
-		// 	q = q.Where(keyFieldName, ">", c)
+		// log.Println("DEBUG CURSOR " + strings.Repeat("-", 100))
+		// c, err := DecodeCursor(p.Cursor)
+		// if err != nil {
+		// 	return err
+		// }
+
+		// orders := q.orders
+		// if len(orders) > 0 {
+		// 	values := make([]interface{}, len(orders))
+		// 	filters := make([]Filter, 0)
+		// 	for i := 0; i < len(values); i++ {
+		// 		values[i] = &values[i]
+		// 	}
+		// 	projection := make([]string, 0, len(orders))
+		// 	for _, o := range orders {
+		// 		projection = append(projection, o.field)
+		// 	}
+		// 	q.db.Table(c.Key.Kind).Select(projection...).
+		// 		WhereEq(keyFieldName, c.Key).Limit(1).Scan(values...)
+		// 	log.Println(values)
+		// 	for i, o := range orders {
+		// 		op := ">="
+		// 		if o.direction == descending {
+		// 			op = "<="
+		// 		}
+		// 		q = q.Where(o.field, op, values[i])
+		// 	}
+		// 	filters = append(filters, Filter{keyFieldName, greaterThan, c.Key, false})
+		// 	// q = q.WhereRaw()
+		// 	q = q.Order(keyFieldName)
+		// }
 	}
 	return newBuilder(q).paginate(p, model)
 }
@@ -224,9 +242,7 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 // DistinctOn :
 func (q *Query) DistinctOn(fields ...string) *Query {
 	q = q.clone()
-	dict := newDictionary(append(q.distinctOn, fields...))
-	// TODO: convert to sequence array (bug)
-	q.distinctOn = dict.keys()
+	q.distinctOn = append(q.distinctOn, fields...)
 	return q
 }
 

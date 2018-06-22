@@ -7,17 +7,16 @@ import (
 	"log"
 	"strconv"
 	"strings"
-)
 
-type cursor struct {
-	ProjectID string `json:"projectId"`
-	Signature string `json:"signature"`
-	Cursor    string `json:"cursor"`
-}
+	"cloud.google.com/go/datastore"
+)
 
 // Cursor :
 type Cursor struct {
-	cc []byte
+	cc        []byte
+	ProjectID string         `json:"projectId"`
+	Signature string         `json:"signature"`
+	Key       *datastore.Key `json:"next"`
 }
 
 func (c Cursor) offset() int32 {
@@ -45,8 +44,13 @@ func DecodeCursor(c string) (Cursor, error) {
 	if err != nil {
 		return Cursor{}, fmt.Errorf("goloquent: invalid cursor")
 	}
-	var m map[string]interface{}
-	json.Unmarshal(b, &m)
-	log.Println(m)
-	return Cursor{b}, nil
+	cc := new(Cursor)
+	cc.cc = b
+	if err := json.Unmarshal(b, cc); err != nil {
+		log.Println(err)
+	}
+	log.Println("DEBUG " + strings.Repeat("-", 100))
+	// cc.key, _ = datastore.DecodeKey(cc.Next)
+	log.Println(cc.ProjectID, cc.Signature, cc.Key)
+	return *cc, nil
 }

@@ -1,7 +1,6 @@
 package goloquent
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
 	"reflect"
@@ -68,9 +67,6 @@ type Client struct {
 
 // Exec :
 func (c Client) Exec(query string, args ...interface{}) (sql.Result, error) {
-	buf := new(bytes.Buffer)
-	buf.WriteString(query)
-	// go c.ConsoleLog(&Stmt{buf, args, nil})
 	result, err := c.sqlCommon.Exec(query, args...)
 	if err != nil {
 		return nil, err

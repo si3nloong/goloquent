@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"log"
 	"reflect"
 	"regexp"
 	"strings"
@@ -20,7 +21,6 @@ type builder struct {
 	db      Client
 	dialect Dialect
 	query   scope
-	// logger  LogHandler
 }
 
 func newBuilder(query *Query) *builder {
@@ -31,12 +31,44 @@ func newBuilder(query *Query) *builder {
 		db:      clone.conn,
 		dialect: clone.dialect,
 		query:   query.clone().scope,
-		// logger:  clone.logger,
 	}
 }
 
-func (b *builder) buildSelect() {
-
+func (b *builder) buildSelect(query scope) *stmt {
+	scope := "*"
+	if len(query.projection) > 0 {
+		projection := make([]string, len(query.projection), len(query.projection))
+		copy(projection, query.projection)
+		for i := 0; i < len(query.projection); i++ {
+			vv := projection[i]
+			regex, _ := regexp.Compile(`\w+\(.+\)`)
+			// vv = strings.Replace(vv, "`", (b.dialect.Quote(vv))[:1], -1)
+			if !regex.MatchString(vv) {
+				vv = b.dialect.Quote(vv)
+			}
+			projection[i] = vv
+		}
+		scope = strings.Join(projection, ",")
+	}
+	if len(query.distinctOn) > 0 {
+		distinctOn := make([]string, len(query.distinctOn), len(query.distinctOn))
+		copy(distinctOn, query.distinctOn)
+		for i := 0; i < len(query.distinctOn); i++ {
+			vv := distinctOn[i]
+			regex, _ := regexp.Compile(`.+ as .+`)
+			vv = strings.Replace(vv, "`", (b.dialect.Quote(vv))[:1], -1)
+			if !regex.MatchString(vv) {
+				vv = b.dialect.Quote(vv)
+			}
+			distinctOn[i] = vv
+		}
+		scope = "DISTINCT " + strings.Join(distinctOn, ",")
+	}
+	buf := new(bytes.Buffer)
+	buf.WriteString(scope)
+	return &stmt{
+		statement: buf,
+	}
 }
 
 func (b *builder) buildWhere(query scope) (*stmt, error) {
@@ -161,12 +193,12 @@ func (b *builder) buildStmt(query scope, args ...interface{}) (*stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !cmd.canSkip() {
+	if !cmd.isZero() {
 		args = append(args, cmd.arguments...)
 		buf.WriteString(cmd.string())
 	}
 	cmd = b.buildOrder(query)
-	if !cmd.canSkip() {
+	if !cmd.isZero() {
 		buf.WriteString(" " + cmd.string())
 	}
 	if query.limit > 0 {
@@ -273,36 +305,8 @@ func (b *builder) migrate(models []interface{}) error {
 func (b *builder) getCommand(e *entity) (*stmt, error) {
 	query := b.query
 	buf := new(bytes.Buffer)
-	scope := "*"
-	if len(query.projection) > 0 {
-		projection := make([]string, len(query.projection), len(query.projection))
-		copy(projection, query.projection)
-		for i := 0; i < len(query.projection); i++ {
-			vv := projection[i]
-			regex, _ := regexp.Compile(`\w+\(.+\)`)
-			// vv = strings.Replace(vv, "`", (b.dialect.Quote(vv))[:1], -1)
-			if !regex.MatchString(vv) {
-				vv = b.dialect.Quote(vv)
-			}
-			projection[i] = vv
-		}
-		scope = strings.Join(projection, ",")
-	}
-	if len(query.distinctOn) > 0 {
-		distinctOn := make([]string, len(query.distinctOn), len(query.distinctOn))
-		copy(distinctOn, query.distinctOn)
-		for i := 0; i < len(query.distinctOn); i++ {
-			vv := distinctOn[i]
-			regex, _ := regexp.Compile(`.+ as .+`)
-			vv = strings.Replace(vv, "`", (b.dialect.Quote(vv))[:1], -1)
-			if !regex.MatchString(vv) {
-				vv = b.dialect.Quote(vv)
-			}
-			distinctOn[i] = vv
-		}
-		scope = "DISTINCT " + strings.Join(distinctOn, ",")
-	}
-	buf.WriteString(fmt.Sprintf("SELECT %s FROM %s", scope, b.dialect.GetTable(e.Name())))
+	buf.WriteString(fmt.Sprintf("SELECT %s ", b.buildSelect(query).string()))
+	buf.WriteString(fmt.Sprintf("FROM %s", b.dialect.GetTable(e.Name())))
 	if e.hasSoftDelete() {
 		query.filters = append(query.filters, Filter{
 			field:    softDeleteColumn,
@@ -361,7 +365,6 @@ func (b *builder) run(table string, cmd *stmt) (*Iterator, error) {
 		for j, name := range cols {
 			it.put(i, name, m[j])
 		}
-		// it.mergeKey()
 		it.patchKey()
 		i++
 	}
@@ -449,13 +452,47 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		if err != nil {
 			return err
 		}
-
-		offset := c.offset()
-		if offset > 0 {
-			b.query.offset = offset
-			cmd.statement.Truncate(cmd.statement.Len() - 1)
-			cmd.statement.WriteString(fmt.Sprintf(" OFFSET %d;", offset))
+		log.Println(c)
+		buf, args := new(bytes.Buffer), make([]interface{}, 0)
+		buf.WriteString(fmt.Sprintf(" FROM %s", b.dialect.GetTable(e.Name())))
+		query := b.query
+		cmd, err := b.buildWhere(query)
+		if err != nil {
+			return err
 		}
+		if !cmd.isZero() {
+			args = append(args, cmd.arguments...)
+			buf.WriteString(cmd.string() + " AND ")
+		}
+		orders := query.orders
+		values, or := make([]interface{}, len(orders)), make([]string, 0)
+		for i := 0; i < len(values); i++ {
+			values[i] = &values[i]
+		}
+		for i, o := range orders {
+			op := ">="
+			if o.direction == descending {
+				op = "<="
+			}
+			buf.WriteString(fmt.Sprintf("%s %s %s AND",
+				b.dialect.Quote(o.field), op, variable))
+			or = append(or, fmt.Sprintf("%s %s %s",
+				b.dialect.Quote(o.field),
+				strings.Trim(op, "="),
+				variable))
+			args = append(args, values[i])
+		}
+		buf.WriteString("(" + strings.Join(or, " OR ") + ")")
+		query.orders = append(query.orders, order{keyFieldName, ascending})
+		cmd = b.buildOrder(query)
+		if !cmd.isZero() {
+			buf.WriteString(" " + cmd.string())
+		}
+		if query.limit > 0 {
+			buf.WriteString(fmt.Sprintf(" LIMIT %d", query.limit))
+		}
+		buf.WriteString(";")
+		log.Println(buf.String())
 	}
 
 	it, err := b.run(e.Name(), cmd)

@@ -16,7 +16,7 @@ func (s *stmt) string() string {
 	return s.statement.String()
 }
 
-func (s *stmt) canSkip() bool {
+func (s *stmt) isZero() bool {
 	return !(s.statement.Len() > 0)
 }
 

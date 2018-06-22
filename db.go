@@ -187,7 +187,12 @@ func (db *DB) Save(model interface{}) error {
 
 // Delete :
 func (db *DB) Delete(model interface{}) error {
-	return newBuilder(db.NewQuery()).delete(model)
+	return newBuilder(db.NewQuery()).delete(model, true)
+}
+
+// Destroy :
+func (db *DB) Destroy(model interface{}) error {
+	return newBuilder(db.NewQuery()).delete(model, false)
 }
 
 // Truncate :

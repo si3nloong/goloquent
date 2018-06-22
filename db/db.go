@@ -67,6 +67,11 @@ func Delete(model interface{}) error {
 	return defaultDB.Delete(model)
 }
 
+// Destroy :
+func Destroy(model interface{}) error {
+	return defaultDB.Destroy(model)
+}
+
 // Save :
 func Save(model interface{}) error {
 	return defaultDB.Save(model)

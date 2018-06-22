@@ -463,19 +463,15 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		return err
 	}
 
-	v := reflect.Indirect(reflect.ValueOf(model))
+	i, v := uint(1), reflect.Indirect(reflect.ValueOf(model))
+	vv := reflect.MakeSlice(v.Type(), 0, 0)
 	isPtr, t := checkMultiPtr(v)
-	i := uint(1)
 	for it.Next() {
 		vi := reflect.New(t)
-		_, err := it.scan(vi.Interface())
+		_, err = it.scan(vi.Interface())
 		if err != nil {
 			return err
 		}
-		// pk, isOk := data[keyFieldName].(*datastore.Key)
-		// if !isOk || pk == nil {
-		// 	return fmt.Errorf("goloquent: missing primary key")
-		// }
 		cc, _ := it.Cursor()
 		p.nxtCursor = cc
 		if i > p.Limit {
@@ -484,9 +480,10 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		if !isPtr {
 			vi = vi.Elem()
 		}
-		v.Set(reflect.Append(v, vi))
+		vv = reflect.Append(vv, vi)
 		i++
 	}
+	v.Set(vv)
 
 	count := it.Count()
 	if count <= p.Limit {

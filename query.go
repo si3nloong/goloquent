@@ -3,7 +3,6 @@ package goloquent
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 
@@ -55,7 +54,8 @@ func checkSinglePtr(it interface{}) error {
 	if v.Kind() != reflect.Ptr {
 		return fmt.Errorf("goloquent: entity must be addressable")
 	}
-	if v.Elem().Kind() != reflect.Struct {
+	v = v.Elem()
+	if v.Kind() != reflect.Struct || isBaseType(v.Type()) {
 		return fmt.Errorf("goloquent: entity data type must be struct")
 	}
 	return nil
@@ -69,10 +69,10 @@ type scope struct {
 	ancestors  []*datastore.Key
 	filters    []Filter
 	orders     []order
-	relatives  []Relationship
 	limit      int32
 	offset     int32
 	errs       []error
+	noScope    bool
 	lockMode   locked
 }
 
@@ -154,6 +154,12 @@ func (q *Query) Omit(fields ...string) *Query {
 	return q
 }
 
+// Unscoped :
+func (q *Query) Unscoped() *Query {
+	q.noScope = true
+	return q
+}
+
 // Find :
 func (q *Query) Find(key *datastore.Key, model interface{}) error {
 	if err := q.getError(); err != nil {
@@ -202,21 +208,16 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 	}
 	if p.Limit > maxLimit {
 		return fmt.Errorf("goloquent: limit overflow : %d, maximum limit : %d", p.Limit, maxLimit)
+	} else if p.Limit <= 0 {
+		p.Limit = defaultLimit
 	}
 	q = q.Limit(int(p.Limit) + 1)
-	if p.Cursor != "" {
-		log.Println(strings.Repeat("-", 100))
-		// log.Println(p.Cursor)
-		c, err := DecodeCursor(p.Cursor)
-		if err != nil {
-			return err
+	if len(q.orders) > 0 {
+		if q.orders[len(q.orders)-1].field != pkColumn {
+			q = q.Order(pkColumn)
 		}
-		// sql, _ := newBuilder(q).buildStmt(q.scope)
-		// log.Println(sql.string())
-		log.Println(c)
-		log.Println(strings.Repeat("-", 100))
-		// 	c, err := datastore.DecodeKey(p.Cursor)
-		// 	q = q.Where(keyFieldName, ">", c)
+	} else {
+		q = q.Order(pkColumn)
 	}
 	return newBuilder(q).paginate(p, model)
 }
@@ -224,21 +225,19 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 // DistinctOn :
 func (q *Query) DistinctOn(fields ...string) *Query {
 	q = q.clone()
-	dict := newDictionary(append(q.distinctOn, fields...))
-	// TODO: convert to sequence array (bug)
-	q.distinctOn = dict.keys()
+	q.distinctOn = append(q.distinctOn, fields...)
 	return q
 }
 
 // Ancestor :
 func (q *Query) Ancestor(ancestor *datastore.Key) *Query {
-	clone := q.clone()
+	q = q.clone()
 	if ancestor.Incomplete() {
-		clone.errs = append(clone.errs, fmt.Errorf("goloquent: ancestor key is incomplete, %v", ancestor))
+		q.errs = append(q.errs, fmt.Errorf("goloquent: ancestor key is incomplete, %v", ancestor))
 		return q
 	}
-	clone.ancestors = append(clone.ancestors, ancestor)
-	return clone
+	q.ancestors = append(q.ancestors, ancestor)
+	return q
 }
 
 // Where :
@@ -285,6 +284,11 @@ func (q *Query) Where(field string, op string, value interface{}) *Query {
 // WhereEq :
 func (q *Query) WhereEq(field string, v interface{}) *Query {
 	return q.Where(field, "=", v)
+}
+
+// WhereNe :
+func (q *Query) WhereNe(field string, v interface{}) *Query {
+	return q.Where(field, "!=", v)
 }
 
 // WhereNull :

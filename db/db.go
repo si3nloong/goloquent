@@ -21,11 +21,6 @@ func Connection(driver string) *goloquent.DB {
 	return nil
 }
 
-// Raw :
-func Raw(stmt string, args ...interface{}) *sql.Row {
-	return defaultDB.Raw(stmt, args...)
-}
-
 // Exec :
 func Exec(stmt string, args ...interface{}) (sql.Result, error) {
 	return defaultDB.Exec(stmt, args...)
@@ -110,6 +105,11 @@ func Select(fields ...string) *goloquent.Query {
 // Ancestor :
 func Ancestor(ancestorKey *datastore.Key) *goloquent.Query {
 	return defaultDB.NewQuery().Ancestor(ancestorKey)
+}
+
+// Unscoped :
+func Unscoped() *goloquent.Query {
+	return defaultDB.NewQuery().Unscoped()
 }
 
 // DistinctOn :

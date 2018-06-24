@@ -64,8 +64,7 @@ func (p *postgres) CurrentDB() (name string) {
 
 // CreateIndex :
 func (p postgres) CreateIndex(idx string, cols []string) string {
-	return fmt.Sprintf("CREATE INDEX %s (%s)",
-		p.Quote(idx), p.Quote(strings.Join(cols, ",")))
+	return fmt.Sprintf("CREATE INDEX %s (%s)", p.Quote(idx), p.Quote(strings.Join(cols, ",")))
 }
 
 func (p postgres) Quote(n string) string {
@@ -167,11 +166,11 @@ func (p postgres) GetSchema(c Column) []Schema {
 				sc.DefaultValue = nil
 				sc.DataType = "text"
 			}
-			if f.get("datatype") != "" {
-				sc.DataType = f.get("datatype")
+			if f.Get("datatype") != "" {
+				sc.DataType = f.Get("datatype")
 			}
 			sc.CharSet = utf8CharSet
-			charset := f.get("charset")
+			charset := f.Get("charset")
 			if charset != "" {
 				sc.CharSet.Encoding = charset
 			}
@@ -333,7 +332,7 @@ func (p *postgres) AlterTable(table string, columns []Column) error {
 			buf.WriteString(",")
 			if !ss.IsNullable {
 				buf.WriteString(prefix + " SET NOT NULL,")
-				if !ss.OmitEmpty() {
+				if !ss.IsOmitEmpty() {
 					buf.WriteString(fmt.Sprintf("%s SET DEFAULT %s,",
 						prefix, p.ToString(ss.DefaultValue)))
 				}

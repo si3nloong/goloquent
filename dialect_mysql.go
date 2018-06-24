@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"regexp"
 	"time"
 )
 
@@ -41,15 +42,19 @@ func (s *mysql) Open(conf Config) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	var version string
-	// verRgx := regexp.MustCompile(`(\d\.\d)`)
-	client.QueryRow("SELECT VERSION();").Scan(&version)
-	// if compareVersion(verRgx.FindStringSubmatch(version)[0], minVersion) > 0 {
-	// 	return nil, fmt.Errorf("require at least %s version of mysql", minVersion)
-	// }
 	client.Exec("SET NAMES utf8mb4;")
-	log.Println("MySQL version :", version)
 	return client, nil
+}
+
+// Version :
+func (s mysql) Version() (version string) {
+	verRgx := regexp.MustCompile(`(\d\.\d)`)
+	s.db.QueryRow("SELECT VERSION();").Scan(&version)
+	log.Println("MySQL version :", version)
+	if compareVersion(verRgx.FindStringSubmatch(version)[0], minVersion) > 0 {
+		panic(fmt.Errorf("require at least %s version of mysql", minVersion))
+	}
+	return
 }
 
 // Quote :
@@ -112,11 +117,7 @@ func (s mysql) CreateTable(table string, columns []Column) error {
 	buf.WriteString(fmt.Sprintf("PRIMARY KEY (%s)", s.Quote(pkColumn)))
 	buf.WriteString(fmt.Sprintf(") ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s;",
 		utf8mb4CharSet.Encoding, utf8mb4CharSet.Collation))
-	log.Println(buf.String())
-	if _, err := s.db.Exec(buf.String()); err != nil {
-		return err
-	}
-	return nil
+	return s.db.execStmt(&stmt{statement: buf})
 }
 
 func (s *mysql) AlterTable(table string, columns []Column) error {
@@ -159,11 +160,7 @@ func (s *mysql) AlterTable(table string, columns []Column) error {
 	buf.WriteString(fmt.Sprintf("CHARACTER SET %s ", s.Quote(utf8mb4CharSet.Encoding)))
 	buf.WriteString(fmt.Sprintf("COLLATE %s", s.Quote(utf8mb4CharSet.Collation)))
 	buf.WriteString(";")
-	log.Println(buf.String())
-	if _, err := s.db.Exec(buf.String()); err != nil {
-		return err
-	}
-	return nil
+	return s.db.execStmt(&stmt{statement: buf})
 }
 
 func (s mysql) ToString(it interface{}) string {

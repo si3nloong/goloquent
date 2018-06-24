@@ -14,10 +14,10 @@ type tag struct {
 
 // TODO: Eager loading tag
 
-func newTag(r reflect.StructField) tag {
-	name := r.Name
+func newTag(sf reflect.StructField) tag {
+	name := sf.Name
 
-	t := strings.TrimSpace(r.Tag.Get("goloquent"))
+	t := strings.TrimSpace(sf.Tag.Get("goloquent"))
 	paths := strings.Split(t, ",")
 	if strings.TrimSpace(paths[0]) != "" {
 		name = paths[0]
@@ -25,7 +25,6 @@ func newTag(r reflect.StructField) tag {
 
 	options := map[string]bool{
 		"omitempty": false,
-		"noindex":   false,
 		"flatten":   false,
 		"unsigned":  false,
 		"longtext":  false,
@@ -38,9 +37,9 @@ func newTag(r reflect.StructField) tag {
 		if _, isValid := options[k]; isValid {
 			options[k] = true
 		} else {
-			rgx := regexp.MustCompile(`datatype=|charset=|collate=\w+`)
+			rgx := regexp.MustCompile(`(datatype|charset|collate)\=.+`)
 			if rgx.MatchString(k) {
-				rgx = regexp.MustCompile(`(\w+)=(\w+)`)
+				rgx = regexp.MustCompile(`(\w+)=(.+)`)
 				result := rgx.FindStringSubmatch(k)
 				others[result[1]] = result[2]
 			}
@@ -54,7 +53,7 @@ func newTag(r reflect.StructField) tag {
 	}
 }
 
-func (t tag) get(k string) string {
+func (t tag) Get(k string) string {
 	return t.others[k]
 }
 
@@ -68,10 +67,6 @@ func (t tag) isSkip() bool {
 
 func (t tag) isFlatten() bool {
 	return t.options["flatten"]
-}
-
-func (t tag) isNoIndex() bool {
-	return t.options["noindex"]
 }
 
 func (t tag) isOmitEmpty() bool {

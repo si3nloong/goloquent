@@ -124,6 +124,29 @@ func mapToValue(data map[string]interface{}) (map[string]interface{}, error) {
 	return data, nil
 }
 
+// LoadStruct :
+func LoadStruct(src interface{}, data map[string]interface{}) error {
+	v := reflect.ValueOf(src)
+	if v.Type().Kind() != reflect.Ptr {
+		return fmt.Errorf("goloquent: struct is not addressable")
+	}
+	codec, err := getStructCodec(src)
+	if err != nil {
+		return err
+	}
+
+	nv := reflect.New(v.Type().Elem())
+	for _, f := range codec.fields {
+		fv := getField(nv.Elem(), f.paths)
+		if err := loadField(fv, data[f.name]); err != nil {
+			return err
+		}
+	}
+
+	v.Elem().Set(nv.Elem())
+	return nil
+}
+
 func interfaceToValue(it interface{}) (interface{}, error) {
 	var value interface{}
 

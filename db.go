@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 	"time"
@@ -63,26 +64,102 @@ type Replacer interface {
 // Client :
 type Client struct {
 	sqlCommon
-	logger LogHandler
+	dialect Dialect
+	logger  LogHandler
 }
 
-// Exec :
-func (c Client) Exec(query string, args ...interface{}) (sql.Result, error) {
+func (c *Client) compileStmt(query string, args ...interface{}) *Stmt {
 	buf := new(bytes.Buffer)
 	buf.WriteString(query)
-	// go c.ConsoleLog(&Stmt{buf, args, nil})
-	result, err := c.sqlCommon.Exec(query, args...)
+	ss := &Stmt{
+		stmt: stmt{
+			statement: buf,
+			arguments: args,
+		},
+		replacer: c.dialect,
+	}
+	log.Println(buf.String())
+	return ss
+}
+
+func (c *Client) execStmt(s *stmt) error {
+	ss := &Stmt{
+		stmt:     *s,
+		replacer: c.dialect,
+	}
+	ss.startTrace()
+	defer func() {
+		ss.stopTrace()
+		c.logger(ss)
+	}()
+	result, err := c.PrepareExec(ss.Raw(), ss.arguments...)
+	if err != nil {
+		return err
+	}
+	ss.Result = result
+	return nil
+}
+
+func (c *Client) execQuery(s *stmt) (*sql.Rows, error) {
+	ss := &Stmt{
+		stmt:     *s,
+		replacer: c.dialect,
+	}
+	ss.startTrace()
+	defer func() {
+		ss.stopTrace()
+		c.logger(ss)
+	}()
+	var rows, err = c.Query(ss.Raw(), ss.arguments...)
 	if err != nil {
 		return nil, err
+	}
+	return rows, nil
+}
+
+func (c *Client) execQueryRow(s *stmt) *sql.Row {
+	ss := &Stmt{
+		stmt:     *s,
+		replacer: c.dialect,
+	}
+	return c.QueryRow(ss.Raw(), ss.arguments...)
+}
+
+// PrepareExec :
+func (c Client) PrepareExec(query string, args ...interface{}) (sql.Result, error) {
+	conn, err := c.sqlCommon.Prepare(query)
+	if err != nil {
+		return nil, fmt.Errorf("goloquent: unable to prepare sql statement : %v", err)
+	}
+	defer conn.Close()
+	result, err := conn.Exec(args...)
+	if err != nil {
+		return nil, fmt.Errorf("goloquent: %v", err)
 	}
 	return result, nil
 }
 
-// ConsoleLog :
-func (c Client) ConsoleLog(stmt *Stmt) {
-	if c.logger != nil {
-		c.logger(stmt)
+// Exec :
+func (c Client) Exec(query string, args ...interface{}) (sql.Result, error) {
+	result, err := c.sqlCommon.Exec(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("goloquent: %v", err)
 	}
+	return result, nil
+}
+
+// Query :
+func (c Client) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	rows, err := c.sqlCommon.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("goloquent: %v", err)
+	}
+	return rows, nil
+}
+
+// QueryRow :
+func (c Client) QueryRow(query string, args ...interface{}) *sql.Row {
+	return c.sqlCommon.QueryRow(query, args...)
 }
 
 // DB :
@@ -91,20 +168,20 @@ type DB struct {
 	driver  string
 	name    string
 	replica string
-	conn    Client
+	client  Client
 	dialect Dialect
 	omits   []string
 }
 
 // NewDB :
 func NewDB(driver string, conn sqlCommon, dialect Dialect, logHandler LogHandler) *DB {
-	client := Client{conn, logHandler}
+	client := Client{conn, dialect, logHandler}
 	dialect.SetDB(client)
 	return &DB{
 		id:      fmt.Sprintf("%s:%d", driver, time.Now().UnixNano()),
 		driver:  driver,
 		name:    dialect.CurrentDB(),
-		conn:    client,
+		client:  client,
 		dialect: dialect,
 	}
 }
@@ -116,29 +193,24 @@ func (db *DB) clone() *DB {
 		driver:  db.driver,
 		name:    db.name,
 		replica: fmt.Sprintf("%d", time.Now().Unix()),
-		conn:    db.conn,
+		client:  db.client,
 		dialect: db.dialect,
 	}
 }
 
 // ID :
-func (db *DB) ID() string {
+func (db DB) ID() string {
 	return db.id
-}
-
-// Raw :
-func (db *DB) Raw(stmt string, args ...interface{}) *sql.Row {
-	return newBuilder(db.NewQuery()).db.QueryRow(stmt, args...)
-}
-
-// Exec :
-func (db *DB) Exec(stmt string, args ...interface{}) (sql.Result, error) {
-	return newBuilder(db.NewQuery()).db.Exec(stmt, args...)
 }
 
 // NewQuery :
 func (db *DB) NewQuery() *Query {
 	return newQuery(db)
+}
+
+// Exec :
+func (db *DB) Exec(stmt string, args ...interface{}) (sql.Result, error) {
+	return newBuilder(db.NewQuery()).db.client.Exec(stmt, args...)
 }
 
 // Table :
@@ -157,6 +229,8 @@ func (db *DB) Migrate(model ...interface{}) error {
 func (db *DB) Omit(fields ...string) Replacer {
 	ff := newDictionary(fields)
 	clone := db.clone()
+	ff.delete(keyFieldName)
+	ff.delete(pkColumn)
 	clone.omits = ff.keys()
 	return clone
 }
@@ -248,10 +322,10 @@ func (db *DB) Where(field string, operator string, value interface{}) *Query {
 }
 
 // Run :
-func (db *DB) Run(query *Query) (*Iterator, error) {
-	// return newBuilder(db.NewQuery()).run(new(Stmt))
-	return nil, nil
-}
+// func (db *DB) Run(query *Query) (*Iterator, error) {
+// 	// return newBuilder(db.NewQuery()).run(new(Stmt))
+// 	return nil, nil
+// }
 
 // RunInTransaction :
 func (db *DB) RunInTransaction(cb TransactionHandler) error {
@@ -260,7 +334,7 @@ func (db *DB) RunInTransaction(cb TransactionHandler) error {
 
 // Close :
 func (db *DB) Close() error {
-	x, isOk := db.conn.sqlCommon.(*sql.DB)
+	x, isOk := db.client.sqlCommon.(*sql.DB)
 	if !isOk {
 		return nil
 	}

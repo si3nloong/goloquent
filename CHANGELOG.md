@@ -33,8 +33,10 @@
 - Change second parameter **parentKey** `*datastore.Key` to optional on function `Create` nor `Upsert`
 - (2018-06-16) No longer support mysql 5.6 and below (at least 5.7)
 - (2018-06-19) Table is now by default using `utf8mb4` encoding
+- (2018-06-20) Replaced `Next` func in `Pagination` struct with `NextCursor`
 - (2018-06-21) Support extra option `datatype`, `charset`, `collate` on struct property, but it only limited to datatype of `string`
 - (2018-06-21) Allow `*` on func `Select`
+- (2018-06-24) Replaced offset pagination with cursor pagination
 
 # New Features
 
@@ -51,3 +53,4 @@
 - (2018-06-14) Support **Postgres**.
 - (2018-06-18) Introduced `Scan` func.
 - (2018-06-22) Introduced hard delete func `Destroy`.
+- (2018-06-24) Introduced `Unscoped` func.

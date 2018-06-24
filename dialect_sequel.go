@@ -123,7 +123,7 @@ func (s *sequel) DataType(sc Schema) string {
 	}
 	if !sc.IsNullable {
 		buf.WriteString(" NOT NULL")
-		if !sc.OmitEmpty() {
+		if !sc.IsOmitEmpty() {
 			buf.WriteString(fmt.Sprintf(" DEFAULT %s", s.ToString(sc.DefaultValue)))
 		}
 	}
@@ -206,16 +206,16 @@ func (s *sequel) GetSchema(c Column) []Schema {
 				sc.DefaultValue = nil
 				sc.DataType = "text"
 			}
-			if f.get("datatype") != "" {
-				sc.DataType = f.get("datatype")
+			if f.Get("datatype") != "" {
+				sc.DataType = f.Get("datatype")
 			}
 			sc.CharSet = utf8mb4CharSet
-			charset := f.get("charset")
+			charset := f.Get("charset")
 			if charset != "" {
 				sc.CharSet.Encoding = charset
 				sc.CharSet.Collation = fmt.Sprintf("%s_general_ci", charset)
-				if f.get("collate") != "" {
-					sc.CharSet.Collation = f.get("collate")
+				if f.Get("collate") != "" {
+					sc.CharSet.Collation = f.Get("collate")
 				}
 			}
 		case reflect.Bool:
@@ -296,34 +296,10 @@ func (s *sequel) OnConflictUpdate(table string, cols []string) string {
 	buf := new(bytes.Buffer)
 	buf.WriteString("ON DUPLICATE KEY UPDATE ")
 	for _, c := range cols {
-		buf.WriteString(fmt.Sprintf("%s=values(%s),",
-			s.Quote(c), s.Quote(c)))
+		buf.WriteString(fmt.Sprintf("%s=VALUES(%s),", s.Quote(c), s.Quote(c)))
 	}
 	buf.Truncate(buf.Len() - 1)
 	return buf.String()
-}
-
-// LoadStruct :
-func LoadStruct(src interface{}, data map[string]interface{}) error {
-	v := reflect.ValueOf(src)
-	if v.Type().Kind() != reflect.Ptr {
-		return fmt.Errorf("goloquent: struct is not addressable")
-	}
-	codec, err := getStructCodec(src)
-	if err != nil {
-		return err
-	}
-
-	nv := reflect.New(v.Type().Elem())
-	for _, f := range codec.fields {
-		fv := getField(nv.Elem(), f.paths)
-		if err := loadField(fv, data[f.name]); err != nil {
-			return err
-		}
-	}
-
-	v.Elem().Set(nv.Elem())
-	return nil
 }
 
 func (s *sequel) CreateTable(string, []Column) error {

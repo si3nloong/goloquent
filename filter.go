@@ -27,7 +27,7 @@ func (f *Filter) Interface() (interface{}, error) {
 	return interfaceToValue(v)
 }
 
-// final data type :::
+// final data type :
 // string, bool, uint64, int64, float64, []byte
 // time.Time, *datastore.Key, datastore.GeoPoint, []interface{}
 func normalizeValue(val interface{}) (interface{}, error) {

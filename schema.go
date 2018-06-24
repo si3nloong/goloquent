@@ -29,7 +29,7 @@ type Schema struct {
 	CharSet
 }
 
-// OmitEmpty :
-func (s Schema) OmitEmpty() bool {
+// IsOmitEmpty :
+func (s Schema) IsOmitEmpty() bool {
 	return reflect.TypeOf(s.DefaultValue) == reflect.TypeOf(OmitDefault(nil))
 }

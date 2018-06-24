@@ -13,6 +13,7 @@
 - (2018-06-19) Fix primary key bug when using `WHERE $Key IN (?)`, key is not convert to primary key format
 - (2018-06-21) Fix alter table character set and collation bug, change from `ALTER TABLE xxx CONVERT TO CHARACTER SET utf8` to `ALTER TABLE xxx CHARACTER SET utf8`
 - (2018-06-21) Fix mysql panic even is 5.7 or above `eg: GAE return 5.7.14-google-log instead 5.7.14` will mismatch in the string comparison
+- (2018-06-22) Fix `Paginate` bug, model slice is appending instead of get replace
 
 # Breaking Changes
 
@@ -32,8 +33,10 @@
 - Change second parameter **parentKey** `*datastore.Key` to optional on function `Create` nor `Upsert`
 - (2018-06-16) No longer support mysql 5.6 and below (at least 5.7)
 - (2018-06-19) Table is now by default using `utf8mb4` encoding
+- (2018-06-20) Replaced `Next` func in `Pagination` struct with `NextCursor`
 - (2018-06-21) Support extra option `datatype`, `charset`, `collate` on struct property, but it only limited to datatype of `string`
 - (2018-06-21) Allow `*` on func `Select`
+- (2018-06-24) Replaced offset pagination with cursor pagination
 
 # New Features
 
@@ -49,3 +52,4 @@
 - Support any pointer of base data type and struct
 - (2018-06-14) Support **Postgres**.
 - (2018-06-18) Introduced `Scan` func.
+- (2018-06-22) Introduced hard delete func `Destroy`.

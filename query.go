@@ -3,7 +3,6 @@ package goloquent
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 
@@ -55,7 +54,8 @@ func checkSinglePtr(it interface{}) error {
 	if v.Kind() != reflect.Ptr {
 		return fmt.Errorf("goloquent: entity must be addressable")
 	}
-	if v.Elem().Kind() != reflect.Struct {
+	v = v.Elem()
+	if v.Kind() != reflect.Struct || isBaseType(v.Type()) {
 		return fmt.Errorf("goloquent: entity data type must be struct")
 	}
 	return nil
@@ -69,10 +69,10 @@ type scope struct {
 	ancestors  []*datastore.Key
 	filters    []Filter
 	orders     []order
-	relatives  []Relationship
 	limit      int32
 	offset     int32
 	errs       []error
+	noScope    bool
 	lockMode   locked
 }
 
@@ -154,6 +154,12 @@ func (q *Query) Omit(fields ...string) *Query {
 	return q
 }
 
+// Unscoped :
+func (q *Query) Unscoped() *Query {
+	q.noScope = true
+	return q
+}
+
 // Find :
 func (q *Query) Find(key *datastore.Key, model interface{}) error {
 	if err := q.getError(); err != nil {
@@ -206,39 +212,12 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 		p.Limit = defaultLimit
 	}
 	q = q.Limit(int(p.Limit) + 1)
-	log.Println("pagination!!!")
-	if p.Cursor != "" {
-		// log.Println("DEBUG CURSOR " + strings.Repeat("-", 100))
-		// c, err := DecodeCursor(p.Cursor)
-		// if err != nil {
-		// 	return err
-		// }
-
-		// orders := q.orders
-		// if len(orders) > 0 {
-		// 	values := make([]interface{}, len(orders))
-		// 	filters := make([]Filter, 0)
-		// 	for i := 0; i < len(values); i++ {
-		// 		values[i] = &values[i]
-		// 	}
-		// 	projection := make([]string, 0, len(orders))
-		// 	for _, o := range orders {
-		// 		projection = append(projection, o.field)
-		// 	}
-		// 	q.db.Table(c.Key.Kind).Select(projection...).
-		// 		WhereEq(keyFieldName, c.Key).Limit(1).Scan(values...)
-		// 	log.Println(values)
-		// 	for i, o := range orders {
-		// 		op := ">="
-		// 		if o.direction == descending {
-		// 			op = "<="
-		// 		}
-		// 		q = q.Where(o.field, op, values[i])
-		// 	}
-		// 	filters = append(filters, Filter{keyFieldName, greaterThan, c.Key, false})
-		// 	// q = q.WhereRaw()
-		// 	q = q.Order(keyFieldName)
-		// }
+	if len(q.orders) > 0 {
+		if q.orders[len(q.orders)-1].field != pkColumn {
+			q = q.Order(pkColumn)
+		}
+	} else {
+		q = q.Order(pkColumn)
 	}
 	return newBuilder(q).paginate(p, model)
 }
@@ -252,13 +231,13 @@ func (q *Query) DistinctOn(fields ...string) *Query {
 
 // Ancestor :
 func (q *Query) Ancestor(ancestor *datastore.Key) *Query {
-	clone := q.clone()
+	q = q.clone()
 	if ancestor.Incomplete() {
-		clone.errs = append(clone.errs, fmt.Errorf("goloquent: ancestor key is incomplete, %v", ancestor))
+		q.errs = append(q.errs, fmt.Errorf("goloquent: ancestor key is incomplete, %v", ancestor))
 		return q
 	}
-	clone.ancestors = append(clone.ancestors, ancestor)
-	return clone
+	q.ancestors = append(q.ancestors, ancestor)
+	return q
 }
 
 // Where :
@@ -305,6 +284,11 @@ func (q *Query) Where(field string, op string, value interface{}) *Query {
 // WhereEq :
 func (q *Query) WhereEq(field string, v interface{}) *Query {
 	return q.Where(field, "=", v)
+}
+
+// WhereNe :
+func (q *Query) WhereNe(field string, v interface{}) *Query {
+	return q.Where(field, "!=", v)
 }
 
 // WhereNull :

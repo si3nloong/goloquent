@@ -24,7 +24,8 @@ type Saver interface {
 // Iterator :
 type Iterator struct {
 	table    string
-	query    string
+	stmt     *Stmt
+	sign     string
 	position int // current record position
 	columns  []string
 	results  []map[string][]byte
@@ -49,13 +50,7 @@ func (it *Iterator) patchKey() {
 	it.results[pos] = l
 }
 
-func (it *Iterator) put(pos int, k string, v interface{}) error {
-	diff := pos - len(it.results) + 1
-	for i := 0; i < diff; i++ {
-		it.results = append(it.results, make(map[string][]byte))
-	}
-	l := it.results[pos]
-
+func toByte(v interface{}) []byte {
 	var b []byte
 	switch vi := v.(type) {
 	case nil:
@@ -66,7 +61,16 @@ func (it *Iterator) put(pos int, k string, v interface{}) error {
 	default:
 		b = []byte(fmt.Sprintf("%v", vi))
 	}
-	l[k] = b
+	return b
+}
+
+func (it *Iterator) put(pos int, k string, v interface{}) error {
+	diff := pos - len(it.results) + 1
+	for i := 0; i < diff; i++ {
+		it.results = append(it.results, make(map[string][]byte))
+	}
+	l := it.results[pos]
+	l[k] = toByte(v)
 	it.results[pos] = l
 	return nil
 }
@@ -101,17 +105,24 @@ func (it Iterator) Count() uint {
 	return uint(len(it.results))
 }
 
+func (it *Iterator) signature() string {
+	if it.sign == "" {
+		it.sign = sha1Sign(it.stmt)
+	}
+	return it.sign
+}
+
 // Cursor :
-func (it Iterator) Cursor() (Cursor, error) {
-	if it.position > len(it.results)-1 {
+func (it *Iterator) Cursor() (Cursor, error) {
+	if it.position+1 > len(it.results)-1 {
 		return Cursor{}, fmt.Errorf("goloquent: interator out of index result range")
 	}
-	key, err := parseKey(string(it.results[it.position][pkColumn]))
+	key, err := parseKey(string(it.results[it.position+1][keyFieldName]))
 	if err != nil {
 		return Cursor{}, fmt.Errorf("goloquent: missing cursor key")
 	}
 	c := Cursor{
-		Signature: sha1Sign(it.query),
+		Signature: it.signature(),
 		Key:       key,
 	}
 	c.cc, _ = json.Marshal(c)

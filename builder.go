@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
-	"log"
 	"reflect"
 	"regexp"
 	"strings"
@@ -15,24 +14,21 @@ import (
 	"cloud.google.com/go/datastore"
 )
 
-const variable = "??"
+const variable = "?"
 
 type builder struct {
-	driver  string
-	dbName  string
-	db      Client
-	dialect Dialect
-	query   scope
+	// dialect Dialect
+	db    *DB
+	query scope
 }
 
 func newBuilder(query *Query) *builder {
 	clone := query.db.clone()
 	return &builder{
-		driver:  clone.driver,
-		dbName:  clone.name,
-		db:      clone.conn,
-		dialect: clone.dialect,
-		query:   query.clone().scope,
+		// conn:    clone.client,
+		// dialect: clone.dialect,
+		db:    clone,
+		query: query.clone().scope,
 	}
 }
 
@@ -44,9 +40,9 @@ func (b *builder) buildSelect(query scope) *stmt {
 		for i := 0; i < len(query.projection); i++ {
 			vv := projection[i]
 			regex, _ := regexp.Compile(`\w+\(.+\)`)
-			// vv = strings.Replace(vv, "`", (b.dialect.Quote(vv))[:1], -1)
+			// vv = strings.Replace(vv, "`", (b.db.dialect.Quote(vv))[:1], -1)
 			if !regex.MatchString(vv) {
-				vv = b.dialect.Quote(vv)
+				vv = b.db.dialect.Quote(vv)
 			}
 			projection[i] = vv
 		}
@@ -58,15 +54,16 @@ func (b *builder) buildSelect(query scope) *stmt {
 		for i := 0; i < len(query.distinctOn); i++ {
 			vv := distinctOn[i]
 			regex, _ := regexp.Compile(`.+ as .+`)
-			vv = strings.Replace(vv, "`", (b.dialect.Quote(vv))[:1], -1)
+			vv = strings.Replace(vv, "`", (b.db.dialect.Quote(vv))[:1], -1)
 			if !regex.MatchString(vv) {
-				vv = b.dialect.Quote(vv)
+				vv = b.db.dialect.Quote(vv)
 			}
 			distinctOn[i] = vv
 		}
 		scope = "DISTINCT " + strings.Join(distinctOn, ",")
 	}
 	buf := new(bytes.Buffer)
+	buf.WriteString("SELECT ")
 	buf.WriteString(scope)
 	return &stmt{
 		statement: buf,
@@ -78,7 +75,7 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 	wheres := make([]string, 0)
 	args := make([]interface{}, 0)
 	for _, f := range query.filters {
-		name := b.dialect.Quote(f.field)
+		name := b.db.dialect.Quote(f.field)
 		v, err := f.Interface()
 		if err != nil {
 			return nil, err
@@ -86,8 +83,8 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 
 		switch f.field {
 		case keyFieldName, pkColumn:
-			name = b.dialect.Quote(pkColumn)
-			v, err = interfaceKeyToString(f.value)
+			name = b.db.dialect.Quote(pkColumn)
+			v, err = interfaceToKeyString(f.value)
 			if err != nil {
 				return nil, err
 			}
@@ -147,7 +144,7 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 	}
 
 	for _, aa := range query.ancestors {
-		wheres = append(wheres, fmt.Sprintf("%s LIKE %s", b.dialect.Quote(pkColumn), variable))
+		wheres = append(wheres, fmt.Sprintf("%s LIKE %s", b.db.dialect.Quote(pkColumn), variable))
 		args = append(args, fmt.Sprintf("%%%s/%%", stringifyKey(aa)))
 	}
 
@@ -171,9 +168,9 @@ func (b *builder) buildOrder(query scope) *stmt {
 	if len(query.orders) > 0 {
 		arr := make([]string, 0, len(query.orders))
 		for _, o := range query.orders {
-			name := b.dialect.Quote(o.field)
+			name := b.db.dialect.Quote(o.field)
 			if o.field == keyFieldName {
-				name = b.dialect.Quote(pkColumn)
+				name = b.db.dialect.Quote(pkColumn)
 			}
 			suffix := " ASC"
 			if o.direction != ascending {
@@ -181,9 +178,22 @@ func (b *builder) buildOrder(query scope) *stmt {
 			}
 			arr = append(arr, name+suffix)
 		}
-		buf.WriteString("ORDER BY " + strings.Join(arr, ","))
+		buf.WriteString(" ORDER BY " + strings.Join(arr, ","))
 	}
 
+	return &stmt{
+		statement: buf,
+	}
+}
+
+func (b *builder) buildLimitOffset(query scope) *stmt {
+	buf := new(bytes.Buffer)
+	if query.limit > 0 {
+		buf.WriteString(fmt.Sprintf(" LIMIT %d", query.limit))
+	}
+	if query.offset > 0 {
+		buf.WriteString(fmt.Sprintf(" OFFSET %d", query.offset))
+	}
 	return &stmt{
 		statement: buf,
 	}
@@ -199,90 +209,20 @@ func (b *builder) buildStmt(query scope, args ...interface{}) (*stmt, error) {
 		args = append(args, cmd.arguments...)
 		buf.WriteString(cmd.string())
 	}
-	cmd = b.buildOrder(query)
-	if !cmd.isZero() {
-		buf.WriteString(" " + cmd.string())
-	}
-	if query.limit > 0 {
-		buf.WriteString(fmt.Sprintf(" LIMIT %d", query.limit))
-	}
-	if query.offset > 0 {
-		buf.WriteString(fmt.Sprintf(" OFFSET %d", query.offset))
-	}
+	buf.WriteString(b.buildOrder(query).string())
+	buf.WriteString(b.buildLimitOffset(query).string())
 	return &stmt{
 		statement: buf,
 		arguments: args,
 	}, nil
 }
 
-func consoleLog(b builder, s *Stmt) {
-	if b.db.logger != nil {
-		b.db.logger(s)
-	}
-}
-
-// func execStmt(db sqlCommon, stmt *Stmt) error {
-// 	// go consoleLog(*, *stmt)
-// 	conn, err := db.Prepare(stmt.Raw())
-// 	if err != nil {
-// 		return fmt.Errorf("goloquent: unable to prepare the sql statement: %v", err)
-// 	}
-// 	defer conn.Close()
-// 	result, err := conn.Exec(stmt.arguments...)
-// 	if err != nil {
-// 		return fmt.Errorf("goloquent: %v", err)
-// 	}
-// 	stmt.Result = result
-// 	return nil
-// }
-
-func (b *builder) execStmt(s *stmt) error {
-	ss := &Stmt{
-		stmt:     *s,
-		replacer: b.dialect,
-	}
-	go consoleLog(*b, ss)
-	conn, err := b.db.Prepare(ss.Raw())
-	if err != nil {
-		return fmt.Errorf("goloquent: unable to prepare the sql statement: %v", err)
-	}
-	defer conn.Close()
-	result, err := conn.Exec(ss.arguments...)
-	if err != nil {
-		return fmt.Errorf("goloquent: %v", err)
-	}
-	ss.Result = result
-	return nil
-}
-
-func (b *builder) execQueryRow(s *stmt) *sql.Row {
-	ss := &Stmt{
-		stmt:     *s,
-		replacer: b.dialect,
-	}
-	go consoleLog(*b, ss)
-	return b.db.QueryRow(ss.Raw(), ss.arguments...)
-}
-
-func (b *builder) execQuery(s *stmt) (*sql.Rows, error) {
-	ss := &Stmt{
-		stmt:     *s,
-		replacer: b.dialect,
-	}
-	go consoleLog(*b, ss)
-	var rows, err = b.db.Query(ss.Raw(), ss.arguments...)
-	if err != nil {
-		return nil, err
-	}
-	return rows, nil
-}
-
 func (b *builder) createTable(e *entity) error {
-	return b.dialect.CreateTable(e.Name(), e.columns)
+	return b.db.dialect.CreateTable(e.Name(), e.columns)
 }
 
 func (b *builder) alterTable(e *entity) error {
-	return b.dialect.AlterTable(e.Name(), e.columns)
+	return b.db.dialect.AlterTable(e.Name(), e.columns)
 }
 
 func (b *builder) migrate(models []interface{}) error {
@@ -291,7 +231,7 @@ func (b *builder) migrate(models []interface{}) error {
 		if err != nil {
 			return err
 		}
-		if b.dialect.HasTable(e.Name()) {
+		if b.db.dialect.HasTable(e.Name()) {
 			if err := b.alterTable(e); err != nil {
 				return err
 			}
@@ -307,9 +247,9 @@ func (b *builder) migrate(models []interface{}) error {
 func (b *builder) getCommand(e *entity) (*stmt, error) {
 	query := b.query
 	buf := new(bytes.Buffer)
-	buf.WriteString(fmt.Sprintf("SELECT %s ", b.buildSelect(query).string()))
-	buf.WriteString(fmt.Sprintf("FROM %s", b.dialect.GetTable(e.Name())))
-	if e.hasSoftDelete() {
+	buf.WriteString(b.buildSelect(query).string())
+	buf.WriteString(fmt.Sprintf(" FROM %s", b.db.dialect.GetTable(e.Name())))
+	if !query.noScope && e.hasSoftDelete() {
 		query.filters = append(query.filters, Filter{
 			field:    softDeleteColumn,
 			operator: equal,
@@ -336,7 +276,7 @@ func (b *builder) getCommand(e *entity) (*stmt, error) {
 }
 
 func (b *builder) run(table string, cmd *stmt) (*Iterator, error) {
-	var rows, err = b.execQuery(cmd)
+	var rows, err = b.db.client.execQuery(cmd)
 	if err != nil {
 		return nil, fmt.Errorf("goloquent: %v", err)
 	}
@@ -348,7 +288,7 @@ func (b *builder) run(table string, cmd *stmt) (*Iterator, error) {
 
 	it := Iterator{
 		table:    table,
-		query:    cmd.string(),
+		stmt:     &Stmt{stmt: *cmd, replacer: b.db.dialect},
 		position: -1,
 		columns:  cols,
 	}
@@ -438,6 +378,21 @@ func (b *builder) getMulti(model interface{}) error {
 	return nil
 }
 
+func baseToInterface(it interface{}) interface{} {
+	var v interface{}
+	switch vi := it.(type) {
+	case nil, bool, uint64, int64, float64, string:
+		v = vi
+	case []byte:
+		v = string(vi)
+	case time.Time:
+		v = vi.Format("2006-01-02 15:04:05")
+	default:
+		v = vi
+	}
+	return v
+}
+
 func (b *builder) paginate(p *Pagination, model interface{}) error {
 	e, err := newEntity(model)
 	if err != nil {
@@ -449,93 +404,97 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		return err
 	}
 
-	log.Println("1")
+	ori := *cmd
 	if p.Cursor != "" {
-		// c, err := DecodeCursor(p.Cursor)
-		// if err != nil {
-		// 	return err
-		// }
-
-		// if sha1Sign(cmd.string()) != c.Signature {
-		// 	return fmt.Errorf("goloquent: invalid cursor signature")
-		// }
-		// log.Println(c)
-		// buf, args := new(bytes.Buffer), make([]interface{}, 0)
-		// buf.WriteString(fmt.Sprintf(" FROM %s", b.dialect.GetTable(e.Name())))
-		// query := b.query
-		// cmd, err := b.buildWhere(query)
-		// if err != nil {
-		// 	return err
-		// }
-		// if !cmd.isZero() {
-		// 	args = append(args, cmd.arguments...)
-		// 	buf.WriteString(cmd.string() + " AND ")
-		// }
-		// orders := query.orders
-		// values, or := make([]interface{}, len(orders)), make([]string, 0)
-		// for i := 0; i < len(values); i++ {
-		// 	values[i] = &values[i]
-		// }
-		// for i, o := range orders {
-		// 	op := ">="
-		// 	if o.direction == descending {
-		// 		op = "<="
-		// 	}
-		// 	buf.WriteString(fmt.Sprintf("%s %s %s AND",
-		// 		b.dialect.Quote(o.field), op, variable))
-		// 	or = append(or, fmt.Sprintf("%s %s %s",
-		// 		b.dialect.Quote(o.field),
-		// 		strings.Trim(op, "="),
-		// 		variable))
-		// 	args = append(args, values[i])
-		// }
-		// buf.WriteString("(" + strings.Join(or, " OR ") + ")")
-		// query.orders = append(query.orders, order{keyFieldName, ascending})
-		// cmd = b.buildOrder(query)
-		// if !cmd.isZero() {
-		// 	buf.WriteString(" " + cmd.string())
-		// }
-		// if query.limit > 0 {
-		// 	buf.WriteString(fmt.Sprintf(" LIMIT %d", query.limit))
-		// }
-		// buf.WriteString(";")
-		// log.Println(buf.String())
+		c, err := DecodeCursor(p.Cursor)
+		if err != nil {
+			return err
+		}
+		if sha1Sign(&Stmt{stmt: *cmd, replacer: b.db.dialect}) != c.Signature {
+			return fmt.Errorf("goloquent: invalid cursor signature")
+		}
+		query := b.query
+		buf, args := new(bytes.Buffer), make([]interface{}, 0)
+		buf.WriteString(b.buildSelect(query).string())
+		buf.WriteString(fmt.Sprintf(" FROM %s", b.db.dialect.GetTable(e.Name())))
+		cmd, err = b.buildWhere(query)
+		if err != nil {
+			return err
+		}
+		if !cmd.isZero() {
+			args = append(args, cmd.arguments...)
+			buf.WriteString(cmd.string() + " AND ")
+		}
+		orders := query.orders
+		projection := make([]string, 0, len(orders))
+		for _, o := range orders {
+			projection = append(projection, o.field)
+		}
+		values, or := make([]interface{}, len(orders)), make([]string, 0)
+		for i := 0; i < len(values); i++ {
+			values[i] = &values[i]
+		}
+		if err := b.db.Table(e.Name()).
+			Select(projection...).
+			WhereEq(keyFieldName, c.Key).
+			Limit(1).Scan(values...); err != nil {
+			return err
+		}
+		arg := make([]interface{}, 0, len(orders))
+		for i, o := range orders {
+			vv := baseToInterface(values[i])
+			op := ">="
+			if o.direction == descending {
+				op = "<="
+			}
+			if i < len(orders)-1 {
+				buf.WriteString(fmt.Sprintf("%s %s %s AND ",
+					b.db.dialect.Quote(o.field), op, variable))
+				args = append(args, vv)
+			}
+			or = append(or, fmt.Sprintf("%s %s %s",
+				b.db.dialect.Quote(o.field), op, variable))
+			arg = append(arg, vv)
+		}
+		buf.WriteString("(" + strings.Join(or, " OR ") + ")")
+		args = append(args, arg...)
+		buf.WriteString(b.buildOrder(query).string())
+		buf.WriteString(b.buildLimitOffset(query).string())
+		buf.WriteString(";")
+		cmd = &stmt{statement: buf, arguments: args}
 	}
 
-	log.Println("2")
 	it, err := b.run(e.Name(), cmd)
+	it.stmt = &Stmt{stmt: ori, replacer: b.db.dialect}
 	if err != nil {
 		return err
 	}
 
-	v := reflect.Indirect(reflect.ValueOf(model))
-	// vv := reflect.MakeSlice(v.Type(), 0, 0)
+	i, v := uint(1), reflect.Indirect(reflect.ValueOf(model))
+	vv := reflect.MakeSlice(v.Type(), 0, 0)
 	isPtr, t := checkMultiPtr(v)
-	i := uint(1)
 	for it.Next() {
+		if i > p.Limit {
+			continue
+		}
 		vi := reflect.New(t)
-		_, err := it.scan(vi.Interface())
+		_, err = it.scan(vi.Interface())
 		if err != nil {
 			return err
 		}
 		cc, _ := it.Cursor()
 		p.nxtCursor = cc
-		// if i > p.Limit {
-		// 	continue
-		// }
 		if !isPtr {
 			vi = vi.Elem()
 		}
-		v.Set(reflect.Append(v, vi))
+		vv = reflect.Append(vv, vi)
 		i++
 	}
 
-	// v.Set(vv)
+	v.Set(vv)
 	count := it.Count()
-
-	log.Println("Count :", count)
 	if count <= p.Limit {
-		// p.nxtCursor = Cursor{}
+		p.nxtCursor = Cursor{}
 	} else {
 		count--
 	}
@@ -557,8 +516,8 @@ func (b *builder) putStmt(parentKey []*datastore.Key, e *entity) (*stmt, error) 
 	cols := e.Columns()
 	buf.WriteString(fmt.Sprintf(
 		"INSERT INTO %s (%s) VALUES ",
-		b.dialect.GetTable(e.Name()),
-		b.dialect.Quote(strings.Join(e.Columns(), b.dialect.Quote(",")))))
+		b.db.dialect.GetTable(e.Name()),
+		b.db.dialect.Quote(strings.Join(e.Columns(), b.db.dialect.Quote(",")))))
 
 	for i := 0; i < v.Len(); i++ {
 		f := v.Index(i)
@@ -627,7 +586,7 @@ func (b *builder) put(model interface{}, parentKey []*datastore.Key) error {
 	if err != nil {
 		return err
 	}
-	return b.execStmt(cmd)
+	return b.db.client.execStmt(cmd)
 }
 
 func (b *builder) upsert(model interface{}, parentKey []*datastore.Key) error {
@@ -651,10 +610,10 @@ func (b *builder) upsert(model interface{}, parentKey []*datastore.Key) error {
 	cmd.statement.Truncate(cmd.statement.Len() - 1)
 	buf := new(bytes.Buffer)
 	buf.WriteString(cmd.string())
-	buf.WriteString(" " + b.dialect.OnConflictUpdate(e.Name(), cols))
+	buf.WriteString(" " + b.db.dialect.OnConflictUpdate(e.Name(), cols))
 	buf.WriteString(";")
 	cmd.statement = buf
-	return b.execStmt(cmd)
+	return b.db.client.execStmt(cmd)
 }
 
 func (b *builder) saveMutation(model interface{}) (*stmt, error) {
@@ -669,7 +628,7 @@ func (b *builder) saveMutation(model interface{}) (*stmt, error) {
 	e.setName(b.query.table)
 	buf := new(bytes.Buffer)
 	args := make([]interface{}, 0)
-	buf.WriteString(fmt.Sprintf("UPDATE %s SET ", b.dialect.GetTable(e.Name())))
+	buf.WriteString(fmt.Sprintf("UPDATE %s SET ", b.db.dialect.GetTable(e.Name())))
 	f := v.Index(0)
 
 	if x, isOk := f.Interface().(Saver); isOk {
@@ -701,12 +660,12 @@ func (b *builder) saveMutation(model interface{}) (*stmt, error) {
 		if err != nil {
 			return nil, err
 		}
-		buf.WriteString(fmt.Sprintf("%s = %s,", b.dialect.Quote(k), variable))
+		buf.WriteString(fmt.Sprintf("%s = %s,", b.db.dialect.Quote(k), variable))
 		args = append(args, it)
 		j++
 	}
 	buf.Truncate(buf.Len() - 1)
-	buf.WriteString(fmt.Sprintf(" WHERE %s = %s;", b.dialect.Quote(pkColumn), variable))
+	buf.WriteString(fmt.Sprintf(" WHERE %s = %s;", b.db.dialect.Quote(pkColumn), variable))
 	args = append(args, stringPk(pk))
 
 	return &stmt{
@@ -725,7 +684,7 @@ func (b *builder) save(model interface{}) error {
 	if err != nil {
 		return err
 	}
-	if err := b.execStmt(cmd); err != nil {
+	if err := b.db.client.execStmt(cmd); err != nil {
 		return err
 	}
 	v.Elem().Set(vi.Index(0).Elem())
@@ -744,7 +703,7 @@ func (b *builder) updateWithMap(v reflect.Value) (*stmt, error) {
 		if kk == keyFieldName {
 			return nil, fmt.Errorf("goloquent: update __key__ is not allow")
 		}
-		buf.WriteString(fmt.Sprintf(" %s = %s,", b.dialect.Quote(kk), variable))
+		buf.WriteString(fmt.Sprintf(" %s = %s,", b.db.dialect.Quote(kk), variable))
 		v, err := normalizeValue(vv.Interface())
 		if err != nil {
 			return nil, err
@@ -769,15 +728,12 @@ func (b *builder) updateWithStruct(model interface{}) (*stmt, error) {
 	if err := checkSinglePtr(vv.Interface()); err != nil {
 		return nil, err
 	}
-
 	cols := newDictionary(b.query.projection)
-	buf := new(bytes.Buffer)
-	args := make([]interface{}, 0)
+	buf, args := new(bytes.Buffer), make([]interface{}, 0)
 	props, err := SaveStruct(vv.Interface())
 	if err != nil {
 		return nil, err
 	}
-	i := int(1)
 	for _, p := range props {
 		name := p.Name()
 		if name == keyFieldName || (!cols.has(name) && p.isZero()) {
@@ -787,9 +743,8 @@ func (b *builder) updateWithStruct(model interface{}) (*stmt, error) {
 		if err != nil {
 			return nil, err
 		}
-		buf.WriteString(fmt.Sprintf("%s = %s,", b.dialect.Quote(p.Name()), variable))
+		buf.WriteString(fmt.Sprintf("%s = %s,", b.db.dialect.Quote(p.Name()), variable))
 		args = append(args, it)
-		i++
 	}
 	buf.Truncate(buf.Len() - 1)
 	return &stmt{
@@ -800,8 +755,7 @@ func (b *builder) updateWithStruct(model interface{}) (*stmt, error) {
 
 func (b *builder) updateMulti(v interface{}) error {
 	vi := reflect.Indirect(reflect.ValueOf(v))
-	args := make([]interface{}, 0)
-	buf := new(bytes.Buffer)
+	buf, args := new(bytes.Buffer), make([]interface{}, 0)
 	table := b.query.table
 	if table == "" {
 		table = vi.Type().Name()
@@ -809,7 +763,7 @@ func (b *builder) updateMulti(v interface{}) error {
 	if table == "" {
 		return fmt.Errorf("goloquent: missing table name")
 	}
-	buf.WriteString(fmt.Sprintf("UPDATE %s SET", b.dialect.GetTable(table)))
+	buf.WriteString(fmt.Sprintf("UPDATE %s SET", b.db.dialect.GetTable(table)))
 	switch vi.Type().Kind() {
 	case reflect.Map:
 		if vi.IsNil() || vi.Len() == 0 {
@@ -837,7 +791,7 @@ func (b *builder) updateMulti(v interface{}) error {
 	}
 	buf.WriteString(cmd.string())
 	buf.WriteString(";")
-	return b.execStmt(&stmt{
+	return b.db.client.execStmt(&stmt{
 		statement: buf,
 		arguments: append(args, cmd.arguments...),
 	})
@@ -859,7 +813,6 @@ func (b *builder) concatKeys(e *entity) (*stmt, error) {
 		if kk.Incomplete() {
 			return nil, fmt.Errorf("goloquent: entity %q has incomplete key", f.Type().Name())
 		}
-		// k, p := splitKey(kk)
 		buf.WriteString(variable)
 		args = append(args, stringPk(kk))
 	}
@@ -872,11 +825,9 @@ func (b *builder) concatKeys(e *entity) (*stmt, error) {
 
 func (b *builder) softDeleteStmt(e *entity) (*stmt, error) {
 	buf, args := new(bytes.Buffer), make([]interface{}, 0)
-	buf.WriteString(fmt.Sprintf("UPDATE %s SET ", b.dialect.GetTable(e.Name())))
+	buf.WriteString(fmt.Sprintf("UPDATE %s SET ", b.db.dialect.GetTable(e.Name())))
 	buf.WriteString(fmt.Sprintf("%s = %s WHERE %s IN ",
-		b.dialect.Quote(softDeleteColumn),
-		variable,
-		b.dialect.Quote(pkColumn)))
+		b.db.dialect.Quote(softDeleteColumn), variable, b.db.dialect.Quote(pkColumn)))
 	args = append(args, time.Now().UTC().Format("2006-01-02 15:04:05"))
 	ss, err := b.concatKeys(e)
 	if err != nil {
@@ -890,14 +841,14 @@ func (b *builder) softDeleteStmt(e *entity) (*stmt, error) {
 	}, nil
 }
 
-func (b *builder) deleteStmt(e *entity) (*stmt, error) {
+func (b *builder) deleteStmt(e *entity, isSoftDelete bool) (*stmt, error) {
 	buf, args := new(bytes.Buffer), make([]interface{}, 0)
-	if e.hasSoftDelete() {
+	if isSoftDelete && e.hasSoftDelete() {
 		return b.softDeleteStmt(e)
 	}
 	buf.WriteString(fmt.Sprintf("DELETE FROM %s WHERE %s IN ",
-		b.dialect.GetTable(e.Name()),
-		b.dialect.Quote(pkColumn)))
+		b.db.dialect.GetTable(e.Name()),
+		b.db.dialect.Quote(pkColumn)))
 	ss, err := b.concatKeys(e)
 	if err != nil {
 		return nil, err
@@ -910,37 +861,37 @@ func (b *builder) deleteStmt(e *entity) (*stmt, error) {
 	}, nil
 }
 
-func (b *builder) delete(model interface{}) error {
+func (b *builder) delete(model interface{}, isSoftDelete bool) error {
 	e, err := newEntity(model)
 	if err != nil {
 		return err
 	}
 	e.setName(b.query.table)
-	cmd, err := b.deleteStmt(e)
+	cmd, err := b.deleteStmt(e, isSoftDelete)
 	if err != nil {
 		return err
 	}
-	return b.execStmt(cmd)
+	return b.db.client.execStmt(cmd)
 }
 
 func (b *builder) deleteByQuery() error {
-	table := b.query.table
-	cmd, err := b.buildStmt(b.query)
+	query := b.query
+	cmd, err := b.buildStmt(query)
 	if err != nil {
 		return err
 	}
 	buf := new(bytes.Buffer)
-	buf.WriteString(fmt.Sprintf("DELETE FROM %s", b.dialect.GetTable(table)))
+	buf.WriteString(fmt.Sprintf("DELETE FROM %s", b.db.dialect.GetTable(query.table)))
 	buf.WriteString(cmd.string())
 	buf.WriteString(";")
 	cmd.statement = buf
-	return b.execStmt(cmd)
+	return b.db.client.execStmt(cmd)
 }
 
 func (b *builder) truncate(table string) error {
 	buf := new(bytes.Buffer)
-	buf.WriteString(fmt.Sprintf("TRUNCATE TABLE %s;", b.dialect.GetTable(table)))
-	return b.execStmt(&stmt{
+	buf.WriteString(fmt.Sprintf("TRUNCATE TABLE %s;", b.db.dialect.GetTable(table)))
+	return b.db.client.execStmt(&stmt{
 		statement: buf,
 	})
 }
@@ -956,9 +907,9 @@ func (b *builder) scan(dest ...interface{}) error {
 		for i := 0; i < len(query.projection); i++ {
 			vv := projection[i]
 			regex, _ := regexp.Compile(`\w+\(.+\)`)
-			// vv = strings.Replace(vv, "`", (b.dialect.Quote(vv))[:1], -1)
+			// vv = strings.Replace(vv, "`", (b.db.dialect.Quote(vv))[:1], -1)
 			if !regex.MatchString(vv) {
-				vv = b.dialect.Quote(vv)
+				vv = b.db.dialect.Quote(vv)
 			}
 			projection[i] = vv
 		}
@@ -970,28 +921,28 @@ func (b *builder) scan(dest ...interface{}) error {
 		for i := 0; i < len(query.distinctOn); i++ {
 			vv := distinctOn[i]
 			regex, _ := regexp.Compile(`.+ as .+`)
-			vv = strings.Replace(vv, "`", (b.dialect.Quote(vv))[:1], -1)
+			vv = strings.Replace(vv, "`", (b.db.dialect.Quote(vv))[:1], -1)
 			if !regex.MatchString(vv) {
-				vv = b.dialect.Quote(vv)
+				vv = b.db.dialect.Quote(vv)
 			}
 			distinctOn[i] = vv
 		}
 		scope = "DISTINCT " + strings.Join(distinctOn, ",")
 	}
-	buf.WriteString(fmt.Sprintf("SELECT %s FROM %s", scope, b.dialect.GetTable(table)))
+	buf.WriteString(fmt.Sprintf("SELECT %s FROM %s", scope, b.db.dialect.GetTable(table)))
 	ss, err := b.buildStmt(b.query)
 	if err != nil {
 		return err
 	}
 	buf.WriteString(ss.string())
-	return b.execQueryRow(&stmt{
+	return b.db.client.execQueryRow(&stmt{
 		statement: buf,
 		arguments: ss.arguments,
 	}).Scan(dest...)
 }
 
 func (b *builder) runInTransaction(cb TransactionHandler) error {
-	conn, isOk := b.db.sqlCommon.(*sql.DB)
+	conn, isOk := b.db.client.sqlCommon.(*sql.DB)
 	if !isOk {
 		return fmt.Errorf("goloquent: unable to initiate transaction")
 	}
@@ -1003,21 +954,20 @@ func (b *builder) runInTransaction(cb TransactionHandler) error {
 	// 	defer txn.Rollback()
 	// }
 	defer txn.Rollback()
-	if err := cb(NewDB(b.driver, txn, b.dialect, b.db.logger)); err != nil {
+	if err := cb(NewDB(b.db.driver, txn, b.db.dialect, b.db.client.logger)); err != nil {
 		return err
 	}
 	return txn.Commit()
 }
 
-func sha1Sign(query string) string {
+func sha1Sign(s *Stmt) string {
 	h, rgx := sha1.New(), regexp.MustCompile(`(?i)FROM.+?(LIMIT)`)
-	bb := bytes.TrimSpace(bytes.TrimLeft(bytes.TrimRight(rgx.Find([]byte(query)), "LIMIT"), "FROM"))
-	log.Println("Signature :", string(bb))
+	bb := bytes.TrimSpace(bytes.TrimLeft(bytes.TrimRight(rgx.Find([]byte(s.String())), "LIMIT"), "FROM"))
 	h.Write(bb)
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
-func interfaceKeyToString(it interface{}) (interface{}, error) {
+func interfaceToKeyString(it interface{}) (interface{}, error) {
 	var v interface{}
 	switch vi := it.(type) {
 	case nil:

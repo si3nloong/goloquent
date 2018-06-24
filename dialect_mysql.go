@@ -117,11 +117,7 @@ func (s mysql) CreateTable(table string, columns []Column) error {
 	buf.WriteString(fmt.Sprintf("PRIMARY KEY (%s)", s.Quote(pkColumn)))
 	buf.WriteString(fmt.Sprintf(") ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s;",
 		utf8mb4CharSet.Encoding, utf8mb4CharSet.Collation))
-	log.Println(buf.String())
-	if _, err := s.db.Exec(buf.String()); err != nil {
-		return err
-	}
-	return nil
+	return s.db.execStmt(&stmt{statement: buf})
 }
 
 func (s *mysql) AlterTable(table string, columns []Column) error {
@@ -164,11 +160,7 @@ func (s *mysql) AlterTable(table string, columns []Column) error {
 	buf.WriteString(fmt.Sprintf("CHARACTER SET %s ", s.Quote(utf8mb4CharSet.Encoding)))
 	buf.WriteString(fmt.Sprintf("COLLATE %s", s.Quote(utf8mb4CharSet.Collation)))
 	buf.WriteString(";")
-	log.Println(buf.String())
-	if _, err := s.db.Exec(buf.String()); err != nil {
-		return err
-	}
-	return nil
+	return s.db.execStmt(&stmt{statement: buf})
 }
 
 func (s mysql) ToString(it interface{}) string {

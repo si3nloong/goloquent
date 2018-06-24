@@ -48,3 +48,13 @@ func TestIterator(t *testing.T) {
 	}
 	fmt.Println(i)
 }
+
+func TestValueToInterface(t *testing.T) {
+
+}
+
+func TestLoadStructField(t *testing.T) {}
+
+func TestLoadField(t *testing.T) {
+
+}

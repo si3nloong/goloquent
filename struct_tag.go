@@ -24,8 +24,9 @@ func newTag(sf reflect.StructField) tag {
 	}
 
 	options := map[string]bool{
-		"omitempty": false,
+		"index":     false,
 		"flatten":   false,
+		"omitempty": false,
 		"unsigned":  false,
 		"longtext":  false,
 	}
@@ -69,14 +70,18 @@ func (t tag) isFlatten() bool {
 	return t.options["flatten"]
 }
 
-func (t tag) isOmitEmpty() bool {
+func (t tag) IsIndex() bool {
+	return t.options["index"]
+}
+
+func (t tag) IsOmitEmpty() bool {
 	return t.options["omitempty"]
 }
 
-func (t tag) isUnsigned() bool {
+func (t tag) IsUnsigned() bool {
 	return t.options["unsigned"]
 }
 
-func (t tag) isLongText() bool {
+func (t tag) IsLongText() bool {
 	return t.options["longtext"]
 }

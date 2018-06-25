@@ -610,7 +610,9 @@ func (b *builder) upsert(model interface{}, parentKey []*datastore.Key) error {
 	cmd.statement.Truncate(cmd.statement.Len() - 1)
 	buf := new(bytes.Buffer)
 	buf.WriteString(cmd.string())
-	buf.WriteString(" " + b.db.dialect.OnConflictUpdate(e.Name(), cols))
+	if len(cols) > 0 {
+		buf.WriteString(" " + b.db.dialect.OnConflictUpdate(e.Name(), cols))
+	}
 	buf.WriteString(";")
 	cmd.statement = buf
 	return b.db.client.execStmt(cmd)
@@ -630,7 +632,6 @@ func (b *builder) saveMutation(model interface{}) (*stmt, error) {
 	args := make([]interface{}, 0)
 	buf.WriteString(fmt.Sprintf("UPDATE %s SET ", b.db.dialect.GetTable(e.Name())))
 	f := v.Index(0)
-
 	if x, isOk := f.Interface().(Saver); isOk {
 		if err := x.Save(); err != nil {
 			return nil, err
@@ -950,11 +951,13 @@ func (b *builder) runInTransaction(cb TransactionHandler) error {
 	if err != nil {
 		return fmt.Errorf("goloquent: unable to begin transaction, %v", err)
 	}
-	// if r := recover(); r != nil {
-	// 	defer txn.Rollback()
-	// }
+	defer func() {
+		if r := recover(); r != nil {
+			defer txn.Rollback()
+		}
+	}()
 	defer txn.Rollback()
-	if err := cb(NewDB(b.db.driver, txn, b.db.dialect, b.db.client.logger)); err != nil {
+	if err := cb(NewDB(b.db.driver, b.db.client.CharSet, txn, b.db.dialect, b.db.client.logger)); err != nil {
 		return err
 	}
 	return txn.Commit()

@@ -24,7 +24,6 @@ func init() {
 
 // Open :
 func (s *mysql) Open(conf Config) (*sql.DB, error) {
-	conf.trimSpace()
 	addr, buf := "@", new(bytes.Buffer)
 	buf.WriteString(conf.Username + ":" + conf.Password)
 	if conf.UnixSocket != "" {
@@ -90,9 +89,6 @@ func (s mysql) DataType(sc Schema) string {
 }
 
 func (s mysql) OnConflictUpdate(table string, cols []string) string {
-	if len(cols) <= 0 {
-		return ""
-	}
 	buf := new(bytes.Buffer)
 	buf.WriteString("ON DUPLICATE KEY UPDATE ")
 	for _, c := range cols {
@@ -116,7 +112,7 @@ func (s mysql) CreateTable(table string, columns []Column) error {
 	}
 	buf.WriteString(fmt.Sprintf("PRIMARY KEY (%s)", s.Quote(pkColumn)))
 	buf.WriteString(fmt.Sprintf(") ENGINE=InnoDB DEFAULT CHARSET=%s COLLATE=%s;",
-		utf8mb4CharSet.Encoding, utf8mb4CharSet.Collation))
+		s.Quote(s.db.CharSet.Encoding), s.Quote(s.db.CharSet.Collation)))
 	return s.db.execStmt(&stmt{statement: buf})
 }
 
@@ -157,8 +153,8 @@ func (s *mysql) AlterTable(table string, columns []Column) error {
 		buf.WriteString(fmt.Sprintf(" DROP INDEX %s,", s.Quote(idx)))
 	}
 
-	buf.WriteString(fmt.Sprintf("CHARACTER SET %s ", s.Quote(utf8mb4CharSet.Encoding)))
-	buf.WriteString(fmt.Sprintf("COLLATE %s", s.Quote(utf8mb4CharSet.Collation)))
+	buf.WriteString(fmt.Sprintf("CHARACTER SET %s ", s.Quote(s.db.CharSet.Encoding)))
+	buf.WriteString(fmt.Sprintf("COLLATE %s", s.Quote(s.db.CharSet.Collation)))
 	buf.WriteString(";")
 	return s.db.execStmt(&stmt{statement: buf})
 }

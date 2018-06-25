@@ -22,7 +22,6 @@ func init() {
 
 // Open :
 func (p *postgres) Open(conf Config) (*sql.DB, error) {
-	conf.trimSpace()
 	addr, buf := "@", new(bytes.Buffer)
 	buf.WriteString("postgres://")
 	buf.WriteString(conf.Username + ":" + conf.Password)

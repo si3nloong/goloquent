@@ -8,14 +8,14 @@
 - ParseQuery (ok)
 - Logger (ok)
 - SoftDelete (ok)
-- TestCase (5%)
+- TestCase (20%)
 
 // TODO:
 
-- Cursor
 - Filter json
 - Filter geolocation
 - Support option tag shorthand `index`
+- Sort struct properties in sequence (semantic)
 
 Bugs :
 Flatten struct childs values always null (fixed)

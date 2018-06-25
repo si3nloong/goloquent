@@ -24,16 +24,18 @@ type field struct {
 	names      []string
 	parent     *field
 	paths      []int
+	sequence   []int
 	typeOf     reflect.Type
 	isPtrChild bool
 	*StructCodec
 }
 
-func newField(st tag, parent *field, path []int, t reflect.Type, isPtr bool, s *StructCodec) field {
+func newField(st tag, parent *field, path []int, sequence []int, t reflect.Type, isPtr bool, s *StructCodec) field {
 	return field{
 		tag:         st,
 		parent:      parent,
 		paths:       path,
+		sequence:    sequence,
 		typeOf:      t,
 		isPtrChild:  isPtr,
 		StructCodec: s,
@@ -159,6 +161,7 @@ func isBaseType(t reflect.Type) bool {
 
 type structScan struct {
 	path        []int
+	sequence    []int
 	typeOf      reflect.Type
 	field       *field
 	isPtrChild  bool
@@ -173,7 +176,7 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 	}
 
 	structs := newStructCodec(v)
-	structScans := append(make([]structScan, 0), structScan{[]int{}, rt, nil, false, structs})
+	structScans := append(make([]structScan, 0), structScan{nil, nil, rt, nil, false, structs})
 	for len(structScans) > 0 {
 		first := structScans[0]
 		st := first.typeOf
@@ -208,9 +211,10 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 				st.name = softDeleteColumn
 			}
 
+			seq := append(first.sequence, i)
 			k := ft.Kind()
 			if isBaseType(ft) {
-				fields = append(fields, newField(st, first.field, append(first.path, i), ft, first.isPtrChild, nil))
+				fields = append(fields, newField(st, first.field, append(first.path, i), seq, ft, first.isPtrChild, nil))
 				continue
 			}
 
@@ -225,12 +229,12 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 				case elem.Kind() == reflect.Interface:
 					fallthrough
 				case isBaseType(elem):
-					fields = append(fields, newField(st, first.field, append(first.path, i), sf.Type, first.isPtrChild, nil))
+					fields = append(fields, newField(st, first.field, append(first.path, i), seq, sf.Type, first.isPtrChild, nil))
 					continue
 				case elem.Kind() == reflect.Ptr:
 					isPtr = true
 					if isBaseType(elem.Elem()) {
-						fields = append(fields, newField(st, first.field, append(first.path, i), sf.Type, first.isPtrChild, nil))
+						fields = append(fields, newField(st, first.field, append(first.path, i), seq, sf.Type, first.isPtrChild, nil))
 						continue
 					}
 					elem = elem.Elem()
@@ -238,9 +242,9 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 				default:
 					if elem.Kind() == reflect.Struct {
 						sc := newStructCodec(reflect.New(ft))
-						f := newField(st, first.field, append(first.path, i), sf.Type, first.isPtrChild, sc)
+						f := newField(st, first.field, append(first.path, i), seq, sf.Type, first.isPtrChild, sc)
 						fields = append(fields, f)
-						structScans = append(structScans, structScan{[]int{}, elem, &f, isPtr, sc})
+						structScans = append(structScans, structScan{nil, seq, elem, &f, isPtr, sc})
 						continue
 					}
 				}
@@ -251,7 +255,7 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 				ft = ft.Elem()
 				switch {
 				case isBaseType(ft) && ft != typeOfByte:
-					fields = append(fields, newField(st, first.field, append(first.path, i), sf.Type, first.isPtrChild, nil))
+					fields = append(fields, newField(st, first.field, append(first.path, i), seq, sf.Type, first.isPtrChild, nil))
 					continue
 				case ft.Kind() == reflect.Struct:
 				default:
@@ -263,16 +267,16 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 					if !isExported {
 						continue
 					}
-					structScans = append(structScans, structScan{append(first.path, i), ft, first.field, isPtr, first.StructCodec})
+					structScans = append(structScans, structScan{append(first.path, i), seq, ft, first.field, isPtr, first.StructCodec})
 					continue
 				}
 
 				sc := newStructCodec(reflect.New(ft))
-				f := newField(st, first.field, []int{i}, sf.Type, first.isPtrChild, sc)
+				f := newField(st, first.field, []int{i}, seq, sf.Type, first.isPtrChild, sc)
 				fields = append(fields, f)
 				sc.parentField = &f
 				// reset the position when it's another struct
-				structScans = append(structScans, structScan{[]int{}, ft, &f, isPtr, sc})
+				structScans = append(structScans, structScan{nil, seq, ft, &f, isPtr, sc})
 				continue
 			default:
 				return nil, fmt.Errorf("goloquent: invalid %q", ft.String())
@@ -281,9 +285,9 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 
 		// Sort the column follow by the sequence of struct property
 		sort.Slice(fields, func(i, j int) bool {
-			// return strings.Trim(strings.Join(strings.Fields(fmt.Sprint(fields[i])), ","), "[]") <
-			// strings.Trim(strings.Join(strings.Fields(fmt.Sprint(fields[j])), ","), "[]")
-			return fields[i].paths[0] < fields[j].paths[0]
+			return compareVersion(strings.Trim(strings.Join(strings.Fields(fmt.Sprint(fields[i].sequence)), "."), "[]"),
+				strings.Trim(strings.Join(strings.Fields(fmt.Sprint(fields[j].sequence)), "."), "[]")) > 0
+			// return fields[i].sequence[0] < fields[j].sequence[0]
 		})
 
 		first.StructCodec.fields = fields

@@ -36,7 +36,7 @@ func Open(driver string, conf Config) (*goloquent.DB, error) {
 	if p, isOk := connPool.Load(driver); isOk {
 		pool = p.(map[string]*goloquent.DB)
 	}
-	conn, err := dialect.Open(goloquent.Config{
+	config := goloquent.Config{
 		Username:   conf.Username,
 		Password:   conf.Password,
 		Host:       conf.Host,
@@ -45,14 +45,16 @@ func Open(driver string, conf Config) (*goloquent.DB, error) {
 		UnixSocket: conf.UnixSocket,
 		CharSet:    conf.CharSet,
 		Logger:     conf.Logger,
-	})
+	}
+	config.Normalize()
+	conn, err := dialect.Open(config)
 	if err != nil {
 		return nil, err
 	}
 	if err := conn.Ping(); err != nil {
 		return nil, fmt.Errorf("goloquent: %s server has not response", driver)
 	}
-	db := goloquent.NewDB(driver, conn, dialect, conf.Logger)
+	db := goloquent.NewDB(driver, *config.CharSet, conn, dialect, conf.Logger)
 	pool[conf.Database] = db
 	connPool.Store(driver, pool)
 	// Override defaultDB wheneve initialise a new connection

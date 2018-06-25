@@ -195,6 +195,10 @@ func stringPk(k *datastore.Key) string {
 	return strings.Trim(fmt.Sprintf("%s%s%s", pp, keyDelimeter, kk), keyDelimeter)
 }
 
+// compareVersion: is compare using semantic versioning
+// if a > b, result will be -1
+// if b < a, result will be 1
+// if a = b, result will be 0
 func compareVersion(a, b string) (ret int) {
 	as := strings.Split(a, ".")
 	bs := strings.Split(b, ".")

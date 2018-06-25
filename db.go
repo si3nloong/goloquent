@@ -43,15 +43,19 @@ type Config struct {
 	Logger     LogHandler
 }
 
-func (c Config) trimSpace() {
+// Normalize :
+func (c *Config) Normalize() {
 	c.Username = strings.TrimSpace(c.Username)
 	c.Host = strings.TrimSpace(strings.ToLower(c.Host))
 	c.Port = strings.TrimSpace(c.Port)
 	c.Database = strings.TrimSpace(c.Database)
 	c.UnixSocket = strings.TrimSpace(c.UnixSocket)
-	if c.CharSet != nil {
+	if c.CharSet != nil && c.CharSet.Encoding != "" && c.CharSet.Collation != "" {
 		c.CharSet.Collation = strings.TrimSpace(c.CharSet.Collation)
 		c.CharSet.Encoding = strings.TrimSpace(c.CharSet.Encoding)
+	} else {
+		charset := utf8mb4CharSet
+		c.CharSet = &charset
 	}
 }
 
@@ -64,6 +68,7 @@ type Replacer interface {
 // Client :
 type Client struct {
 	sqlCommon
+	CharSet
 	dialect Dialect
 	logger  LogHandler
 }
@@ -174,8 +179,8 @@ type DB struct {
 }
 
 // NewDB :
-func NewDB(driver string, conn sqlCommon, dialect Dialect, logHandler LogHandler) *DB {
-	client := Client{conn, dialect, logHandler}
+func NewDB(driver string, charset CharSet, conn sqlCommon, dialect Dialect, logHandler LogHandler) *DB {
+	client := Client{conn, charset, dialect, logHandler}
 	dialect.SetDB(client)
 	return &DB{
 		id:      fmt.Sprintf("%s:%d", driver, time.Now().UnixNano()),

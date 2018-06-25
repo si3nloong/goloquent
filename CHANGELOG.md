@@ -37,6 +37,7 @@
 - (2018-06-21) Support extra option `datatype`, `charset`, `collate` on struct property, but it only limited to datatype of `string`
 - (2018-06-21) Allow `*` on func `Select`
 - (2018-06-24) Replaced offset pagination with cursor pagination
+- (2018-06-25) Fix struct property sequence bug
 
 # New Features
 

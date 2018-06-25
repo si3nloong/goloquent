@@ -169,18 +169,18 @@ func (s *sequel) GetSchema(c Column) []Schema {
 	sc := Schema{
 		Name:       c.Name(),
 		IsNullable: f.isPtrChild,
+		IsIndexed:  f.IsIndex(),
 	}
 	if t.Kind() == reflect.Ptr {
 		sc.IsNullable = true
 		if t == typeOfPtrKey {
-			if f.name == keyFieldName {
-				return []Schema{
-					Schema{pkColumn, fmt.Sprintf("varchar(%d)", pkLen), OmitDefault(nil), false, false, false, latin1CharSet},
-				}
-			}
 			sc.IsIndexed = true
 			sc.DataType = fmt.Sprintf("varchar(%d)", pkLen)
 			sc.CharSet = latin1CharSet
+			if f.name == keyFieldName {
+				sc.DefaultValue = OmitDefault(nil)
+				sc.IsIndexed = false
+			}
 			return []Schema{sc}
 		}
 		t = t.Elem()
@@ -196,13 +196,14 @@ func (s *sequel) GetSchema(c Column) []Schema {
 	case typeOfSoftDelete:
 		sc.DefaultValue = OmitDefault(nil)
 		sc.IsNullable = true
+		sc.IsIndexed = true
 		sc.DataType = "datetime"
 	default:
 		switch t.Kind() {
 		case reflect.String:
 			sc.DefaultValue = ""
 			sc.DataType = fmt.Sprintf("varchar(%d)", 191)
-			if f.isLongText() {
+			if f.IsLongText() {
 				sc.DefaultValue = nil
 				sc.DataType = "text"
 			}
@@ -248,7 +249,7 @@ func (s *sequel) GetSchema(c Column) []Schema {
 		case reflect.Float32, reflect.Float64:
 			sc.DefaultValue = float64(0)
 			sc.DataType = "double"
-			sc.IsUnsigned = f.isUnsigned()
+			sc.IsUnsigned = f.IsUnsigned()
 		case reflect.Slice, reflect.Array:
 			sc.DefaultValue = OmitDefault(nil)
 			sc.DataType = "json"

@@ -161,7 +161,7 @@ func (p postgres) GetSchema(c Column) []Schema {
 		case reflect.String:
 			sc.DefaultValue = ""
 			sc.DataType = fmt.Sprintf("varchar(%d)", 191)
-			if f.isLongText() {
+			if f.IsLongText() {
 				sc.DefaultValue = nil
 				sc.DataType = "text"
 			}

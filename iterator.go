@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"time"
@@ -47,7 +46,6 @@ func (it *Iterator) patchKey() {
 	buf.WriteString(keyDelimeter)
 	buf.WriteString(it.table + ",")
 	buf.Write(kk)
-	log.Println("Patch key :", string(kk))
 	l[keyFieldName] = buf.Bytes()
 	it.results[pos] = l
 }

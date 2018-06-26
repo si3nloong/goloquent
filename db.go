@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"time"
@@ -73,6 +72,12 @@ type Client struct {
 	logger  LogHandler
 }
 
+func (c Client) consoleLog(s *Stmt) {
+	if c.logger != nil {
+		c.logger(s)
+	}
+}
+
 func (c *Client) compileStmt(query string, args ...interface{}) *Stmt {
 	buf := new(bytes.Buffer)
 	buf.WriteString(query)
@@ -83,11 +88,10 @@ func (c *Client) compileStmt(query string, args ...interface{}) *Stmt {
 		},
 		replacer: c.dialect,
 	}
-	log.Println(buf.String())
 	return ss
 }
 
-func (c *Client) execStmt(s *stmt) error {
+func (c Client) execStmt(s *stmt) error {
 	ss := &Stmt{
 		stmt:     *s,
 		replacer: c.dialect,
@@ -95,7 +99,7 @@ func (c *Client) execStmt(s *stmt) error {
 	ss.startTrace()
 	defer func() {
 		ss.stopTrace()
-		c.logger(ss)
+		c.consoleLog(ss)
 	}()
 	result, err := c.PrepareExec(ss.Raw(), ss.arguments...)
 	if err != nil {
@@ -105,7 +109,7 @@ func (c *Client) execStmt(s *stmt) error {
 	return nil
 }
 
-func (c *Client) execQuery(s *stmt) (*sql.Rows, error) {
+func (c Client) execQuery(s *stmt) (*sql.Rows, error) {
 	ss := &Stmt{
 		stmt:     *s,
 		replacer: c.dialect,
@@ -113,7 +117,7 @@ func (c *Client) execQuery(s *stmt) (*sql.Rows, error) {
 	ss.startTrace()
 	defer func() {
 		ss.stopTrace()
-		c.logger(ss)
+		c.consoleLog(ss)
 	}()
 	var rows, err = c.Query(ss.Raw(), ss.arguments...)
 	if err != nil {

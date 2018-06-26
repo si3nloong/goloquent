@@ -178,6 +178,7 @@ func (s *sequel) GetSchema(c Column) []Schema {
 			sc.DataType = fmt.Sprintf("varchar(%d)", pkLen)
 			sc.CharSet = latin1CharSet
 			if f.name == keyFieldName {
+				sc.Name = pkColumn
 				sc.DefaultValue = OmitDefault(nil)
 				sc.IsIndexed = false
 			}

@@ -1,23 +1,24 @@
 ### Pending
 
-- Create (ok)
-- Upsert (ok)
-- Save (ok)
-- UpdateMulti (ok)
-- Delete Multi (ok)
-- ParseQuery (ok)
-- Logger (ok)
-- SoftDelete (ok)
+- [ok] Create
+- [ok] Upsert
+- [ok] Save
+- [ok] UpdateMulti
+- [ok] Delete Multi
+- [ok] ParseQuery
+- [ok] Logger
+- [ok] SoftDelete
 - TestCase (20%)
 
 // TODO:
 
 - Filter json
-- Filter geolocation
+- Filter geolocation (structure with spatial or json?)
 - Support option tag shorthand `index`
-- Sort struct properties in sequence (semantic)
+- [ok] Sort struct properties in sequence (semantic)
 
 Bugs :
 Flatten struct childs values always null (fixed)
 Selected fields should follow sequence (fixed)
 Flatten []struct childs values always null
+Update with limit (POSTGRES)

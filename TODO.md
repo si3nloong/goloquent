@@ -22,3 +22,4 @@ Flatten struct childs values always null (fixed)
 Selected fields should follow sequence (fixed)
 Flatten []struct childs values always null
 Update with limit (POSTGRES)
+struct_codec.go (recheck on commit d0ef13f)

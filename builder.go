@@ -602,7 +602,7 @@ func (b *builder) upsert(model interface{}, parentKey []*datastore.Key) error {
 	cols := e.Columns()
 	omits := newDictionary(b.query.omits)
 	for i, c := range cols {
-		if !omits.has(c) || c == pkColumn {
+		if !omits.has(c) || c == pkColumn || c == keyFieldName {
 			continue
 		}
 		cols = append(cols[:i], cols[i+1:]...)

@@ -176,7 +176,7 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 	}
 
 	structs := newStructCodec(v)
-	structScans := append(make([]structScan, 0), structScan{nil, nil, rt, nil, false, structs})
+	structScans := append(make([]structScan, 0), structScan{[]int{}, []int{}, rt, nil, false, structs})
 	for len(structScans) > 0 {
 		first := structScans[0]
 		st := first.typeOf
@@ -244,7 +244,7 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 						sc := newStructCodec(reflect.New(ft))
 						f := newField(st, first.field, append(first.path, i), seq, sf.Type, first.isPtrChild, sc)
 						fields = append(fields, f)
-						structScans = append(structScans, structScan{nil, seq, elem, &f, isPtr, sc})
+						structScans = append(structScans, structScan{[]int{}, seq, elem, &f, isPtr, sc})
 						continue
 					}
 				}
@@ -272,11 +272,11 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 				}
 
 				sc := newStructCodec(reflect.New(ft))
-				f := newField(st, first.field, append(first.path, i), seq, sf.Type, first.isPtrChild, sc)
+				f := newField(st, first.field, []int{i}, seq, sf.Type, first.isPtrChild, sc)
 				fields = append(fields, f)
 				sc.parentField = &f
 				// reset the position when it's another struct
-				structScans = append(structScans, structScan{nil, seq, ft, &f, isPtr, sc})
+				structScans = append(structScans, structScan{[]int{}, seq, ft, &f, isPtr, sc})
 				continue
 			default:
 				return nil, fmt.Errorf("goloquent: invalid %q", ft.String())

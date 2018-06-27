@@ -17,7 +17,6 @@ import (
 const variable = "?"
 
 type builder struct {
-	// dialect Dialect
 	db    *DB
 	query scope
 }
@@ -25,8 +24,6 @@ type builder struct {
 func newBuilder(query *Query) *builder {
 	clone := query.db.clone()
 	return &builder{
-		// conn:    clone.client,
-		// dialect: clone.dialect,
 		db:    clone,
 		query: query.clone().scope,
 	}
@@ -947,20 +944,22 @@ func (b *builder) runInTransaction(cb TransactionHandler) error {
 	if !isOk {
 		return fmt.Errorf("goloquent: unable to initiate transaction")
 	}
-	txn, err := conn.Begin()
+	tx, err := conn.Begin()
 	if err != nil {
 		return fmt.Errorf("goloquent: unable to begin transaction, %v", err)
 	}
+	db := b.db.clone()
+	db.client.sqlCommon = tx
 	defer func() {
 		if r := recover(); r != nil {
-			defer txn.Rollback()
+			defer tx.Rollback()
 		}
 	}()
-	defer txn.Rollback()
-	if err := cb(NewDB(b.db.driver, b.db.client.CharSet, txn, b.db.dialect, b.db.client.logger)); err != nil {
+	defer tx.Rollback()
+	if err := cb(db); err != nil {
 		return err
 	}
-	return txn.Commit()
+	return tx.Commit()
 }
 
 func sha1Sign(s *Stmt) string {

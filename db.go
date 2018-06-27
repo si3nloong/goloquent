@@ -212,6 +212,11 @@ func (db DB) ID() string {
 	return db.id
 }
 
+// Name :
+func (db DB) Name() string {
+	return db.name
+}
+
 // NewQuery :
 func (db *DB) NewQuery() *Query {
 	return newQuery(db)
@@ -219,7 +224,7 @@ func (db *DB) NewQuery() *Query {
 
 // Exec :
 func (db *DB) Exec(stmt string, args ...interface{}) (sql.Result, error) {
-	return newBuilder(db.NewQuery()).db.client.Exec(stmt, args...)
+	return db.client.Exec(stmt, args...)
 }
 
 // Table :
@@ -329,12 +334,6 @@ func (db *DB) Paginate(p *Pagination, model interface{}) error {
 func (db *DB) Where(field string, operator string, value interface{}) *Query {
 	return db.NewQuery().Where(field, operator, value)
 }
-
-// Run :
-// func (db *DB) Run(query *Query) (*Iterator, error) {
-// 	// return newBuilder(db.NewQuery()).run(new(Stmt))
-// 	return nil, nil
-// }
 
 // RunInTransaction :
 func (db *DB) RunInTransaction(cb TransactionHandler) error {

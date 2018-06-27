@@ -27,7 +27,8 @@ const (
 
 // CommonError :
 var (
-	ErrNoSuchEntity = fmt.Errorf("goloquent: entity not found")
+	ErrNoSuchEntity  = fmt.Errorf("goloquent: entity not found")
+	ErrInvalidCursor = fmt.Errorf("goloquent: invalid cursor")
 )
 
 // Config :

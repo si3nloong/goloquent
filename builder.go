@@ -408,7 +408,7 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 			return err
 		}
 		if sha1Sign(&Stmt{stmt: *cmd, replacer: b.db.dialect}) != c.Signature {
-			return fmt.Errorf("goloquent: invalid cursor signature")
+			return ErrInvalidCursor
 		}
 		query := b.query
 		buf, args := new(bytes.Buffer), make([]interface{}, 0)
@@ -435,7 +435,7 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 			Select(projection...).
 			WhereEq(keyFieldName, c.Key).
 			Limit(1).Scan(values...); err != nil {
-			return err
+			return ErrInvalidCursor
 		}
 		arg := make([]interface{}, 0, len(orders))
 		for i, o := range orders {
@@ -933,10 +933,13 @@ func (b *builder) scan(dest ...interface{}) error {
 		return err
 	}
 	buf.WriteString(ss.string())
-	return b.db.client.execQueryRow(&stmt{
+	if err := b.db.client.execQueryRow(&stmt{
 		statement: buf,
 		arguments: ss.arguments,
-	}).Scan(dest...)
+	}).Scan(dest...); err != nil {
+		return fmt.Errorf("goloquent: %v", err)
+	}
+	return nil
 }
 
 func (b *builder) runInTransaction(cb TransactionHandler) error {

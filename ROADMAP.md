@@ -1,6 +1,6 @@
 - Eager loading
-- `Cursor`
-- Support json filter in where statement
+- Support JSON filter in where statement
+- Support GeoLocation filter
 
 \*\*\*\* struct codec
 // primary key check

@@ -6,7 +6,7 @@ This repo still under development. We accept any pull request. ^\_^
 
 ## Database Support
 
-- [x] MySQL
+- [x] MySQL (version 5.7 and above)
 - [x] Postgres
 
 ## Installation
@@ -39,9 +39,11 @@ This repo still under development. We accept any pull request. ^\_^
         Port: "3306",
         Database: "test",
         Logger: func(stmt *goloquent.Stmt) {
+            log.Println(stmt.TimeElapse()) // elapse time in time.Duration
             log.Println(stmt.String()) // Sql string without any ?
             log.Println(stmt.Raw()) // Sql prepare statement
             log.Println(stmt.Arguments()) // Sql prepare statement's arguments
+            log.Println(fmt.Sprintf("[%.3fms] %s", stmt.TimeElapse().Seconds()*1000, stmt.String()))
         },
     })
     defer conn.Close()
@@ -115,6 +117,11 @@ func (x *User) Save() (error) {
         log.Println(err) // fail to create record
     }
 
+    // Create without key, goloquent will auto generate primary key
+    if err := db.Create(user); err != nil {
+        log.Println(err) // fail to create record
+    }
+
     // Create with self generate key
     key := datastore.NameKey("User", "uniqueID", nil)
     user.Key = key
@@ -183,8 +190,7 @@ func (x *User) Save() (error) {
 
     // Example 2
     user := new(User)
-    if err := db.
-        WhereEq("Email", "admin@hotmail.com").
+    if err := db.Where("Email", "=", "admin@hotmail.com").
         First(user); err != nil {
         log.Println(err) // error while retrieving record
     }
@@ -193,8 +199,7 @@ func (x *User) Save() (error) {
     age := 22
     parentKey := datastore.IDKey("Parent", 1093, nil)
     user := new(User)
-    if err := db.NewQuery().
-        Ancestor(parentKey).
+    if err := db.Ancestor(parentKey).
         WhereEq("Age", &age).
         Order("-CreatedDateTime").
         First(user); err != nil {
@@ -214,18 +219,16 @@ func (x *User) Save() (error) {
 
     // Example 2
     users := new([]*User)
-    if err := db.
-        WhereEq("Name", "Hello World").
+    if err := db.Where("Name", "=", "Hello World").
         Get(users); err != nil {
         log.Println(err) // error while retrieving record
     }
 
     // Example 3
     users := new([]User)
-    if err := db.
-        Ancestor(parentKey).
-        Where("Name", "=", "myz").
-        Where("Age", "=", 22).
+    if err := db.Ancestor(parentKey).
+        WhereEq("Name", "myz").
+        WhereEq("Age", 22).
         Get(users); err != nil {
         log.Println(err) // error while retrieving record
     }
@@ -237,15 +240,13 @@ func (x *User) Save() (error) {
     import "github.com/si3nloong/goloquent/db"
     // Ascending order
     users := new([]*User)
-    if err := db.
-        Order("CreatedDateTime").
+    if err := db.Order("CreatedDateTime").
         Get(users); err != nil {
         log.Println(err) // error while retrieving record
     }
 
     // Descending order
-    if err := db.
-        Table("User").
+    if err := db.Table("User").
         Order("-CreatedDateTime").
         Get(users); err != nil {
         log.Println(err) // error while retrieving record
@@ -282,6 +283,9 @@ func (x *User) Save() (error) {
         Paginate(p, users); err != nil {
         log.Println(err) // error while retrieving record
     }
+
+    log.Println(p.NextCursor()) // next page cursor
+    log.Println(p.Count()) // record count
 ```
 
 ### Save Record
@@ -324,11 +328,9 @@ func (x *User) Save() (error) {
     // Example
     if err := db.RunInTransaction(func(txn *goloquent.DB) error {
         user := new(User)
-
         if err := txn.Create(user, nil); err != nil {
             return err // return any err to rollback the transaction
         }
-
         return nil // return nil to commit the transaction
     }); err != nil {
         log.Println(err)
@@ -352,7 +354,7 @@ func (x *User) Save() (error) {
 
         merchant := new(Merchant)
         if err := txn.NewQuery().
-            RLock().
+            RLock(). // Lock record for read
             Find(merchantKey, merchant); err != nil {
             return err
         }
@@ -404,14 +406,6 @@ func (x *User) Save() (error) {
 - **Update Query**
 
 ```go
-    // Update single record
-    user := new(User)
-    user.Key = datastore.IDKey("User", 167393, nil)
-    user.Name = "Test"
-    if err := db.Table("User").Update(user); err != nil {
-        log.Println(err) // error while retrieving record or record not found
-    }
-
     // Update multiple record
     if err := db.Table("User").
         Where("Age", ">", 10).
@@ -447,11 +441,10 @@ type datetime struct {
 type User struct {
     Key     *datastore.Key `goloquent:"__key__"` // Primary Key
     Name    string `goloquent:",longtext"` // Using `TEXT` datatype instead of `VARCHAR(255)` by default
-    Age     int    `goloquent:",unsigned"` // Unsigned option only applicable for int data type
+    CreditLimit    float64    `goloquent:",unsigned"` // Unsigned option only applicable for float32 & float64 data type
     PhoneNumber string `goloquent:",charset=utf8,collate=utf8_bin,datatype=char(20)"`
-    Email   string `goloquent:",unique"`   // Make column `Email` as unique field
+    Email   string `goloquent:""`   // Make column `Email` as unique field
     Extra   string `goloquent:"-"` // Skip this field to store in db
-
     DefaultAddress struct {
         AddressLine1 string // `DefaultAddress.AddressLine1`
         AddressLine2 string // `DefaultAddress.AddressLine2`
@@ -461,6 +454,7 @@ type User struct {
         Country      string
     } `goloquent:",flatten"` // Flatten the struct field
     datetime // Embedded struct
+    Deleted goloquent.SoftDelete
 }
 ```
 
@@ -483,26 +477,26 @@ The supported data type are :
 - slices of any of the above
 ```
 
-| Data Type            | Schema               | Default Value       |
-| :------------------- | :------------------- | :------------------ |
-| \*datastore.Key      | varchar(512)         |                     |
-| datastore.GeoPoint   | varchar(50)          | {Lat: 0, Lng: 0}    |
-| string               | varchar(191)         | ""                  |
-| []byte               | mediumblob           |                     |
-| bool                 | boolean              | false               |
-| float32              | double               | 0                   |
-| float64              | double               | 0                   |
-| int8                 | smallint             | 0                   |
-| int16, int32, int    | int                  | 0                   |
-| int64                | big integer          | 0                   |
-| uint8                | unsigned smallint    | 0                   |
-| uint16, uint32, uint | unsigned int         | 0                   |
-| uint64               | unsigned big integer | 0                   |
-| slice or array       | json                 | ""                  |
-| struct               | json                 | ""                  |
-| time.Time            | datetime             | 0001-01-01 00:00:00 |
-| SoftDelete           | datetime (ISNULL)    | NULL                |
+| Data Type            | Schema               | Default Value       | CharSet |
+| :------------------- | :------------------- | :------------------ | :------ |
+| \*datastore.Key      | varchar(512)         |                     | latin1  |
+| datastore.GeoPoint   | varchar(50)          | {Lat: 0, Lng: 0}    |         |
+| string               | varchar(191)         | ""                  | utf8mb4 |
+| []byte               | mediumblob           |                     |         |
+| bool                 | boolean              | false               |         |
+| float32              | double               | 0                   |         |
+| float64              | double               | 0                   |         |
+| int8                 | smallint             | 0                   |         |
+| int16, int32, int    | int                  | 0                   |         |
+| int64                | big integer          | 0                   |         |
+| uint8                | unsigned smallint    | 0                   |         |
+| uint16, uint32, uint | unsigned int         | 0                   |         |
+| uint64               | unsigned big integer | 0                   |         |
+| slice or array       | json                 |                     |         |
+| struct               | json                 |                     |         |
+| time.Time            | datetime             | 0001-01-01 00:00:00 |         |
+| SoftDelete           | datetime (nullable)  | NULL                |         |
 
-**$Key**, **$Parent** and **$Deleted** are reserved words, please avoid to use these words as your column name
+**$Key**, **$Deleted** are reserved words, please avoid to use these words as your column name
 
 [MIT License](https://github.com/si3nloong/goloquent/blob/master/LICENSE)

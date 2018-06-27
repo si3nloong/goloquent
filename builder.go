@@ -38,7 +38,7 @@ func (b *builder) buildSelect(query scope) *stmt {
 			vv := projection[i]
 			regex, _ := regexp.Compile(`\w+\(.+\)`)
 			// vv = strings.Replace(vv, "`", (b.db.dialect.Quote(vv))[:1], -1)
-			if !regex.MatchString(vv) {
+			if !regex.MatchString(vv) || vv != "*" {
 				vv = b.db.dialect.Quote(vv)
 			}
 			projection[i] = vv

@@ -7,7 +7,7 @@ This repo still under development. We accept any pull request. ^\_^
 ## Database Support
 
 - [x] MySQL (version 5.7 and above)
-- [x] Postgres
+- [x] Postgres (version 9.4 and above)
 
 ## Installation
 

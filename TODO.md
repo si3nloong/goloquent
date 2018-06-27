@@ -8,18 +8,18 @@
 - [ok] ParseQuery
 - [ok] Logger
 - [ok] SoftDelete
+- [ok] - Support option tag shorthand `index`
+- [fix] Sort struct properties in sequence (semantic)
+- [fix] struct_codec.go (recheck on commit d0ef13f)
+- [fix] Selected fields should follow sequence
+- [fix] Flatten struct childs values always null
 - TestCase (20%)
 
 // TODO:
 
 - Filter json
 - Filter geolocation (structure with spatial or json?)
-- Support option tag shorthand `index`
-- [ok] Sort struct properties in sequence (semantic)
 
 Bugs :
-Flatten struct childs values always null (fixed)
-Selected fields should follow sequence (fixed)
 Flatten []struct childs values always null
 Update with limit (POSTGRES)
-struct_codec.go (recheck on commit d0ef13f)

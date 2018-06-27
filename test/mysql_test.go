@@ -75,6 +75,44 @@ func TestCreate(t *testing.T) {
 	}
 }
 
+func TestSelect(t *testing.T) {
+	u := new(User)
+	log.Println(strings.Repeat("-", 100))
+	log.Println("MYSQL FIRST WITH SELECT QUERY")
+	log.Println(strings.Repeat("-", 100))
+	if err := mysql.
+		Select("*", "Name").First(u); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func TestDistinctOn(t *testing.T) {
+	u := new(User)
+	log.Println(strings.Repeat("-", 100))
+	log.Println("MYSQL DISTINCT ON WITH *")
+	log.Println(strings.Repeat("-", 100))
+	if err := mysql.NewQuery().
+		DistinctOn("*").First(u); err == nil {
+		log.Fatal("Expected `DistinctOn` cannot allow *")
+	}
+
+	log.Println(strings.Repeat("-", 100))
+	log.Println("MYSQL DISTINCT ON WITH EMPTY INPUT")
+	log.Println(strings.Repeat("-", 100))
+	if err := mysql.NewQuery().
+		DistinctOn("").First(u); err == nil {
+		log.Fatal("Expected `DistinctOn` cannot have empty")
+	}
+
+	log.Println(strings.Repeat("-", 100))
+	log.Println("MYSQL DISTINCT ON WITH COLUMN")
+	log.Println(strings.Repeat("-", 100))
+	if err := mysql.NewQuery().
+		DistinctOn("Name", "Password").First(u); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func TestGet(t *testing.T) {
 	u := new(User)
 	users := new([]User)

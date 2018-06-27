@@ -125,7 +125,7 @@ func (q *Query) Select(fields ...string) *Query {
 	for _, f := range fields {
 		f := strings.TrimSpace(f)
 		if f == "" {
-			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid selection value %v", f))
+			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid `Select` value %q", f))
 			return q
 		}
 		arr = append(arr, f)
@@ -225,7 +225,16 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 // DistinctOn :
 func (q *Query) DistinctOn(fields ...string) *Query {
 	q = q.clone()
-	q.distinctOn = append(q.distinctOn, fields...)
+	arr := make([]string, 0, len(fields))
+	for _, f := range fields {
+		f := strings.TrimSpace(f)
+		if f == "" || f == "*" {
+			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid `DistinctOn` value %q", f))
+			return q
+		}
+		arr = append(arr, f)
+	}
+	q.distinctOn = append(q.distinctOn, arr...)
 	return q
 }
 

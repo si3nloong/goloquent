@@ -132,6 +132,11 @@ func (c *Client) execQueryRow(s *stmt) *sql.Row {
 		stmt:     *s,
 		replacer: c.dialect,
 	}
+	ss.startTrace()
+	defer func() {
+		ss.stopTrace()
+		c.consoleLog(ss)
+	}()
 	return c.QueryRow(ss.Raw(), ss.arguments...)
 }
 

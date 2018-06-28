@@ -311,3 +311,7 @@ func (s *sequel) CreateTable(string, []Column) error {
 func (s *sequel) AlterTable(string, []Column) error {
 	return nil
 }
+
+func (s sequel) UpdateWithLimit() bool {
+	return false
+}

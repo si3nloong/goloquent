@@ -313,12 +313,6 @@ func (p *postgres) CreateTable(table string, columns []Column) error {
 }
 
 func (p *postgres) AlterTable(table string, columns []Column) error {
-	conn := p.db.sqlCommon.(*sql.DB)
-	tx, err := conn.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
 	cols := newDictionary(p.GetColumns(table))
 	idxs := newDictionary(p.GetIndexes(table))
 	idxs.delete(fmt.Sprintf("%s_pkey", table))
@@ -357,11 +351,12 @@ func (p *postgres) AlterTable(table string, columns []Column) error {
 	}
 
 	buf.Truncate(buf.Len() - 1)
-	// p.db.ConsoleLog(&Stmt{buf, nil, nil})
-	log.Println(buf.String())
-	if _, err := tx.Exec(buf.String()); err != nil {
-		return err
-	}
+	buf.WriteString(";")
+
+	log.Println(idxs.keys())
+	return p.db.execStmt(&stmt{
+		statement: buf,
+	})
 
 	// for _, idx := range idxs.keys() {
 	// 	buff := new(bytes.Buffer)
@@ -378,6 +373,4 @@ func (p *postgres) AlterTable(table string, columns []Column) error {
 	// 		return err
 	// 	}
 	// }
-
-	return tx.Commit()
 }

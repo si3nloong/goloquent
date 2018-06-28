@@ -185,3 +185,7 @@ func (s mysql) ToString(it interface{}) string {
 	}
 	return v
 }
+
+func (s mysql) UpdateWithLimit() bool {
+	return true
+}

@@ -7,22 +7,19 @@ import (
 	"testing"
 	"time"
 
-	"cloud.google.com/go/datastore"
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	"github.com/si3nloong/goloquent"
 	"github.com/si3nloong/goloquent/db"
 )
 
 var (
-	my      *goloquent.DB
-	nameKey = datastore.NameKey("Name", "hIL0O7zfZP", nil)
-	idKey   = datastore.IDKey("ID", int64(5116745034367558422), nil)
+	pg *goloquent.DB
 )
 
-func TestMySQLConn(t *testing.T) {
-	log.Println("CONNECT TO MYSQL " + strings.Repeat("-", 80))
-	conn, err := db.Open("mysql", db.Config{
-		Username: "root",
+func TestPostgresConn(t *testing.T) {
+	log.Println("CONNECT TO POSTGRES " + strings.Repeat("-", 80))
+	conn, err := db.Open("postgres", db.Config{
+		Username: "sianloong",
 		Database: "goloquent",
 		Logger: func(stmt *goloquent.Stmt) {
 			log.Println(fmt.Sprintf("[%.3fms] %s", stmt.TimeElapse().Seconds()*1000, stmt.String()))
@@ -31,159 +28,159 @@ func TestMySQLConn(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	my = conn
+	pg = conn
 }
 
-func TestMySQLMigration(t *testing.T) {
+func TestPostgresMigration(t *testing.T) {
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL MIGRATION")
+	log.Println("POSTGRES MIGRATION")
 	log.Println(strings.Repeat("-", 100))
-	if err := my.Migrate(new(User)); err != nil {
+	if err := pg.Migrate(new(User)); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func TestMySQLCreate(t *testing.T) {
+func TestPostgresCreate(t *testing.T) {
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL SINGLE CREATE")
+	log.Println("POSTGRES SINGLE CREATE")
 	log.Println(strings.Repeat("-", 100))
 	u := getFakeUser()
-	if err := my.Create(u); err != nil {
+	if err := pg.Create(u); err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL MULTI CREATE")
+	log.Println("POSTGRES MULTI CREATE")
 	log.Println(strings.Repeat("-", 100))
 	users := []*User{getFakeUser(), getFakeUser()}
-	if err := my.Create(&users); err != nil {
+	if err := pg.Create(&users); err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL SINGLE CREATE WITH PARENT KEY (NAME KEY)")
+	log.Println("POSTGRES SINGLE CREATE WITH PARENT KEY (NAME KEY)")
 	log.Println(strings.Repeat("-", 100))
-	if err := my.Create(u, nameKey); err != nil {
+	if err := pg.Create(u, nameKey); err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL SINGLE CREATE WITH PARENT KEY (ID KEY)")
+	log.Println("POSTGRES SINGLE CREATE WITH PARENT KEY (ID KEY)")
 	log.Println(strings.Repeat("-", 100))
-	if err := my.Create(u, idKey); err != nil {
+	if err := pg.Create(u, idKey); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func TestMySQLSelect(t *testing.T) {
+func TestPostgresSelect(t *testing.T) {
 	u := new(User)
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL FIRST WITH SELECT QUERY")
+	log.Println("POSTGRES FIRST WITH SELECT QUERY")
 	log.Println(strings.Repeat("-", 100))
-	if err := my.
+	if err := pg.
 		Select("*", "Name").First(u); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func TestMySQLDistinctOn(t *testing.T) {
+func TestPostgresDistinctOn(t *testing.T) {
 	u := new(User)
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL DISTINCT ON WITH *")
+	log.Println("POSTGRES DISTINCT ON WITH *")
 	log.Println(strings.Repeat("-", 100))
-	if err := my.NewQuery().
+	if err := pg.NewQuery().
 		DistinctOn("*").First(u); err == nil {
 		log.Fatal("Expected `DistinctOn` cannot allow *")
 	}
 
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL DISTINCT ON WITH EMPTY INPUT")
+	log.Println("POSTGRES DISTINCT ON WITH EMPTY INPUT")
 	log.Println(strings.Repeat("-", 100))
-	if err := my.NewQuery().
+	if err := pg.NewQuery().
 		DistinctOn("").First(u); err == nil {
 		log.Fatal("Expected `DistinctOn` cannot have empty")
 	}
 
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL DISTINCT ON WITH COLUMN")
+	log.Println("POSTGRES DISTINCT ON WITH COLUMN")
 	log.Println(strings.Repeat("-", 100))
-	if err := my.NewQuery().
+	if err := pg.NewQuery().
 		DistinctOn("Name", "Password").First(u); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func TestMySQLGet(t *testing.T) {
+func TestPostgresGet(t *testing.T) {
 	u := new(User)
 	users := new([]User)
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL FIRST")
+	log.Println("POSTGRES FIRST")
 	log.Println(strings.Repeat("-", 100))
-	if err := my.First(u); err != nil {
+	if err := pg.First(u); err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL FIND")
+	log.Println("POSTGRES FIND")
 	log.Println(strings.Repeat("-", 100))
-	if err := my.Find(u.Key, u); err != nil {
+	if err := pg.Find(u.Key, u); err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL GET")
+	log.Println("POSTGRES GET")
 	log.Println(strings.Repeat("-", 100))
-	if err := my.Get(users); err != nil {
+	if err := pg.Get(users); err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL GET WITH UNSCOPED")
+	log.Println("POSTGRES GET WITH UNSCOPED")
 	log.Println(strings.Repeat("-", 100))
-	if err := my.NewQuery().Unscoped().Get(users); err != nil {
+	if err := pg.NewQuery().Unscoped().Get(users); err != nil {
 		log.Fatal(err)
 	}
 
 }
 
-func TestMySQLPaginate(t *testing.T) {
+func TestPostgresPaginate(t *testing.T) {
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL PAGINATION")
+	log.Println("POSTGRES PAGINATION")
 	log.Println(strings.Repeat("-", 100))
 	users := new([]User)
 	p := &goloquent.Pagination{
 		Limit: 10,
 	}
-	if err := my.Paginate(p, users); err != nil {
+	if err := pg.Paginate(p, users); err != nil {
 		log.Fatal(err)
 	}
 	log.Println("Records :", p.Count())
 	log.Println("Cursor :", p.NextCursor())
 }
 
-func TestMySQLUpsert(t *testing.T) {
+func TestPostgresUpsert(t *testing.T) {
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL SINGLE UPSERT")
+	log.Println("POSTGRES SINGLE UPSERT")
 	log.Println(strings.Repeat("-", 100))
 	u := getFakeUser()
-	if err := my.Upsert(u); err != nil {
+	if err := pg.Upsert(u); err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL MULTI UPSERT")
+	log.Println("POSTGRES MULTI UPSERT")
 	log.Println(strings.Repeat("-", 100))
 	users := []*User{getFakeUser(), getFakeUser()}
-	if err := my.Upsert(&users); err != nil {
+	if err := pg.Upsert(&users); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func TestMySQLUpdate(t *testing.T) {
+func TestPostgresUpdate(t *testing.T) {
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL UPDATE")
+	log.Println("POSTGRES UPDATE")
 	log.Println(strings.Repeat("-", 100))
-	if err := my.Table("User").Limit(1).
+	if err := pg.Table("User").Limit(1).
 		Where("Name", "=", "Dr. Antoinette Zboncak").
 		Update(map[string]interface{}{
 			"Name": "sianloong",
@@ -191,37 +188,38 @@ func TestMySQLUpdate(t *testing.T) {
 		log.Fatal(err)
 	}
 }
-func TestMySQLSoftDelete(t *testing.T) {
+
+func TestPostgresSoftDelete(t *testing.T) {
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL SOFT DELETE")
+	log.Println("POSTGRES SOFT DELETE")
 	log.Println(strings.Repeat("-", 100))
 	u := getFakeUser()
-	if err := my.Create(u); err != nil {
+	if err := pg.Create(u); err != nil {
 		log.Fatal(err)
 	}
-	if err := my.Delete(u); err != nil {
+	if err := pg.Delete(u); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func TestHardDelete(t *testing.T) {
+func TestPostgresHardDelete(t *testing.T) {
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL HARD DELETE")
+	log.Println("POSTGRES HARD DELETE")
 	log.Println(strings.Repeat("-", 100))
 	u := new(User)
-	if err := my.First(u); err != nil {
+	if err := pg.First(u); err != nil {
 		log.Fatal(err)
 	}
-	if err := my.Destroy(u); err != nil {
+	if err := pg.Destroy(u); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func TestMySQLRunInTransaction(t *testing.T) {
+func TestPostgresRunInTransaction(t *testing.T) {
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL RUN IN TRANSACTION")
+	log.Println("POSTGRES RUN IN TRANSACTION")
 	log.Println(strings.Repeat("-", 100))
-	if err := my.RunInTransaction(func(txn *goloquent.DB) error {
+	if err := pg.RunInTransaction(func(txn *goloquent.DB) error {
 		u := new(User)
 		if err := txn.NewQuery().
 			WLock().First(u); err != nil {
@@ -236,9 +234,9 @@ func TestMySQLRunInTransaction(t *testing.T) {
 	}
 }
 
-func TestMySQLScan(t *testing.T) {
+func TestPostgresScan(t *testing.T) {
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL SCAN")
+	log.Println("POSTGRES SCAN")
 	log.Println(strings.Repeat("-", 100))
 	var count, sum uint
 	if err := my.Table("User").Select("count(*), sum(Age)").
@@ -248,11 +246,11 @@ func TestMySQLScan(t *testing.T) {
 	log.Println("Count :", count, ", Sum :", sum)
 }
 
-func TestMySQLTruncate(t *testing.T) {
+func TestPostgresTruncate(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL TRUNCATE")
+	// log.Println("POSTGRES TRUNCATE")
 	// log.Println(strings.Repeat("-", 100))
-	// if err := my.Truncate(new(User)); err != nil {
+	// if err := pg.Truncate(new(User)); err != nil {
 	// 	log.Fatal(err)
 	// }
 }

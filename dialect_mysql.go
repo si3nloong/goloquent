@@ -7,6 +7,7 @@ import (
 	"log"
 	"reflect"
 	"regexp"
+	"strconv"
 	"time"
 )
 
@@ -170,8 +171,10 @@ func (s mysql) ToString(it interface{}) string {
 		v = fmt.Sprintf("%d", vi)
 	case int, int8, int16, int32, int64:
 		v = fmt.Sprintf("%d", vi)
-	case float32, float64:
-		v = fmt.Sprintf("%v", vi)
+	case float32:
+		v = strconv.FormatFloat(float64(vi), 'f', -1, 64)
+	case float64:
+		v = strconv.FormatFloat(vi, 'f', -1, 64)
 	case time.Time:
 		v = fmt.Sprintf(`"%s"`, vi.Format("2006-01-02 15:04:05"))
 	case []interface{}:

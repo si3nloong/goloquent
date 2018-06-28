@@ -16,6 +16,8 @@
 - (2018-06-22) Fix `Paginate` bug, model slice is appending instead of get replace
 - (2018-06-25) Fix struct property sequence bug
 - (2018-06-27) Fix struct codec, func `Select` and func `DistinctOn`
+- (2018-06-28) Fix `Postgres` update with limit clause bug. Only mysql support `UPDATE xxx SET xxx LIMIT 10`. Postgres instead will use `UPDATE xxx SET xxx WHERE key IN (SELECT xxx FROM xxx LIMIT 10)`.
+- (2018-06-28) Fix `Paginate` bug, invalid cursor signature due to `qson` package didn't sort the filter fields
 
 # Breaking Changes
 

@@ -235,6 +235,15 @@ func TestPostgresRunInTransaction(t *testing.T) {
 }
 
 func TestPostgresScan(t *testing.T) {
+	log.Println(strings.Repeat("-", 100))
+	log.Println("POSTGRES SCAN")
+	log.Println(strings.Repeat("-", 100))
+	var count, sum uint
+	if err := my.Table("User").Select("count(*), sum(Age)").
+		Scan(&count, &sum); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Count :", count, ", Sum :", sum)
 }
 
 func TestPostgresTruncate(t *testing.T) {

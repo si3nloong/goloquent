@@ -910,6 +910,7 @@ func (b *builder) scan(dest ...interface{}) error {
 		return err
 	}
 	buf.WriteString(ss.string())
+	buf.WriteString(";")
 	if err := b.db.client.execQueryRow(&stmt{
 		statement: buf,
 		arguments: ss.arguments,

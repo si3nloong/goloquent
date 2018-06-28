@@ -237,6 +237,15 @@ func TestMySQLRunInTransaction(t *testing.T) {
 }
 
 func TestMySQLScan(t *testing.T) {
+	log.Println(strings.Repeat("-", 100))
+	log.Println("MYSQL SCAN")
+	log.Println(strings.Repeat("-", 100))
+	var count, sum uint
+	if err := my.Table("User").Select("count(*), sum(Age)").
+		Scan(&count, &sum); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Count :", count, ", Sum :", sum)
 }
 
 func TestMySQLTruncate(t *testing.T) {

@@ -15,6 +15,9 @@ type Pagination struct {
 
 // SetQuery :
 func (p *Pagination) SetQuery(q *Query) {
+	if q == nil {
+		return
+	}
 	p.query = q
 }
 

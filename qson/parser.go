@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -93,6 +94,11 @@ func (p *Parser) Parse(b []byte) ([]Field, error) {
 			fields = append(fields, Field{name, eq, it})
 		}
 	}
+
+	sort.Slice(fields, func(i, j int) bool {
+		return fmt.Sprintf("%s,%s", fields[i].Name(), fields[i].Operator()) <
+			fmt.Sprintf("%s,%s", fields[j].Name(), fields[j].Operator())
+	})
 	return fields, nil
 }
 

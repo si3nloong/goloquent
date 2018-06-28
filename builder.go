@@ -391,25 +391,25 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		return err
 	}
 	e.setName(b.query.table)
-	cmd, err := b.getCommand(e)
+	cmds, err := b.getCommand(e)
 	if err != nil {
 		return err
 	}
 
-	ori := *cmd
+	oriCmd := *cmds
 	if p.Cursor != "" {
 		c, err := DecodeCursor(p.Cursor)
 		if err != nil {
 			return err
 		}
-		if sha1Sign(&Stmt{stmt: *cmd, replacer: b.db.dialect}) != c.Signature {
+		if sha1Sign(&Stmt{stmt: *cmds, replacer: b.db.dialect}) != c.Signature {
 			return ErrInvalidCursor
 		}
 		query := b.query
 		buf, args := new(bytes.Buffer), make([]interface{}, 0)
 		buf.WriteString(b.buildSelect(query).string())
 		buf.WriteString(fmt.Sprintf(" FROM %s", b.db.dialect.GetTable(e.Name())))
-		cmd, err = b.buildWhere(query)
+		cmd, err := b.buildWhere(query)
 		if err != nil {
 			return err
 		}
@@ -443,6 +443,7 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 				buf.WriteString(fmt.Sprintf("%s %s %s AND ",
 					b.db.dialect.Quote(o.field), op, variable))
 				args = append(args, vv)
+				op = strings.Trim(op, "=")
 			}
 			or = append(or, fmt.Sprintf("%s %s %s",
 				b.db.dialect.Quote(o.field), op, variable))
@@ -453,11 +454,11 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		buf.WriteString(b.buildOrder(query).string())
 		buf.WriteString(b.buildLimitOffset(query).string())
 		buf.WriteString(";")
-		cmd = &stmt{statement: buf, arguments: args}
+		cmds = &stmt{statement: buf, arguments: args}
 	}
 
-	it, err := b.run(e.Name(), cmd)
-	it.stmt = &Stmt{stmt: ori, replacer: b.db.dialect}
+	it, err := b.run(e.Name(), cmds)
+	it.stmt = &Stmt{stmt: oriCmd, replacer: b.db.dialect}
 	if err != nil {
 		return err
 	}

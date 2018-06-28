@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -103,6 +104,10 @@ func (s *sequel) Value(it interface{}) string {
 		str = "NULL"
 	case string, []byte:
 		str = fmt.Sprintf("%q", vi)
+	case float32:
+		str = strconv.FormatFloat(float64(vi), 'f', -1, 64)
+	case float64:
+		str = strconv.FormatFloat(vi, 'f', -1, 64)
 	default:
 		str = fmt.Sprintf("%v", vi)
 	}

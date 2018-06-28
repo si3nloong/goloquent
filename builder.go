@@ -29,19 +29,20 @@ func newBuilder(query *Query) *builder {
 	}
 }
 
+func (b *builder) quoteIfNecessary(v string) string {
+	if regexp.MustCompile("^[a-zA-Z\\d]+(\\.[a-zA-Z\\d]+)*$").MatchString(v) {
+		return b.db.dialect.Quote(v)
+	}
+	return v
+}
+
 func (b *builder) buildSelect(query scope) *stmt {
 	scope := "*"
 	if len(query.projection) > 0 {
 		projection := make([]string, len(query.projection), len(query.projection))
 		copy(projection, query.projection)
 		for i := 0; i < len(query.projection); i++ {
-			vv := projection[i]
-			regex, _ := regexp.Compile(`\w+\(.+\)`)
-			// vv = strings.Replace(vv, "`", (b.db.dialect.Quote(vv))[:1], -1)
-			if vv != "*" && !regex.MatchString(vv) {
-				vv = b.db.dialect.Quote(vv)
-			}
-			projection[i] = vv
+			projection[i] = b.quoteIfNecessary(projection[i])
 		}
 		scope = strings.Join(projection, ",")
 	}
@@ -49,13 +50,7 @@ func (b *builder) buildSelect(query scope) *stmt {
 		distinctOn := make([]string, len(query.distinctOn), len(query.distinctOn))
 		copy(distinctOn, query.distinctOn)
 		for i := 0; i < len(query.distinctOn); i++ {
-			vv := distinctOn[i]
-			regex, _ := regexp.Compile(`.+ as .+`)
-			vv = strings.Replace(vv, "`", (b.db.dialect.Quote(vv))[:1], -1)
-			if !regex.MatchString(vv) {
-				vv = b.db.dialect.Quote(vv)
-			}
-			distinctOn[i] = vv
+			distinctOn[i] = b.quoteIfNecessary(distinctOn[i])
 		}
 		scope = "DISTINCT " + strings.Join(distinctOn, ",")
 	}
@@ -787,7 +782,17 @@ func (b *builder) updateMulti(v interface{}) error {
 	if err != nil {
 		return err
 	}
-	buf.WriteString(cmd.string())
+	if b.query.limit > 0 && !b.db.dialect.UpdateWithLimit() {
+		buf.WriteString(fmt.Sprintf(" WHERE %s IN (",
+			b.db.dialect.Quote(pkColumn)))
+		buf.WriteString(fmt.Sprintf("SELECT %s FROM %s",
+			b.db.dialect.Quote(pkColumn),
+			b.db.dialect.GetTable(table)))
+		buf.WriteString(cmd.string())
+		buf.WriteString(")")
+	} else {
+		buf.WriteString(cmd.string())
+	}
 	buf.WriteString(";")
 	return b.db.client.execStmt(&stmt{
 		statement: buf,
@@ -898,36 +903,8 @@ func (b *builder) scan(dest ...interface{}) error {
 	query := b.query
 	table := query.table
 	buf := new(bytes.Buffer)
-	scope := "*"
-	if len(query.projection) > 0 {
-		projection := make([]string, len(query.projection), len(query.projection))
-		copy(projection, query.projection)
-		for i := 0; i < len(query.projection); i++ {
-			vv := projection[i]
-			regex, _ := regexp.Compile(`\w+\(.+\)`)
-			// vv = strings.Replace(vv, "`", (b.db.dialect.Quote(vv))[:1], -1)
-			if !regex.MatchString(vv) {
-				vv = b.db.dialect.Quote(vv)
-			}
-			projection[i] = vv
-		}
-		scope = strings.Join(projection, ",")
-	}
-	if len(query.distinctOn) > 0 {
-		distinctOn := make([]string, len(query.distinctOn), len(query.distinctOn))
-		copy(distinctOn, query.distinctOn)
-		for i := 0; i < len(query.distinctOn); i++ {
-			vv := distinctOn[i]
-			regex, _ := regexp.Compile(`.+ as .+`)
-			vv = strings.Replace(vv, "`", (b.db.dialect.Quote(vv))[:1], -1)
-			if !regex.MatchString(vv) {
-				vv = b.db.dialect.Quote(vv)
-			}
-			distinctOn[i] = vv
-		}
-		scope = "DISTINCT " + strings.Join(distinctOn, ",")
-	}
-	buf.WriteString(fmt.Sprintf("SELECT %s FROM %s", scope, b.db.dialect.GetTable(table)))
+	buf.WriteString(b.buildSelect(query).string())
+	buf.WriteString(fmt.Sprintf(" FROM %s", b.db.dialect.GetTable(table)))
 	ss, err := b.buildStmt(b.query)
 	if err != nil {
 		return err
@@ -987,6 +964,16 @@ func interfaceToKeyString(it interface{}) (interface{}, error) {
 		arr := make([]interface{}, 0)
 		for _, kk := range vi {
 			arr = append(arr, stringPk(kk))
+		}
+		v = arr
+	case []interface{}:
+		arr := make([]interface{}, 0)
+		for _, kk := range vi {
+			k, err := interfaceToKeyString(kk)
+			if err != nil {
+				return nil, err
+			}
+			arr = append(arr, k)
 		}
 		v = arr
 	default:

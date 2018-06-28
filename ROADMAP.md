@@ -2,7 +2,9 @@
 - Support JSON filter in where statement
 - Support GeoLocation filter
 
-\*\*\*\* struct codec
-// primary key check
-// softDelete check
-// column paths
+**Struct Codec**
+
+- primary key check
+- softDelete check
+- fix column paths
+- Added cache mechanism

@@ -388,6 +388,7 @@ func (q *Query) Update(v interface{}) error {
 	if err := q.getError(); err != nil {
 		return err
 	}
+	q = q.Order(pkColumn)
 	return newBuilder(q).updateMulti(v)
 }
 

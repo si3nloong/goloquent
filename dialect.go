@@ -24,6 +24,7 @@ type Dialect interface {
 	CreateTable(tb string, cols []Column) error
 	AlterTable(tb string, cols []Column) error
 	OnConflictUpdate(tb string, cols []string) string
+	UpdateWithLimit() bool
 }
 
 var (

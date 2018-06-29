@@ -105,6 +105,9 @@ func (p postgres) DataType(sc Schema) string {
 			buf.WriteString(fmt.Sprintf(" DEFAULT %s", p.ToString(sc.DefaultValue)))
 		}
 	}
+	// if reflect.DeepEqual(sc.CharSet, latin1CharSet) {
+	// 	buf.WriteString(fmt.Sprintf(" COLLATE %q", "C"))
+	// }
 	return buf.String()
 }
 
@@ -273,13 +276,6 @@ func (p *postgres) ToString(it interface{}) string {
 
 func (p *postgres) CreateTable(table string, columns []Column) error {
 	idxs := make([]string, 0, len(columns))
-	conn := p.db.sqlCommon.(*sql.DB)
-	tx, err := conn.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
 	buf := new(bytes.Buffer)
 	buf.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (", p.GetTable(table)))
 	for _, c := range columns {
@@ -298,18 +294,20 @@ func (p *postgres) CreateTable(table string, columns []Column) error {
 	}
 	buf.WriteString(fmt.Sprintf("PRIMARY KEY (%s)", p.Quote(pkColumn)))
 	buf.WriteString(");")
-	log.Println(buf.String())
-	if _, err := tx.Exec(buf.String()); err != nil {
+	if err := p.db.execStmt(&stmt{
+		statement: buf,
+	}); err != nil {
 		return err
 	}
 
+	log.Println(idxs)
 	for _, idx := range idxs {
-		if _, err := tx.Exec(idx); err != nil {
+		if _, err := p.db.Exec(idx); err != nil {
 			return err
 		}
 	}
 
-	return tx.Commit()
+	return nil
 }
 
 func (p *postgres) AlterTable(table string, columns []Column) error {

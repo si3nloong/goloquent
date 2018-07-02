@@ -272,7 +272,7 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 				}
 
 				sc := newStructCodec(reflect.New(ft))
-				f := newField(st, first.field, []int{i}, seq, sf.Type, first.isPtrChild, sc)
+				f := newField(st, first.field, append(first.path, i), seq, sf.Type, first.isPtrChild, sc)
 				fields = append(fields, f)
 				sc.parentField = &f
 				// reset the position when it's another struct

@@ -1,6 +1,7 @@
 - Eager loading
 - Support JSON filter in where statement
 - Support GeoLocation filter
+- Date datatype??
 
 **Struct Codec**
 

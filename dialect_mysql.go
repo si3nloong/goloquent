@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -37,12 +38,14 @@ func (s *mysql) Open(conf Config) (*sql.DB, error) {
 	buf.WriteString(addr)
 	buf.WriteString(fmt.Sprintf("/%s", conf.Database))
 	buf.WriteString("?parseTime=true")
+	if conf.CharSet != nil && conf.CharSet.Encoding != "" {
+		buf.WriteString(fmt.Sprintf("&charset=%s", strings.ToLower(conf.CharSet.Encoding)))
+	}
 	log.Println("Connection String :", buf.String())
 	client, err := sql.Open("mysql", buf.String())
 	if err != nil {
 		return nil, err
 	}
-	client.Exec("SET NAMES utf8mb4;")
 	return client, nil
 }
 

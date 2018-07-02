@@ -239,7 +239,8 @@ func TestPostgresScan(t *testing.T) {
 	log.Println("POSTGRES SCAN")
 	log.Println(strings.Repeat("-", 100))
 	var count, sum uint
-	if err := my.Table("User").Select("count(*), sum(Age)").
+	if err := pg.Table("User").
+		Select("COALESCE(COUNT(*),0)", fmt.Sprintf("COALESCE(SUM(%q),0)", "Age")).
 		Scan(&count, &sum); err != nil {
 		log.Fatal(err)
 	}

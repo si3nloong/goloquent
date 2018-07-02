@@ -513,34 +513,37 @@ func (b *builder) putStmt(parentKey []*datastore.Key, e *entity) (*stmt, error) 
 		b.db.dialect.Quote(strings.Join(e.Columns(), b.db.dialect.Quote(",")))))
 
 	for i := 0; i < v.Len(); i++ {
-		f := v.Index(i)
+		f := reflect.Indirect(v.Index(i))
 
-		if x, isOk := f.Interface().(Saver); isOk {
-			if err := x.Save(); err != nil {
-				return nil, err
-			}
-		}
-		props, err := SaveStruct(f.Interface())
-		if err != nil {
-			return nil, nil
-		}
+		vi := reflect.New(f.Type())
+		vi.Elem().Set(f)
 
+		fv := mustGetField(vi, e.field(keyFieldName))
+		if !fv.IsValid() || fv.Type() != typeOfPtrKey {
+			return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
+		}
 		pk := newPrimaryKey(e.Name(), keys[i])
 		if isInline {
-			kk, isOk := props[keyFieldName].Value.(*datastore.Key)
+			kk, isOk := fv.Interface().(*datastore.Key)
 			if !isOk {
 				return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
 			}
 			pk = newPrimaryKey(e.Name(), kk)
 		}
-
-		props[pkColumn] = Property{[]string{pkColumn}, typeOfPtrKey, stringPk(pk)}
-		fv := mustGetField(f, e.field(keyFieldName))
-		if !fv.IsValid() || fv.Type() != typeOfPtrKey {
-			return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
-		}
 		fv.Set(reflect.ValueOf(pk))
 
+		if x, isOk := vi.Interface().(Saver); isOk {
+			if err := x.Save(); err != nil {
+				return nil, err
+			}
+		}
+		props, err := SaveStruct(vi.Interface())
+		if err != nil {
+			return nil, nil
+		}
+
+		props[pkColumn] = Property{[]string{pkColumn}, typeOfPtrKey, stringPk(pk)}
+		f.Set(vi.Elem())
 		if i != 0 {
 			buf.WriteString(",")
 		}

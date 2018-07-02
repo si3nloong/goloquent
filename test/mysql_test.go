@@ -53,14 +53,6 @@ func TestMySQLCreate(t *testing.T) {
 	}
 
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL MULTI CREATE")
-	log.Println(strings.Repeat("-", 100))
-	users := []*User{getFakeUser(), getFakeUser()}
-	if err := my.Create(&users); err != nil {
-		log.Fatal(err)
-	}
-
-	log.Println(strings.Repeat("-", 100))
 	log.Println("MYSQL SINGLE CREATE WITH PARENT KEY (NAME KEY)")
 	log.Println(strings.Repeat("-", 100))
 	if err := my.Create(u, nameKey); err != nil {
@@ -73,6 +65,23 @@ func TestMySQLCreate(t *testing.T) {
 	if err := my.Create(u, idKey); err != nil {
 		log.Fatal(err)
 	}
+
+	log.Println(strings.Repeat("-", 100))
+	log.Println("MYSQL MULTI CREATE WITH SLICE STRUCT")
+	log.Println(strings.Repeat("-", 100))
+	uu := []User{*getFakeUser(), *getFakeUser()}
+	if err := my.Create(&uu); err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println(strings.Repeat("-", 100))
+	log.Println("MYSQL MULTI CREATE WITH SLICE POINTER STRUCT")
+	log.Println(strings.Repeat("-", 100))
+	users := []*User{getFakeUser(), getFakeUser()}
+	if err := my.Create(&users); err != nil {
+		log.Fatal(err)
+	}
+
 }
 
 func TestMySQLSelect(t *testing.T) {
@@ -171,12 +180,50 @@ func TestMySQLUpsert(t *testing.T) {
 	}
 
 	log.Println(strings.Repeat("-", 100))
-	log.Println("MYSQL MULTI UPSERT")
+	log.Println("MYSQL SINGLE UPSERT WITH PARENT KEY (ID KEY)")
+	log.Println(strings.Repeat("-", 100))
+	if err := my.Upsert(u, idKey); err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println(strings.Repeat("-", 100))
+	log.Println("MYSQL SINGLE UPSERT WITH PARENT KEY (NAME KEY)")
+	log.Println(strings.Repeat("-", 100))
+	if err := my.Upsert(u, nameKey); err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println(strings.Repeat("-", 100))
+	log.Println("MYSQL MULTI UPSERT WITH SLICE POINTER STRUCT")
 	log.Println(strings.Repeat("-", 100))
 	users := []*User{getFakeUser(), getFakeUser()}
 	if err := my.Upsert(&users); err != nil {
 		log.Fatal(err)
 	}
+
+	log.Println(strings.Repeat("-", 100))
+	log.Println("MYSQL MULTI UPSERT WITH SLICE STRUCT")
+	log.Println(strings.Repeat("-", 100))
+	uu := []User{*getFakeUser(), *getFakeUser()}
+	if err := my.Upsert(&uu); err != nil {
+		log.Fatal(err)
+	}
+
+	uuu := []User{*getFakeUser(), *getFakeUser()}
+	log.Println(strings.Repeat("-", 100))
+	log.Println("MYSQL MULTI UPSERT WITH SLICE STRUCT AND PARENT KEY (ID KEY)")
+	log.Println(strings.Repeat("-", 100))
+	if err := my.Upsert(&uuu, idKey); err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println(strings.Repeat("-", 100))
+	log.Println("MYSQL MULTI UPSERT WITH SLICE STRUCT AND PARENT KEY (NAME KEY)")
+	log.Println(strings.Repeat("-", 100))
+	if err := my.Upsert(&uuu, nameKey); err != nil {
+		log.Fatal(err)
+	}
+
 }
 
 func TestMySQLUpdate(t *testing.T) {
@@ -241,7 +288,7 @@ func TestMySQLScan(t *testing.T) {
 	log.Println("MYSQL SCAN")
 	log.Println(strings.Repeat("-", 100))
 	var count, sum uint
-	if err := my.Table("User").Select("count(*), sum(Age)").
+	if err := my.Table("User").Select("COALESCE(COUNT(*),0), COALESCE(SUM(Age),0)").
 		Scan(&count, &sum); err != nil {
 		log.Fatal(err)
 	}
@@ -249,10 +296,10 @@ func TestMySQLScan(t *testing.T) {
 }
 
 func TestMySQLTruncate(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL TRUNCATE")
-	// log.Println(strings.Repeat("-", 100))
-	// if err := my.Truncate(new(User)); err != nil {
-	// 	log.Fatal(err)
-	// }
+	log.Println(strings.Repeat("-", 100))
+	log.Println("MYSQL TRUNCATE")
+	log.Println(strings.Repeat("-", 100))
+	if err := my.Truncate(new(User)); err != nil {
+		log.Fatal(err)
+	}
 }

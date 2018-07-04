@@ -74,6 +74,10 @@ func (p postgres) Bind(i uint) string {
 	return fmt.Sprintf("$%d", i)
 }
 
+func (p postgres) JSONColumn(col string, path string) string {
+	return fmt.Sprintf("%s ->> %s", p.Quote(col), p.Value(path))
+}
+
 func (p postgres) escapeQuote(v string) string {
 	return strings.Replace(v, `'`, `''`, -1)
 }
@@ -218,7 +222,7 @@ func (p postgres) GetSchema(c Column) []Schema {
 
 // GetColumns :
 func (p *postgres) GetColumns(table string) (columns []string) {
-	stmt := "SELECT * FROM INFORMATION_SCHEMA.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = $1;"
+	stmt := "SELECT column_name FROM INFORMATION_SCHEMA.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = $1;"
 	rows, _ := p.db.Query(stmt, table)
 	defer rows.Close()
 	for i := 0; rows.Next(); i++ {
@@ -320,16 +324,29 @@ func (p *postgres) AlterTable(table string, columns []Column) error {
 	buf.WriteString(fmt.Sprintf("ALTER TABLE %s ", p.GetTable(table)))
 	for _, c := range columns {
 		for _, ss := range p.GetSchema(c) {
-			prefix := fmt.Sprintf("ALTER COLUMN %s", p.Quote(ss.Name))
-			buf.WriteString(fmt.Sprintf("%s TYPE %s", prefix, ss.DataType))
-			buf.WriteString(",")
-			if !ss.IsNullable {
-				buf.WriteString(prefix + " SET NOT NULL,")
-				if !ss.IsOmitEmpty() {
-					buf.WriteString(fmt.Sprintf("%s SET DEFAULT %s,",
-						prefix, p.ToString(ss.DefaultValue)))
+			if !cols.has(ss.Name) {
+				buf.WriteString(fmt.Sprintf("ADD COLUMN %s %s", p.Quote(ss.Name), ss.DataType))
+				if !ss.IsNullable {
+					buf.WriteString(" NOT NULL")
+					if !ss.IsOmitEmpty() {
+						buf.WriteString(fmt.Sprintf(" DEFAULT %s",
+							p.ToString(ss.DefaultValue)))
+					}
+				}
+				buf.WriteString(",")
+			} else {
+				prefix := fmt.Sprintf("ALTER COLUMN %s", p.Quote(ss.Name))
+				buf.WriteString(fmt.Sprintf("%s TYPE %s", prefix, ss.DataType))
+				buf.WriteString(",")
+				if !ss.IsNullable {
+					buf.WriteString(prefix + " SET NOT NULL,")
+					if !ss.IsOmitEmpty() {
+						buf.WriteString(fmt.Sprintf("%s SET DEFAULT %s,",
+							prefix, p.ToString(ss.DefaultValue)))
+					}
 				}
 			}
+
 			if ss.IsIndexed {
 				idx := fmt.Sprintf("%s_%s_%s", table, ss.Name, "idx")
 				if idxs.has(idx) {

@@ -67,13 +67,21 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 	wheres := make([]string, 0)
 	args := make([]interface{}, 0)
 	for _, f := range query.filters {
-		name := b.db.dialect.Quote(f.field)
+		name := b.db.dialect.Quote(f.Name())
+		if f.IsJSON() {
+			paths := strings.SplitN(f.Name(), ":", 2)
+			if len(paths) != 2 {
+				return nil, fmt.Errorf("goloquent: invalid json column name: %q", f.Name())
+			}
+			name = b.db.dialect.JSONColumn(paths[0], paths[1])
+		}
+
 		v, err := f.Interface()
 		if err != nil {
 			return nil, err
 		}
 
-		switch f.field {
+		switch f.Name() {
 		case keyFieldName, pkColumn:
 			name = b.db.dialect.Quote(pkColumn)
 			v, err = interfaceToKeyString(f.value)
@@ -85,11 +93,12 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 		op, vv := "=", variable
 		switch f.operator {
 		case equal:
-			op = "="
 			if v == nil {
 				wheres = append(wheres, fmt.Sprintf("%s IS NULL", name))
 				continue
 			}
+		case equalTo:
+			op = "<=>"
 		case notEqual:
 			op = "<>"
 			if v == nil {
@@ -243,7 +252,7 @@ func (b *builder) getCommand(e *entity) (*stmt, error) {
 	buf.WriteString(fmt.Sprintf(" FROM %s", b.db.dialect.GetTable(e.Name())))
 	if !query.noScope && e.hasSoftDelete() {
 		query.filters = append(query.filters, Filter{
-			field:    softDeleteColumn,
+			columner: rawColumn{softDeleteColumn},
 			operator: equal,
 			value:    nil,
 		})

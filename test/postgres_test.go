@@ -142,6 +142,15 @@ func TestPostgresGet(t *testing.T) {
 
 }
 
+func TestPostgresJSON(t *testing.T) {
+	users := new([]User)
+	if err := pg.NewQuery().
+		WhereJSONEqual("Address:PostCode", 85).
+		Get(users); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func TestPostgresPaginate(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("POSTGRES PAGINATION")

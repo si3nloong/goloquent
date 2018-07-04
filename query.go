@@ -13,6 +13,7 @@ type operator int
 
 const (
 	equal operator = iota
+	equalTo
 	notEqual
 	lessThan
 	lessEqual
@@ -249,14 +250,14 @@ func (q *Query) Ancestor(ancestor *datastore.Key) *Query {
 	return q
 }
 
-// Where :
-func (q *Query) Where(field string, op string, value interface{}) *Query {
-	q = q.clone()
-	field = strings.TrimSpace(field)
+func (q *Query) where(field columner, op string, value interface{}) *Query {
 	op = strings.TrimSpace(op)
 
 	var optr operator
 	switch strings.ToLower(op) {
+	// TODO: safe equal
+	// case "<=>", "==":
+	// 	optr = equalTo
 	case "=", "eq", "$eq":
 		optr = equal
 	case "!=", "<>", "ne", "$ne":
@@ -283,11 +284,18 @@ func (q *Query) Where(field string, op string, value interface{}) *Query {
 	}
 
 	q.filters = append(q.filters, Filter{
-		field:    field,
+		columner: field,
 		operator: optr,
 		value:    value,
 	})
 	return q
+}
+
+// Where :
+func (q *Query) Where(field string, op string, value interface{}) *Query {
+	q = q.clone()
+	field = strings.TrimSpace(field)
+	return q.where(rawColumn{field}, op, value)
 }
 
 // WhereEq :
@@ -295,8 +303,13 @@ func (q *Query) WhereEq(field string, v interface{}) *Query {
 	return q.Where(field, "=", v)
 }
 
-// WhereNe :
-func (q *Query) WhereNe(field string, v interface{}) *Query {
+// WhereEqual :
+func (q *Query) WhereEqual(field string, v interface{}) *Query {
+	return q.Where(field, "=", v)
+}
+
+// WhereNotEqual :
+func (q *Query) WhereNotEqual(field string, v interface{}) *Query {
 	return q.Where(field, "!=", v)
 }
 
@@ -328,6 +341,12 @@ func (q *Query) WhereLike(field, v string) *Query {
 // WhereNotLike :
 func (q *Query) WhereNotLike(field, v string) *Query {
 	return q.Where(field, "nlike", v)
+}
+
+// WhereJSONEqual :
+func (q *Query) WhereJSONEqual(field string, v interface{}) *Query {
+	field = strings.TrimSpace(field)
+	return q.where(jsonColumn{field}, "=", v)
 }
 
 // Limit :

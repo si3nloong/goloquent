@@ -2,6 +2,8 @@ package goloquent
 
 import (
 	"fmt"
+	"log"
+	"reflect"
 	"testing"
 )
 
@@ -13,12 +15,7 @@ func TestEscape(t *testing.T) {
 }
 
 func TestInitStruct(t *testing.T) {
-	// i := new(testUser)
-	// v := reflect.Indirect(reflect.ValueOf(i))
-	// initStruct(v.FieldByName("Nested"))
-	// if i.Nested == nil {
-	// 	t.Errorf("initStruct result is unexpected")
-	// }
+
 }
 
 func TestIterator(t *testing.T) {
@@ -41,7 +38,17 @@ func TestIterator(t *testing.T) {
 }
 
 func TestValueToInterface(t *testing.T) {
+	var i testUser
+	vt := reflect.TypeOf(i)
+	vv, _ := valueToInterface(vt.Field(0).Type, []byte(`178330303`))
+	if vv != "178330303" {
+		log.Fatal(fmt.Sprintf("Unexpected value using valueToInterface %v", vv))
+	}
 
+	vv, _ = valueToInterface(vt.Field(2).Type, []byte(`Joe`))
+	if vv != "Joe" {
+		log.Fatal(fmt.Sprintf("Unexpected value using valueToInterface %v", vv))
+	}
 }
 
 func TestLoadStructField(t *testing.T) {}

@@ -10,6 +10,10 @@ import (
 	"cloud.google.com/go/datastore"
 )
 
+type Nested struct {
+	testUser
+}
+
 type TestModel struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -104,5 +108,11 @@ func TestStructCodec(t *testing.T) {
 		if !reflect.DeepEqual(ff.paths, f.paths) {
 			log.Fatal(fmt.Sprintf("Unexpected property index paths, expected %v, but get %v", ff.paths, f.paths))
 		}
+	}
+
+	var j Nested
+	_, err = getStructCodec(&j)
+	if err != nil {
+		log.Fatal("Expected error free, but instead err :", err)
 	}
 }

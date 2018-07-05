@@ -97,6 +97,7 @@ func SaveStruct(src interface{}) (map[string]Property, error) {
 		}
 	}
 
+	vi.Set(vv.Elem())
 	return data, nil
 }
 

@@ -120,6 +120,24 @@ func TestMySQLDistinctOn(t *testing.T) {
 	}
 }
 
+func TestMySQLEmptySliceInJSON(t *testing.T) {
+	u := new(User)
+	if err := my.First(u); err != nil {
+		log.Fatal(err)
+	}
+	if u.Email == nil {
+		log.Fatal(fmt.Errorf("empty slice should init on any `Get` func"))
+	}
+
+	u2 := new(User)
+	if err := my.Create(u2); err != nil {
+		log.Fatal(err)
+	}
+	if u2.Email == nil {
+		log.Fatal(fmt.Errorf("empty slice should init on any `Create` func"))
+	}
+}
+
 func TestMySQLGet(t *testing.T) {
 	u := new(User)
 	users := new([]User)

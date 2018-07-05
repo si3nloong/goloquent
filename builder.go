@@ -14,7 +14,10 @@ import (
 	"cloud.google.com/go/datastore"
 )
 
-const variable = "?"
+const (
+	variable      = "?"
+	jsonDelimeter = ":"
+)
 
 type builder struct {
 	db    *DB
@@ -69,7 +72,7 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 	for _, f := range query.filters {
 		name := b.db.dialect.Quote(f.Name())
 		if f.IsJSON() {
-			paths := strings.SplitN(f.Name(), ":", 2)
+			paths := strings.SplitN(f.Name(), jsonDelimeter, 2)
 			if len(paths) != 2 {
 				return nil, fmt.Errorf("goloquent: invalid json column name: %q", f.Name())
 			}
@@ -516,8 +519,7 @@ func (b *builder) putStmt(parentKey []*datastore.Key, e *entity) (*stmt, error) 
 	}
 
 	cols := e.Columns()
-	buf.WriteString(fmt.Sprintf(
-		"INSERT INTO %s (%s) VALUES ",
+	buf.WriteString(fmt.Sprintf("INSERT INTO %s (%s) VALUES ",
 		b.db.dialect.GetTable(e.Name()),
 		b.db.dialect.Quote(strings.Join(e.Columns(), b.db.dialect.Quote(",")))))
 

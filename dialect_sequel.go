@@ -114,6 +114,10 @@ func (s *sequel) Value(it interface{}) string {
 	return str
 }
 
+func (s sequel) JSONColumn(col string, path string) string {
+	return fmt.Sprintf("%s ->> %s", s.Quote(col), s.Value(fmt.Sprintf("$.%s", path)))
+}
+
 // DataType :
 func (s *sequel) DataType(sc Schema) string {
 	buf := new(bytes.Buffer)

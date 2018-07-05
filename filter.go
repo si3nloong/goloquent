@@ -8,9 +8,38 @@ import (
 	"cloud.google.com/go/datastore"
 )
 
+type columner interface {
+	Name() string
+	IsJSON() bool
+}
+
+type jsonColumn struct {
+	name string
+}
+
+func (c jsonColumn) Name() string {
+	return c.name
+}
+
+func (c jsonColumn) IsJSON() bool {
+	return true
+}
+
+type rawColumn struct {
+	name string
+}
+
+func (c rawColumn) Name() string {
+	return c.name
+}
+
+func (c rawColumn) IsJSON() bool {
+	return false
+}
+
 // Filter :
 type Filter struct {
-	field    string
+	columner
 	operator operator
 	value    interface{}
 }

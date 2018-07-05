@@ -1,4 +1,4 @@
-### Bug / Issue
+# Bug / Issue
 
 - Set primary key on insert
 - Primary key at insertion is wrong, always create new key
@@ -20,6 +20,7 @@
 - (2018-06-28) Fix `Paginate` bug, invalid cursor signature due to `qson` package didn't sort the filter fields
 - (2018-07-02) Fix `panic: reflect: Field index out of range` on embeded struct, code paths is invalid
 - (2018-07-02) Fix entity doesn't execute `Save` func even it implement `Saver` interface when it's not a pointer struct (eg: []Struct)
+- (2018-07-05) Fix `Postgres` `GetColumns` bug, it return empty array even database have records
 
 # Breaking Changes
 
@@ -43,6 +44,7 @@
 - (2018-06-21) Support extra option `datatype`, `charset`, `collate` on struct property, but it only limited to datatype of `string`
 - (2018-06-21) Allow `*` on func `Select`
 - (2018-06-24) Replaced offset pagination with cursor pagination
+- (2018-07-05) Replaced `WhereNe` with `WhereNotEqual`.
 
 # New Features
 
@@ -60,3 +62,4 @@
 - (2018-06-18) Introduced `Scan` func.
 - (2018-06-22) Introduced hard delete func `Destroy`.
 - (2018-06-24) Introduced `Unscoped` func.
+- (2018-07-05) Introduced `WhereJSONEqual` func.

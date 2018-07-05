@@ -153,6 +153,15 @@ func TestMySQLGet(t *testing.T) {
 
 }
 
+func TestMySQLJSON(t *testing.T) {
+	users := new([]User)
+	if err := my.NewQuery().
+		WhereJSONEqual("Address:PostCode", 85).
+		Get(users); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func TestMySQLPaginate(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("MYSQL PAGINATION")

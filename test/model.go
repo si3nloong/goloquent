@@ -10,14 +10,19 @@ import (
 
 // User :
 type User struct {
-	Key             *datastore.Key `goloquent:"__key__" faker:"-"`
-	Name            string         `goloquent:",charset=utf8,collate=utf8_bin" faker:"name"`
-	Password        string         `goloquent:",datatype=varchar(100)" faker:"password"`
-	Age             uint           ``
-	CreditLimit     float64        `goloquent:",unsigned"`
-	Address         string         `goloquent:",longtext"`
-	Email           []string       `goloquent:"" faker:"email"`
-	Status          string         `goloquent:",charset=latin1" faker:""`
+	Key         *datastore.Key `goloquent:"__key__" faker:"-"`
+	Name        string         `goloquent:",charset=utf8,collate=utf8_bin" faker:"name"`
+	Password    string         `goloquent:",datatype=varchar(100)" faker:"password"`
+	Age         uint           ``
+	CreditLimit float64        `goloquent:",unsigned"`
+	Address     struct {
+		Line1    string
+		Line2    string
+		Country  string
+		PostCode uint
+	}
+	Email           []string `goloquent:"" faker:"email"`
+	Status          string   `goloquent:",charset=latin1" faker:""`
 	UpdatedDateTime time.Time
 	DeleteDateTime  goloquent.SoftDelete `faker:"-"`
 }

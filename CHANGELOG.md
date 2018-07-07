@@ -45,6 +45,8 @@
 - (2018-06-21) Allow `*` on func `Select`
 - (2018-06-24) Replaced offset pagination with cursor pagination
 - (2018-07-05) Replaced `WhereNe` with `WhereNotEqual`.
+- (2018-07-08) Replaced `WhereEq` with `WhereEqual`.
+- (2018-07-08) Replaced return parameter `Query` to `Table` on func `Table` of `goloquent.DB`
 
 # New Features
 
@@ -64,3 +66,4 @@
 - (2018-06-24) Introduced `Unscoped` func.
 - (2018-07-05) Support **JSON** filter.
 - (2018-07-05) Introduced `WhereJSONEqual` func.
+- (2018-07-08) Introduced new struct `Table` with new func, such as `Exists`, `DropIfExists`, `Truncate`, `AddIndex`, `AddUniqueIndex`

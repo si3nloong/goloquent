@@ -135,6 +135,22 @@ func (q *Query) Select(fields ...string) *Query {
 	return q
 }
 
+// DistinctOn :
+func (q *Query) DistinctOn(fields ...string) *Query {
+	q = q.clone()
+	arr := make([]string, 0, len(fields))
+	for _, f := range fields {
+		f := strings.TrimSpace(f)
+		if f == "" || f == "*" {
+			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid `DistinctOn` value %q", f))
+			return q
+		}
+		arr = append(arr, f)
+	}
+	q.distinctOn = append(q.distinctOn, arr...)
+	return q
+}
+
 // Omit :
 func (q *Query) Omit(fields ...string) *Query {
 	q = q.clone()
@@ -223,22 +239,6 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 	return newBuilder(q).paginate(p, model)
 }
 
-// DistinctOn :
-func (q *Query) DistinctOn(fields ...string) *Query {
-	q = q.clone()
-	arr := make([]string, 0, len(fields))
-	for _, f := range fields {
-		f := strings.TrimSpace(f)
-		if f == "" || f == "*" {
-			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid `DistinctOn` value %q", f))
-			return q
-		}
-		arr = append(arr, f)
-	}
-	q.distinctOn = append(q.distinctOn, arr...)
-	return q
-}
-
 // Ancestor :
 func (q *Query) Ancestor(ancestor *datastore.Key) *Query {
 	q = q.clone()
@@ -298,11 +298,6 @@ func (q *Query) Where(field string, op string, value interface{}) *Query {
 	return q.where(rawColumn{field}, op, value)
 }
 
-// WhereEq :
-func (q *Query) WhereEq(field string, v interface{}) *Query {
-	return q.Where(field, "=", v)
-}
-
 // WhereEqual :
 func (q *Query) WhereEqual(field string, v interface{}) *Query {
 	return q.Where(field, "=", v)
@@ -349,15 +344,21 @@ func (q *Query) WhereJSONEqual(field string, v interface{}) *Query {
 	return q.where(jsonColumn{field}, "=", v)
 }
 
-// Limit :
-func (q *Query) Limit(limit int) *Query {
-	q.limit = int32(limit)
+// Lock :
+func (q *Query) Lock(mode locked) *Query {
+	q.lockMode = mode
 	return q
 }
 
-// Offset :
-func (q *Query) Offset(offset int) *Query {
-	q.offset = int32(offset)
+// RLock :
+func (q *Query) RLock() *Query {
+	q.lockMode = ReadLock
+	return q
+}
+
+// WLock :
+func (q *Query) WLock() *Query {
+	q.lockMode = WriteLock
 	return q
 }
 
@@ -384,21 +385,15 @@ func (q *Query) Order(fields ...string) *Query {
 	return q
 }
 
-// Lock :
-func (q *Query) Lock(mode locked) *Query {
-	q.lockMode = mode
+// Limit :
+func (q *Query) Limit(limit int) *Query {
+	q.limit = int32(limit)
 	return q
 }
 
-// RLock :
-func (q *Query) RLock() *Query {
-	q.lockMode = ReadLock
-	return q
-}
-
-// WLock :
-func (q *Query) WLock() *Query {
-	q.lockMode = WriteLock
+// Offset :
+func (q *Query) Offset(offset int) *Query {
+	q.offset = int32(offset)
 	return q
 }
 

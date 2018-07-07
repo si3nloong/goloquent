@@ -234,10 +234,8 @@ func (db *DB) Exec(stmt string, args ...interface{}) (sql.Result, error) {
 }
 
 // Table :
-func (db *DB) Table(name string) *Query {
-	q := db.NewQuery()
-	q.table = name
-	return q
+func (db *DB) Table(name string) *Table {
+	return &Table{name, db}
 }
 
 // Migrate :

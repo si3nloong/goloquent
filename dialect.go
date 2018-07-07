@@ -10,7 +10,6 @@ type Dialect interface {
 	Open(c Config) (*sql.DB, error)
 	SetDB(db Client)
 	GetTable(ns string) string
-	CreateIndex(ns string, cols []string) string
 	Version() (ver string)
 	CurrentDB() (n string)
 	Quote(n string) string
@@ -20,6 +19,7 @@ type Dialect interface {
 	GetSchema(c Column) []Schema
 	DataType(s Schema) string
 	HasTable(tb string) bool
+	HasIndex(tb, idx string) bool
 	GetColumns(tb string) (cols []string)
 	GetIndexes(tb string) (idxs []string)
 	CreateTable(tb string, cols []Column) error

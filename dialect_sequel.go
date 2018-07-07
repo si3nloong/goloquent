@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -55,13 +54,6 @@ func (s *sequel) Open(conf Config) (*sql.DB, error) {
 		return nil, err
 	}
 	return client, nil
-}
-
-// CreateIndex :
-func (s *sequel) CreateIndex(idx string, cols []string) string {
-	return fmt.Sprintf("CREATE INDEX %s (%s)",
-		s.Quote(idx),
-		s.Quote(strings.Join(cols, ",")))
 }
 
 // GetTable :
@@ -298,7 +290,13 @@ func (s *sequel) GetIndexes(table string) (idxs []string) {
 
 func (s *sequel) HasTable(table string) bool {
 	var count int
-	s.db.QueryRow("SELECT count(*) FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = ? AND table_name = ?", s.CurrentDB(), table).Scan(&count)
+	s.db.QueryRow("SELECT count(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?", s.CurrentDB(), table).Scan(&count)
+	return count > 0
+}
+
+func (s *sequel) HasIndex(table, idx string) bool {
+	var count int
+	s.db.QueryRow("SELECT count(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND INDEX_NAME = ?", s.CurrentDB(), table, idx).Scan(&count)
 	return count > 0
 }
 

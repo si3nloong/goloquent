@@ -42,6 +42,23 @@ func TestMySQLMigration(t *testing.T) {
 	}
 }
 
+func TestMySQLTableExists(t *testing.T) {
+	if isExist := my.Table("User").Exists(); isExist != true {
+		log.Fatal(fmt.Errorf("Unexpected error, table %q should exists", "User"))
+	}
+}
+
+func TestMySQLAddIndex(t *testing.T) {
+	if err := my.Table("User").
+		AddUniqueIndex("Username"); err != nil {
+		log.Fatal(err)
+	}
+	if err := my.Table("User").
+		AddIndex("Age"); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func TestMySQLCreate(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("MYSQL SINGLE CREATE")
@@ -54,6 +71,7 @@ func TestMySQLCreate(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("MYSQL SINGLE CREATE WITH PARENT KEY (NAME KEY)")
 	// log.Println(strings.Repeat("-", 100))
+	u = getFakeUser()
 	if err := my.Create(u, nameKey); err != nil {
 		log.Fatal(err)
 	}
@@ -61,6 +79,7 @@ func TestMySQLCreate(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("MYSQL SINGLE CREATE WITH PARENT KEY (ID KEY)")
 	// log.Println(strings.Repeat("-", 100))
+	u = getFakeUser()
 	if err := my.Create(u, idKey); err != nil {
 		log.Fatal(err)
 	}
@@ -289,6 +308,27 @@ func TestMySQLHardDelete(t *testing.T) {
 	}
 }
 
+func TestMySQLTable(t *testing.T) {
+	users := new([]User)
+	if err := my.Table("User").
+		WhereLike("Name", "nick%").
+		Get(users); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := my.Table("User").
+		Where("Age", ">", 0).
+		Get(users); err != nil {
+		log.Fatal(err)
+	}
+
+	user := new(User)
+	if err := my.Table("User").
+		First(user); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func TestMySQLRunInTransaction(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("MYSQL RUN IN TRANSACTION")
@@ -327,4 +367,10 @@ func TestMySQLTruncate(t *testing.T) {
 	if err := my.Truncate(new(User)); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func TestMySQLDropTableIfExists(t *testing.T) {
+	// if err := my.Table("User").DropIfExists(); err != nil {
+	// 	log.Fatal(err)
+	// }
 }

@@ -39,6 +39,23 @@ func TestPostgresMigration(t *testing.T) {
 	}
 }
 
+func TestPostgresTableExists(t *testing.T) {
+	if isExist := pg.Table("User").Exists(); isExist != true {
+		log.Fatal(fmt.Errorf("Unexpected error, table %q should exists", "User"))
+	}
+}
+
+func TestPostgresAddIndex(t *testing.T) {
+	if err := pg.Table("User").
+		AddUniqueIndex("Username"); err != nil {
+		log.Fatal(err)
+	}
+	if err := pg.Table("User").
+		AddIndex("Age"); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func TestPostgresCreate(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("POSTGRES SINGLE CREATE")
@@ -49,16 +66,9 @@ func TestPostgresCreate(t *testing.T) {
 	}
 
 	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES MULTI CREATE")
-	// log.Println(strings.Repeat("-", 100))
-	users := []*User{getFakeUser(), getFakeUser()}
-	if err := pg.Create(&users); err != nil {
-		log.Fatal(err)
-	}
-
-	// log.Println(strings.Repeat("-", 100))
 	// log.Println("POSTGRES SINGLE CREATE WITH PARENT KEY (NAME KEY)")
 	// log.Println(strings.Repeat("-", 100))
+	u = getFakeUser()
 	if err := pg.Create(u, nameKey); err != nil {
 		log.Fatal(err)
 	}
@@ -66,7 +76,17 @@ func TestPostgresCreate(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("POSTGRES SINGLE CREATE WITH PARENT KEY (ID KEY)")
 	// log.Println(strings.Repeat("-", 100))
+	u = getFakeUser()
 	if err := pg.Create(u, idKey); err != nil {
+		log.Fatal(err)
+	}
+
+	// log.Println(strings.Repeat("-", 100))
+	// log.Println("POSTGRES MULTI CREATE")
+	// log.Println(strings.Repeat("-", 100))
+
+	users := []*User{getFakeUser(), getFakeUser()}
+	if err := pg.Create(&users); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -223,6 +243,27 @@ func TestPostgresHardDelete(t *testing.T) {
 	}
 }
 
+func TestPostgresTable(t *testing.T) {
+	users := new([]User)
+	if err := pg.Table("User").
+		WhereLike("Name", "nick%").
+		Get(users); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := pg.Table("User").
+		Where("Age", ">", 0).
+		Get(users); err != nil {
+		log.Fatal(err)
+	}
+
+	user := new(User)
+	if err := pg.Table("User").
+		First(user); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func TestPostgresRunInTransaction(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("POSTGRES RUN IN TRANSACTION")
@@ -262,4 +303,10 @@ func TestPostgresTruncate(t *testing.T) {
 	if err := pg.Truncate(new(User)); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func TestPostgresDropTableIfExists(t *testing.T) {
+	// if err := pg.Table("User").DropIfExists(); err != nil {
+	// 	log.Fatal(err)
+	// }
 }

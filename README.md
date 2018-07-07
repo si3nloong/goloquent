@@ -61,17 +61,18 @@ type User struct {
     Name            string
     CountryCode     string
     PhoneNumber     string
+    Email           string
     Age             int64          `goloquent:",unsigned"`
     CreatedDateTime time.Time
     UpdatedDateTime time.Time
 }
 
-// Load : load property
+// Load : load func will execute after load
 func (x *User) Load() error {
 	return nil
 }
 
-// Save : manipulate property
+// Save : save func will execute before save
 func (x *User) Save() (error) {
 	return nil
 }
@@ -89,6 +90,30 @@ func (x *User) Save() (error) {
 
     key = datastore.NameKey("User", int64(2305297334603281546), datastore.NameKey("Merchant", "mjfFgYnxBS", nil))
     fmt.Println(goloquent.StringifyKey(key)) // Merchant,'mjfFgYnxBS'/User,2305297334603281546
+```
+
+### Table
+
+```go
+    import "github.com/si3nloong/goloquent/db"
+
+    // Check table exists
+    db.Table("User").Exists() // true
+
+    // Drop table if exists
+    if err := db.Table("User").DropIfExists(); err != nil {
+        log.Fatal(err)
+    }
+
+    // Add index
+    if err := db.Table("User").AddIndex("Name", "Email"); err != nil {
+        log.Fatal(err)
+    }
+
+    // Add unique index
+    if err := db.Table("User").AddUniqueIndex("Email"); err != nil {
+        log.Fatal(err)
+    }
 ```
 
 ### Create Record
@@ -123,8 +148,7 @@ func (x *User) Save() (error) {
     }
 
     // Create with self generate key
-    key := datastore.NameKey("User", "uniqueID", nil)
-    user.Key = key
+    user.Key = datastore.NameKey("User", "uniqueID", nil)
     if err := db.Create(user); err != nil {
         log.Println(err) // fail to create record
     }
@@ -147,8 +171,11 @@ func (x *User) Save() (error) {
     }
 
     // Upsert with self generate key
-    key := datastore.NameKey("User", "uniqueID", nil)
-    if err := db.Upsert(user, key); err != nil {
+    user := new(User)
+    user.Key = datastore.NameKey("User", "uniqueID", nil)
+    user.Name = "Hello World"
+    user.Age = 18
+    if err := db.Upsert(user); err != nil {
         log.Println(err) // fail
     }
 ```
@@ -200,7 +227,7 @@ func (x *User) Save() (error) {
     parentKey := datastore.IDKey("Parent", 1093, nil)
     user := new(User)
     if err := db.Ancestor(parentKey).
-        WhereEq("Age", &age).
+        WhereEqual("Age", &age).
         Order("-CreatedDateTime").
         First(user); err != nil {
         log.Println(err) // error while retrieving record
@@ -227,8 +254,8 @@ func (x *User) Save() (error) {
     // Example 3
     users := new([]User)
     if err := db.Ancestor(parentKey).
-        WhereEq("Name", "myz").
-        WhereEq("Age", 22).
+        WhereEqual("Name", "myz").
+        WhereEqual("Age", 22).
         Get(users); err != nil {
         log.Println(err) // error while retrieving record
     }
@@ -453,6 +480,7 @@ type User struct {
         State        string // `DefaultAddress.State`
         Country      string
     } `goloquent:",flatten"` // Flatten the struct field
+    Birthdate *goloquent.Date
     datetime // Embedded struct
     Deleted goloquent.SoftDelete
 }
@@ -470,6 +498,7 @@ The supported data type are :
 - any type whose underlying type is one of the above predeclared types
 - *datastore.Key
 - datastore.GeoPoint
+- goloquent.Date
 - goloquent.SoftDelete
 - time.Time
 - structs whose fields are all valid value types
@@ -494,6 +523,7 @@ The supported data type are :
 | uint64               | unsigned big integer | 0                   |         |
 | slice or array       | json                 |                     |         |
 | struct               | json                 |                     |         |
+| Date                 | date                 | 0001-01-01          |         |
 | time.Time            | datetime             | 0001-01-01 00:00:00 |         |
 | SoftDelete           | datetime (nullable)  | NULL                |         |
 

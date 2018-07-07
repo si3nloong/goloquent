@@ -192,6 +192,9 @@ func (s *sequel) GetSchema(c Column) []Schema {
 	case typeOfByte:
 		sc.DefaultValue = OmitDefault(nil)
 		sc.DataType = "mediumblob"
+	case typeOfDate:
+		// sc.DefaultValue = time.Time{}
+		sc.DataType = "date"
 	case typeOfTime:
 		sc.DefaultValue = time.Time{}
 		sc.DataType = "datetime"

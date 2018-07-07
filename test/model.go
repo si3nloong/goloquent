@@ -23,8 +23,9 @@ type User struct {
 		Country  string
 		PostCode uint
 	}
-	Email           []string `goloquent:"" faker:"email"`
-	Status          string   `goloquent:",charset=latin1" faker:""`
+	Birthdate       goloquent.Date `faker:"-"`
+	Email           []string       `goloquent:"" faker:"email"`
+	Status          string         `goloquent:",charset=latin1" faker:""`
 	UpdatedDateTime time.Time
 	DeleteDateTime  goloquent.SoftDelete `faker:"-"`
 }
@@ -33,5 +34,6 @@ func getFakeUser() *User {
 	u := new(User)
 	faker.FakeData(u)
 	u.Username = fmt.Sprintf("%d", time.Now().UnixNano())
+	u.Birthdate = goloquent.Date(time.Now())
 	return u
 }

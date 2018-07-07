@@ -82,6 +82,15 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 			return nil, fmt.Errorf("goloquent: unable to parse %q to date time", string(v))
 		}
 		it = dt
+	case typeOfDate:
+		if v == nil {
+			return Date(time.Time{}), nil
+		}
+		var dt, err = time.Parse("2006-01-02 15:04:05", escape(v))
+		if err != nil {
+			return nil, fmt.Errorf("goloquent: unable to parse %q to date", string(v))
+		}
+		it = Date(dt)
 	case typeOfSoftDelete:
 		if v == nil {
 			return SoftDelete(nil), nil
@@ -350,6 +359,12 @@ func loadField(v reflect.Value, it interface{}) error {
 			v.Set(reflect.ValueOf(x))
 		case typeOfTime:
 			x, isOk := it.(time.Time)
+			if !isOk {
+				return unmatchDataType(x, it)
+			}
+			v.Set(reflect.ValueOf(x))
+		case typeOfDate:
+			x, isOk := it.(Date)
 			if !isOk {
 				return unmatchDataType(x, it)
 			}

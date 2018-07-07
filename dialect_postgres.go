@@ -152,6 +152,9 @@ func (p postgres) GetSchema(c Column) []Schema {
 	case typeOfByte:
 		sc.DefaultValue = OmitDefault(nil)
 		sc.DataType = "bytea"
+	case typeOfDate:
+		// sc.DefaultValue = time.Time{}
+		sc.DataType = "date"
 	case typeOfTime:
 		sc.DefaultValue = time.Time{}
 		sc.DataType = "timestamp"

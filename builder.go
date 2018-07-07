@@ -19,6 +19,13 @@ const (
 	jsonDelimeter = ":"
 )
 
+type index int
+
+const (
+	bTreeIdx index = iota
+	uniqueIdx
+)
+
 type builder struct {
 	db    *DB
 	query scope
@@ -30,6 +37,34 @@ func newBuilder(query *Query) *builder {
 		db:    clone,
 		query: query.clone().scope,
 	}
+}
+
+func (b *builder) addIndex(fields []string, idx index) error {
+	table := b.query.table
+	idxName := fmt.Sprintf("%s_%s_idx", table, strings.Join(fields, "_"))
+	if b.db.dialect.HasIndex(table, idxName) {
+		return nil
+	}
+	buf := new(bytes.Buffer)
+	buf.WriteString("CREATE")
+	if idx == uniqueIdx {
+		buf.WriteString(" UNIQUE")
+	}
+	buf.WriteString(fmt.Sprintf(" INDEX %s ON %s (%s)",
+		b.db.dialect.Quote(idxName),
+		b.db.dialect.GetTable(table),
+		b.db.dialect.Quote(strings.Join(fields, ","))))
+	return b.db.client.execStmt(&stmt{
+		statement: buf,
+	})
+}
+
+func (b *builder) dropTableIfExists(table string) error {
+	buf := new(bytes.Buffer)
+	buf.WriteString(fmt.Sprintf("DROP TABLE IF EXISTS %s;", b.db.dialect.GetTable(table)))
+	return b.db.client.execStmt(&stmt{
+		statement: buf,
+	})
 }
 
 func (b *builder) quoteIfNecessary(v string) string {
@@ -439,8 +474,8 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 			values[i] = &values[i]
 		}
 		if err := b.db.Table(e.Name()).
+			WhereEqual(keyFieldName, c.Key).
 			Select(projection...).
-			WhereEq(keyFieldName, c.Key).
 			Limit(1).Scan(values...); err != nil {
 			return ErrInvalidCursor
 		}

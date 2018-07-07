@@ -27,7 +27,7 @@ func Exec(stmt string, args ...interface{}) (sql.Result, error) {
 }
 
 // Table :
-func Table(name string) *goloquent.Query {
+func Table(name string) *goloquent.Table {
 	return defaultDB.Table(name)
 }
 

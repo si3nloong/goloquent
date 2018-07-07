@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"time"
 
 	"cloud.google.com/go/datastore"
@@ -11,6 +12,7 @@ import (
 // User :
 type User struct {
 	Key         *datastore.Key `goloquent:"__key__" faker:"-"`
+	Username    string         `faker:"username"`
 	Name        string         `goloquent:",charset=utf8,collate=utf8_bin" faker:"name"`
 	Password    string         `goloquent:",datatype=varchar(100)" faker:"password"`
 	Age         uint           ``
@@ -30,5 +32,6 @@ type User struct {
 func getFakeUser() *User {
 	u := new(User)
 	faker.FakeData(u)
+	u.Username = fmt.Sprintf("%d", time.Now().UnixNano())
 	return u
 }

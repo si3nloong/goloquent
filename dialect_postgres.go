@@ -61,11 +61,6 @@ func (p *postgres) CurrentDB() (name string) {
 	return
 }
 
-// CreateIndex :
-func (p postgres) CreateIndex(idx string, cols []string) string {
-	return fmt.Sprintf("CREATE INDEX %s (%s)", p.Quote(idx), p.Quote(strings.Join(cols, ",")))
-}
-
 func (p postgres) Quote(n string) string {
 	return fmt.Sprintf(`"%s"`, n)
 }
@@ -247,6 +242,12 @@ func (p *postgres) GetIndexes(table string) (idxs []string) {
 func (p *postgres) HasTable(table string) bool {
 	var count int
 	p.db.QueryRow("SELECT count(*) FROM INFORMATION_SCHEMA.tables WHERE table_type = 'BASE TABLE' AND table_schema = CURRENT_SCHEMA() AND table_name = $1;", table).Scan(&count)
+	return count > 0
+}
+
+func (p *postgres) HasIndex(table, idx string) bool {
+	var count int
+	p.db.QueryRow("SELECT count(*) FROM pg_indexes WHERE tablename = $1 AND indexname = $2 AND schemaname = CURRENT_SCHEMA()", table, idx).Scan(&count)
 	return count > 0
 }
 

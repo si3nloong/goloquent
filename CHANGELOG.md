@@ -67,3 +67,4 @@
 - (2018-07-05) Support **JSON** filter.
 - (2018-07-05) Introduced `WhereJSONEqual` func.
 - (2018-07-08) Introduced new struct `Table` with new func, such as `Exists`, `DropIfExists`, `Truncate`, `AddIndex`, `AddUniqueIndex`
+- (2018-07-08) Introduced new data type `Date`.

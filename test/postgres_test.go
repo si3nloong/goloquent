@@ -300,9 +300,9 @@ func TestPostgresTruncate(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("POSTGRES TRUNCATE")
 	// log.Println(strings.Repeat("-", 100))
-	if err := pg.Truncate(new(User)); err != nil {
-		log.Fatal(err)
-	}
+	// if err := pg.Truncate(new(User)); err != nil {
+	// 	log.Fatal(err)
+	// }
 }
 
 func TestPostgresDropTableIfExists(t *testing.T) {

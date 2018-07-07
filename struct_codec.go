@@ -153,6 +153,8 @@ func isBaseType(t reflect.Type) bool {
 		return true
 	case t == typeOfPtrKey || t == typeOfTime || t == typeOfGeoPoint:
 		return true
+	case t == typeOfDate:
+		return true
 	case t == typeOfSoftDelete:
 		return true
 	}

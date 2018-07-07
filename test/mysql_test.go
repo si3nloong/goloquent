@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"testing"
@@ -102,6 +103,19 @@ func TestMySQLCreate(t *testing.T) {
 
 }
 
+func TestJSONMarshal(t *testing.T) {
+	u := new(User)
+	if err := my.Select("*", "Name").First(u); err != nil {
+		log.Fatal(err)
+	}
+
+	b, err := json.Marshal(u)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(string(b))
+}
+
 func TestMySQLSelect(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("MYSQL FIRST WITH SELECT QUERY")
@@ -148,7 +162,8 @@ func TestMySQLEmptySliceInJSON(t *testing.T) {
 		log.Fatal(fmt.Errorf("empty slice should init on any `Get` func"))
 	}
 
-	u2 := new(User)
+	u2 := getFakeUser()
+	u2.Email = nil
 	if err := my.Create(u2); err != nil {
 		log.Fatal(err)
 	}
@@ -364,9 +379,9 @@ func TestMySQLTruncate(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("MYSQL TRUNCATE")
 	// log.Println(strings.Repeat("-", 100))
-	if err := my.Truncate(new(User)); err != nil {
-		log.Fatal(err)
-	}
+	// if err := my.Truncate(new(User)); err != nil {
+	// 	log.Fatal(err)
+	// }
 }
 
 func TestMySQLDropTableIfExists(t *testing.T) {

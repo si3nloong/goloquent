@@ -458,6 +458,13 @@ func (x *User) Save() (error) {
 
 - **Extra Schema Option**
 
+Available shorthand:
+
+- longtext (only applicable for `string` data type)
+- index
+- unsigned (only applicable for `float32` and `float64` data type)
+- flatten (only applicable for struct or []struct)
+
 ```go
 type datetime struct {
     CreatedDateTime time.Time // `CreatedDateTime`
@@ -466,12 +473,12 @@ type datetime struct {
 
 // Fields may have a `goloquent:"name,options"` tag.
 type User struct {
-    Key     *datastore.Key `goloquent:"__key__"` // Primary Key
-    Name    string `goloquent:",longtext"` // Using `TEXT` datatype instead of `VARCHAR(255)` by default
+    Key         *datastore.Key `goloquent:"__key__"` // Primary Key
+    Name        string `goloquent:",longtext"` // Using `TEXT` datatype instead of `VARCHAR(255)` by default
     CreditLimit    float64    `goloquent:",unsigned"` // Unsigned option only applicable for float32 & float64 data type
     PhoneNumber string `goloquent:",charset=utf8,collate=utf8_bin,datatype=char(20)"`
-    Email   string `goloquent:""`   // Make column `Email` as unique field
-    Extra   string `goloquent:"-"` // Skip this field to store in db
+    Email       string
+    Skip        string `goloquent:"-"` // Skip this field to store in db
     DefaultAddress struct {
         AddressLine1 string // `DefaultAddress.AddressLine1`
         AddressLine2 string // `DefaultAddress.AddressLine2`
@@ -523,8 +530,8 @@ The supported data type are :
 | uint64               | unsigned big integer | 0                   |         |
 | slice or array       | json                 |                     |         |
 | struct               | json                 |                     |         |
-| Date                 | date                 | 0001-01-01          |         |
 | time.Time            | datetime             | 0001-01-01 00:00:00 |         |
+| Date                 | date                 | 0001-01-01          |         |
 | SoftDelete           | datetime (nullable)  | NULL                |         |
 
 **$Key**, **$Deleted** are reserved words, please avoid to use these words as your column name

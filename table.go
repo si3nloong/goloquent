@@ -170,3 +170,13 @@ func (t *Table) Limit(limit int) *Query {
 func (t *Table) Offset(offset int) *Query {
 	return t.newQuery().Offset(offset)
 }
+
+// Update :
+func (t *Table) Update(v interface{}) error {
+	return t.newQuery().Update(v)
+}
+
+// Scan :
+func (t *Table) Scan(dest ...interface{}) error {
+	return t.newQuery().Scan(dest...)
+}

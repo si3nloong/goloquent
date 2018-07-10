@@ -14,6 +14,7 @@ type Dialect interface {
 	CurrentDB() (n string)
 	Quote(n string) string
 	Bind(i uint) string
+	FilterJSON(f Filter) (string, []interface{})
 	JSONColumn(c string, path string) string
 	Value(v interface{}) string
 	GetSchema(c Column) []Schema

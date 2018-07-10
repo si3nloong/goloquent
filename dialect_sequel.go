@@ -3,7 +3,9 @@ package goloquent
 import (
 	"bytes"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"log"
 	"reflect"
 	"strconv"
 	"time"
@@ -89,11 +91,46 @@ func (s *sequel) Bind(uint) string {
 	return "?"
 }
 
+func (s *sequel) FilterJSON(f Filter) (string, []interface{}) {
+	a, b := f.Interface()
+	log.Println(a, b)
+	buf := new(bytes.Buffer)
+	switch f.operator {
+	case JSONEqual:
+		buf.WriteString(fmt.Sprintf(" = %s", s.Bind(0)))
+	case JSONNotEqual:
+		buf.WriteString(fmt.Sprintf(" <> %s", s.Bind(0)))
+	case JSONContainAny:
+		log.Println("HERE JSON !!!")
+		buf.WriteString(fmt.Sprintf("JSON_CONTAINS(%s, %s)", s.Quote(f.Field()), variable))
+		// buf.WriteString(fmt.Sprintf("JSON_SEARCH(%s,'one',%s) IS NOT NULL"))
+	case JSONContainAll:
+		buf.WriteString("JSON_SEARCH(,'all',) IS NOT NULL")
+	case JSONIsObject:
+		buf.WriteString(fmt.Sprintf("JSON_TYPE(%s -> %s) = %s",
+			s.Quote(f.Field()),
+			s.Value("$."+f.Field()),
+			variable))
+	case JSONIsArray:
+		buf.WriteString(fmt.Sprintf("JSON_TYPE(%s -> %s) = %s",
+			s.Quote(f.Field()),
+			s.Value("$."+f.Field()),
+			variable))
+	case JSONSupersetOf:
+	case JSONSubsetOf:
+	}
+
+	log.Println(buf.String())
+	return buf.String(), nil
+}
+
 func (s *sequel) Value(it interface{}) string {
 	var str string
 	switch vi := it.(type) {
 	case nil:
 		str = "NULL"
+	case json.RawMessage:
+		str = fmt.Sprintf("%q", vi)
 	case string, []byte:
 		str = fmt.Sprintf("%q", vi)
 	case float32:

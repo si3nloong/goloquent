@@ -11,6 +11,7 @@ import (
 
 type operator int
 
+// JSON :
 const (
 	equal operator = iota
 	equalTo
@@ -23,6 +24,14 @@ const (
 	notLike
 	in
 	notIn
+	JSONEqual
+	JSONNotEqual
+	JSONContainAny
+	JSONContainAll
+	JSONIsObject
+	JSONIsArray
+	JSONSupersetOf
+	JSONSubsetOf
 )
 
 type sortDirection int
@@ -250,7 +259,7 @@ func (q *Query) Ancestor(ancestor *datastore.Key) *Query {
 	return q
 }
 
-func (q *Query) where(field columner, op string, value interface{}) *Query {
+func (q *Query) where(field, op string, value interface{}) *Query {
 	op = strings.TrimSpace(op)
 
 	var optr operator
@@ -284,7 +293,7 @@ func (q *Query) where(field columner, op string, value interface{}) *Query {
 	}
 
 	q.filters = append(q.filters, Filter{
-		columner: field,
+		field:    field,
 		operator: optr,
 		value:    value,
 	})
@@ -294,8 +303,7 @@ func (q *Query) where(field columner, op string, value interface{}) *Query {
 // Where :
 func (q *Query) Where(field string, op string, value interface{}) *Query {
 	q = q.clone()
-	field = strings.TrimSpace(field)
-	return q.where(rawColumn{field}, op, value)
+	return q.where(field, op, value)
 }
 
 // WhereEqual :
@@ -338,10 +346,66 @@ func (q *Query) WhereNotLike(field, v string) *Query {
 	return q.Where(field, "nlike", v)
 }
 
+func (q *Query) whereJSON(field, op string, value interface{}) *Query {
+	field = strings.TrimSpace(field)
+	op = strings.TrimSpace(op)
+
+	var optr operator
+	switch strings.ToLower(op) {
+	case "equal":
+		optr = JSONEqual
+	case "notequal":
+		optr = JSONNotEqual
+	case "containany":
+		optr = JSONContainAny
+	case "containall":
+		optr = JSONContainAll
+	case "isobject":
+		optr = JSONIsObject
+	case "isarray":
+		optr = JSONIsArray
+	default:
+		q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q", op))
+		return q
+	}
+
+	q.filters = append(q.filters, Filter{
+		field:    field,
+		operator: optr,
+		value:    value,
+		isJSON:   true,
+	})
+	return q
+}
+
 // WhereJSONEqual :
 func (q *Query) WhereJSONEqual(field string, v interface{}) *Query {
-	field = strings.TrimSpace(field)
-	return q.where(jsonColumn{field}, "=", v)
+	return q.whereJSON(field, "equal", v)
+}
+
+// WhereJSONNotEqual :
+func (q *Query) WhereJSONNotEqual(field string, v interface{}) *Query {
+	return q.whereJSON(field, "notEqual", v)
+}
+
+// WhereJSONContainAny :
+func (q *Query) WhereJSONContainAny(field string, v interface{}) *Query {
+	return q.whereJSON(field, "containAny", v)
+}
+
+// WhereJSONContainAll :
+func (q *Query) WhereJSONContainAll(field string, v interface{}) *Query {
+	return q.whereJSON(field, "containAll", v)
+}
+
+// WhereJSONIsObject :
+func (q *Query) WhereJSONIsObject(field string) *Query {
+	return q.whereJSON(field, "isObject", "OBJECT")
+}
+
+// WhereJSONIsArray :
+func (q *Query) WhereJSONIsArray(field string) *Query {
+	return q.whereJSON(field, "isArray", "ARRAY")
 }
 
 // Lock :

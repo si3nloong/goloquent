@@ -8,40 +8,31 @@ import (
 	"cloud.google.com/go/datastore"
 )
 
-type columner interface {
-	Name() string
-	IsJSON() bool
-}
-
-type jsonColumn struct {
-	name string
-}
-
-func (c jsonColumn) Name() string {
-	return c.name
-}
-
-func (c jsonColumn) IsJSON() bool {
-	return true
-}
-
-type rawColumn struct {
-	name string
-}
-
-func (c rawColumn) Name() string {
-	return c.name
-}
-
-func (c rawColumn) IsJSON() bool {
-	return false
-}
-
 // Filter :
 type Filter struct {
-	columner
+	field    string
 	operator operator
 	value    interface{}
+	isJSON   bool
+}
+
+// Field :
+func (f Filter) Field() string {
+	return f.field
+}
+
+// IsJSON :
+func (f Filter) IsJSON() bool {
+	return f.isJSON
+}
+
+// JSON :
+type JSON struct {
+}
+
+// JSON :
+func (f Filter) JSON() *JSON {
+	return &JSON{}
 }
 
 // Interface :
@@ -69,10 +60,10 @@ func normalizeValue(val interface{}) (interface{}, error) {
 			return nil, nil
 		}
 		it = vi
-	case time.Time:
-		it = vi
 	case datastore.GeoPoint:
 		it = geoLocation{vi.Lat, vi.Lng}
+	case time.Time:
+		it = vi
 	default:
 		switch t.Kind() {
 		case reflect.String:

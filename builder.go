@@ -5,7 +5,9 @@ import (
 	"crypto/sha1"
 	"database/sql"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"log"
 	"reflect"
 	"regexp"
 	"strings"
@@ -41,14 +43,17 @@ func newBuilder(query *Query) *builder {
 
 func (b *builder) addIndex(fields []string, idx index) error {
 	table := b.query.table
-	idxName := fmt.Sprintf("%s_%s_idx", table, strings.Join(fields, "_"))
-	if b.db.dialect.HasIndex(table, idxName) {
-		return nil
-	}
 	buf := new(bytes.Buffer)
 	buf.WriteString("CREATE")
-	if idx == uniqueIdx {
+	idxName := fmt.Sprintf("%s_%s_idx", table, strings.Join(fields, "_"))
+	switch idx {
+	case uniqueIdx:
+		idxName = fmt.Sprintf("%s_%s_unique", table, strings.Join(fields, "_"))
 		buf.WriteString(" UNIQUE")
+	default:
+	}
+	if b.db.dialect.HasIndex(table, idxName) {
+		return nil
 	}
 	buf.WriteString(fmt.Sprintf(" INDEX %s ON %s (%s)",
 		b.db.dialect.Quote(idxName),
@@ -105,21 +110,26 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 	wheres := make([]string, 0)
 	args := make([]interface{}, 0)
 	for _, f := range query.filters {
-		name := b.db.dialect.Quote(f.Name())
-		if f.IsJSON() {
-			paths := strings.SplitN(f.Name(), jsonDelimeter, 2)
-			if len(paths) != 2 {
-				return nil, fmt.Errorf("goloquent: invalid json column name: %q", f.Name())
-			}
-			name = b.db.dialect.JSONColumn(paths[0], paths[1])
-		}
-
+		name := b.db.dialect.Quote(f.Field())
 		v, err := f.Interface()
 		if err != nil {
 			return nil, err
 		}
 
-		switch f.Name() {
+		if f.IsJSON() {
+			log.Println("JSON :", v, reflect.TypeOf(v))
+			vv, _ := b.db.dialect.FilterJSON(f)
+			wheres = append(wheres, vv)
+			args = append(args, json.RawMessage("ID,12312893912/Test,'abc'"))
+			continue
+			// paths := strings.SplitN(f.Name(), jsonDelimeter, 2)
+			// if len(paths) != 2 {
+			// 	return nil, fmt.Errorf("goloquent: invalid json column name: %q", f.Name())
+			// }
+			// name = b.db.dialect.JSONColumn(paths[0], paths[1])
+		}
+
+		switch f.Field() {
 		case keyFieldName, pkColumn:
 			name = b.db.dialect.Quote(pkColumn)
 			v, err = interfaceToKeyString(f.value)
@@ -290,7 +300,7 @@ func (b *builder) getCommand(e *entity) (*stmt, error) {
 	buf.WriteString(fmt.Sprintf(" FROM %s", b.db.dialect.GetTable(e.Name())))
 	if !query.noScope && e.hasSoftDelete() {
 		query.filters = append(query.filters, Filter{
-			columner: rawColumn{softDeleteColumn},
+			field:    softDeleteColumn,
 			operator: equal,
 			value:    nil,
 		})

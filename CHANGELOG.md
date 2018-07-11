@@ -21,50 +21,50 @@
 - (2018-07-02) Fix `panic: reflect: Field index out of range` on embeded struct, code paths is invalid
 - (2018-07-02) Fix entity doesn't execute `Save` func even it implement `Saver` interface when it's not a pointer struct (eg: []Struct)
 - (2018-07-05) Fix `Postgres` `GetColumns` bug, it return empty array even database have records
+- (2018-07-11) Fix `Update` func bug. It doesn't marshal the map[string]interface nor []interface{} to string after normalization
 
 # Breaking Changes
 
-- Dropped function `Count`
-- Dropped function `Union`
-- Dropped function single `Update`
-- Dropped function `SetDebug(boolean)`
-  <!-- - Dropped tag option `unsigned` support -->
-- Dropped datastore support
+- Drop function `Count`
+- Drop function `Union`
+- Drop function single `Update`
+- Drop function `SetDebug(boolean)`
+- Drop datastore support
 - `Delete` function using entity model instead of `*datastore.Key`
-- Changed params in function `RunInTransaction` from `*goloquent.Connection` to `*goloquent.DB`
-- Changed function `LockForUpdate` to `WLock`
-- Changed function `LockForShared` to `RLock`
-- Changed function single entity `Update` to `Save`
+- Change params in function `RunInTransaction` from `*goloquent.Connection` to `*goloquent.DB`
+- Change function `LockForUpdate` to `WLock`
+- Change function `LockForShared` to `RLock`
+- Change function single entity `Update` to `Save`
 - Change `Loader` interface `Load([]datastore.Property) error` to `Load() error`
 - Change `Saver` interface `Save() ([]datastore.Property,error)` to `Save() error`
 - Change second parameter **parentKey** `*datastore.Key` to optional on function `Create` nor `Upsert`
 - (2018-06-16) No longer support mysql 5.6 and below (at least 5.7)
 - (2018-06-19) Table is now by default using `utf8mb4` encoding
-- (2018-06-20) Replaced `Next` func in `Pagination` struct with `NextCursor`
+- (2018-06-20) Replace `Next` func in `Pagination` struct with `NextCursor`
 - (2018-06-21) Support extra option `datatype`, `charset`, `collate` on struct property, but it only limited to datatype of `string`
 - (2018-06-21) Allow `*` on func `Select`
-- (2018-06-24) Replaced offset pagination with cursor pagination
-- (2018-07-05) Replaced `WhereNe` with `WhereNotEqual`.
-- (2018-07-08) Replaced `WhereEq` with `WhereEqual`.
-- (2018-07-08) Replaced return parameter `Query` to `Table` on func `Table` of `goloquent.DB`
+- (2018-06-24) Replace offset pagination with cursor pagination
+- (2018-07-05) Replace `WhereNe` with `WhereNotEqual`.
+- (2018-07-08) Replace `WhereEq` with `WhereEqual`.
+- (2018-07-08) Replace return parameter `Query` to `Table` on func `Table` of `goloquent.DB`
 
 # New Features
 
-- Introduced `Select` func.
-- Introduced `DistinctOn` func.
-- Introduced `Lock` func.
-- Introduced `Truncate` func.
-- Introduced `Flush` func.
-- Introduced package `db`.
-- Introduced package `qson`. (Query JSON)
-- Replaced statement debug using `LogHandler`.
+- Introduce `Select` func.
+- Introduce `DistinctOn` func.
+- Introduce `Lock` func.
+- Introduce `Truncate` func.
+- Introduce `Flush` func.
+- Introduce package `db`.
+- Introduce package `qson`. (Query JSON)
+- Replace statement debug using `LogHandler`.
 - Support unsigned integer, uint, uint8, uint16, uint32, uint64
 - Support any pointer of base data type and struct
 - (2018-06-14) Support **Postgres**.
-- (2018-06-18) Introduced `Scan` func.
-- (2018-06-22) Introduced hard delete func `Destroy`.
-- (2018-06-24) Introduced `Unscoped` func.
+- (2018-06-18) Introduce `Scan` func.
+- (2018-06-22) Introduce hard delete func `Destroy`.
+- (2018-06-24) Introduce `Unscoped` func.
 - (2018-07-05) Support **JSON** filter.
-- (2018-07-05) Introduced `WhereJSONEqual` func.
-- (2018-07-08) Introduced new struct `Table` with new func, such as `Exists`, `DropIfExists`, `Truncate`, `AddIndex`, `AddUniqueIndex`
-- (2018-07-08) Introduced new data type `Date`.
+- (2018-07-05) Introduce `WhereJSONEqual` func.
+- (2018-07-08) Introduce new struct `Table` with new func, such as `Exists`, `DropIfExists`, `Truncate`, `AddIndex`, `AddUniqueIndex`
+- (2018-07-08) Introduce new data type `Date`.

@@ -755,7 +755,11 @@ func (b *builder) updateWithMap(v reflect.Value) (*stmt, error) {
 		if err != nil {
 			return nil, err
 		}
-		args = append(args, it)
+		vi, err := marshal(it)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, vi)
 	}
 	buf.Truncate(buf.Len() - 1)
 	return &stmt{

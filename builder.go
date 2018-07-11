@@ -161,6 +161,9 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 			if !isOk {
 				x = append(x, v)
 			}
+			if len(x) <= 0 {
+				return nil, fmt.Errorf(`goloquent: value for "In" operator cannot be empty`)
+			}
 			vv = fmt.Sprintf("(%s)", strings.TrimRight(
 				strings.Repeat(variable+",", len(x)), ","))
 			wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vv))
@@ -171,6 +174,9 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 			x, isOk := v.([]interface{})
 			if !isOk {
 				x = append(x, v)
+			}
+			if len(x) <= 0 {
+				return nil, fmt.Errorf(`goloquent: value for "NotIn" operator cannot be empty`)
 			}
 			vv = fmt.Sprintf("(%s)", strings.TrimRight(
 				strings.Repeat(variable+",", len(x)), ","))

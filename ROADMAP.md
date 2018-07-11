@@ -3,6 +3,7 @@
 - Support GeoLocation filter
 - Support JSON index
 - Enhance func `Table`
+- Support data type struct on `Filter` or `Update`
 
 **Struct Codec**
 

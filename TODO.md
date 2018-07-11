@@ -23,4 +23,4 @@
 
 Bugs :
 Flatten []struct childs values always null
-Update with limit (POSTGRES)
+Update with limit (POSTGRES) [ok]

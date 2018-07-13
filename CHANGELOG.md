@@ -22,6 +22,7 @@
 - (2018-07-02) Fix entity doesn't execute `Save` func even it implement `Saver` interface when it's not a pointer struct (eg: []Struct)
 - (2018-07-05) Fix `Postgres` `GetColumns` bug, it return empty array even database have records
 - (2018-07-11) Fix `Update` func bug. It doesn't marshal the map[string]interface nor []interface{} to string after normalization
+- (2018-07-13) Fix func `Unmarshal` of data type `Date`. It suppose using `YYYY-MM-DD` format.
 
 # Breaking Changes
 

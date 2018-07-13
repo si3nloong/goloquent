@@ -3,6 +3,8 @@ package goloquent
 import (
 	"fmt"
 	"reflect"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -13,7 +15,11 @@ type Date time.Time
 
 // UnmarshalJSON :
 func (d *Date) UnmarshalJSON(b []byte) error {
-	dt, err := time.Parse("2006-01-02", string(b))
+	rgx := regexp.MustCompile(`^\"\d{4}\-\d{2}\-\d{2}\"$`)
+	if !rgx.Match(b) {
+		return fmt.Errorf("goloquent: invalid date value %q", b)
+	}
+	dt, err := time.Parse("2006-01-02", strings.Trim(string(b), `"`))
 	if err != nil {
 		return err
 	}

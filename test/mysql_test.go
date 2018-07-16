@@ -296,6 +296,21 @@ func TestMySQLUpdate(t *testing.T) {
 		}); err != nil {
 		log.Fatal(err)
 	}
+
+	if err := my.Table("User").Limit(1).
+		Update(map[string]interface{}{
+			"Email": []string{"abc@gmail.com", "abc@hotmail.com", "abc@yahoo.com"},
+		}); err != nil {
+		log.Fatal(err)
+	}
+
+	// TODO: support struct
+	// if err := my.Table("User").Limit(1).
+	// 	Update(map[string]interface{}{
+	// 		"Address": Address{"", "Line2", "", 63000},
+	// 	}); err != nil {
+	// 	log.Fatal(err)
+	// }
 }
 func TestMySQLSoftDelete(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))

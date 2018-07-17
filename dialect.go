@@ -3,20 +3,8 @@ package goloquent
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
-	"io"
 	"reflect"
 )
-
-// Writer :
-type Writer interface {
-	Len() int
-	Reset()
-	io.Writer
-	WriteRune(rune) (int, error)
-	WriteString(s string) (n int, err error)
-	fmt.Stringer
-}
 
 // Dialect :
 type Dialect interface {

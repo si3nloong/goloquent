@@ -122,6 +122,26 @@ func Where(field string, operator string, value interface{}) *goloquent.Query {
 	return defaultDB.Where(field, operator, value)
 }
 
+// WhereJSON :
+func WhereJSON(field string, operator string, value interface{}) *goloquent.Query {
+	return defaultDB.NewQuery().WhereJSON(field, operator, value)
+}
+
+// Order :
+func Order(fields ...string) *goloquent.Query {
+	return defaultDB.NewQuery().Order(fields...)
+}
+
+// Limit :
+func Limit(limit int) *goloquent.Query {
+	return defaultDB.NewQuery().Limit(limit)
+}
+
+// Offset :
+func Offset(offset int) *goloquent.Query {
+	return defaultDB.NewQuery().Offset(offset)
+}
+
 // RunInTransaction :
 func RunInTransaction(cb goloquent.TransactionHandler) error {
 	return defaultDB.RunInTransaction(cb)

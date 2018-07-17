@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -91,37 +91,78 @@ func (s *sequel) Bind(uint) string {
 	return "?"
 }
 
-func (s *sequel) FilterJSON(f Filter) (string, []interface{}) {
-	a, b := f.Interface()
-	log.Println(a, b)
-	buf := new(bytes.Buffer)
+func (s *sequel) SplitJSON(name string) string {
+	paths := strings.SplitN(name, ">", 2)
+	if len(paths) <= 1 {
+		return s.Quote(paths[0])
+	}
+	return fmt.Sprintf("%s->>%q",
+		s.Quote(strings.TrimSpace(paths[0])),
+		fmt.Sprintf("$.%s", strings.TrimSpace(paths[1])))
+}
+
+func (s sequel) JSONMarshal(v interface{}) (b json.RawMessage) {
+	switch vi := v.(type) {
+	case json.RawMessage:
+		return vi
+	case nil:
+		b = json.RawMessage("null")
+	case string:
+		b = json.RawMessage(fmt.Sprintf("%q", vi))
+	default:
+		b = json.RawMessage(fmt.Sprintf("%v", vi))
+	}
+	return
+}
+
+func (s sequel) FilterJSON(f Filter) (string, []interface{}, error) {
+	vv, err := f.Interface()
+	if err != nil {
+		return "", nil, err
+	}
+	if vv == nil {
+		vv = json.RawMessage("null")
+	}
+	name := s.SplitJSON(f.Field())
+	buf, args := new(bytes.Buffer), make([]interface{}, 0)
 	switch f.operator {
-	case JSONEqual:
-		buf.WriteString(fmt.Sprintf(" = %s", s.Bind(0)))
-	case JSONNotEqual:
-		buf.WriteString(fmt.Sprintf(" <> %s", s.Bind(0)))
-	case JSONContainAny:
-		log.Println("HERE JSON !!!")
-		buf.WriteString(fmt.Sprintf("JSON_CONTAINS(%s, %s)", s.Quote(f.Field()), variable))
-		// buf.WriteString(fmt.Sprintf("JSON_SEARCH(%s,'one',%s) IS NOT NULL"))
-	case JSONContainAll:
-		buf.WriteString("JSON_SEARCH(,'all',) IS NOT NULL")
-	case JSONIsObject:
-		buf.WriteString(fmt.Sprintf("JSON_TYPE(%s -> %s) = %s",
-			s.Quote(f.Field()),
-			s.Value("$."+f.Field()),
-			variable))
-	case JSONIsArray:
-		buf.WriteString(fmt.Sprintf("JSON_TYPE(%s -> %s) = %s",
-			s.Quote(f.Field()),
-			s.Value("$."+f.Field()),
-			variable))
-	case JSONSupersetOf:
-	case JSONSubsetOf:
+	case Equal:
+		buf.WriteString(fmt.Sprintf("(%s) = ?", name))
+	case NotEqual:
+		buf.WriteString(fmt.Sprintf("(%s) <> ?", name))
+	case GreaterThan:
+		buf.WriteString(fmt.Sprintf("(%s) > ?", name))
+	case GreaterEqual:
+		buf.WriteString(fmt.Sprintf("%s >= ?", name))
+	case In:
+		x, isOk := vv.([]interface{})
+		if !isOk {
+			x = append(x, vv)
+		}
+		if len(x) <= 0 {
+			return "", nil, fmt.Errorf(`goloquent: value for "In" operator cannot be empty`)
+		}
+		buf.WriteString("(")
+		for i := 0; i < len(x); i++ {
+			buf.WriteString(fmt.Sprintf("JSON_CONTAINS(%s, ?) OR ", name))
+			args = append(args, s.JSONMarshal(x[i]))
+		}
+		buf.Truncate(buf.Len() - 4)
+		buf.WriteString(")")
+		return buf.String(), args, nil
+	case NotIn:
+		vv = s.JSONMarshal(vv)
+		buf.WriteString(fmt.Sprintf("JSON_CONTAINS(%s, ?) = false", name))
+	case IsObject:
+		vv = "OBJECT"
+		buf.WriteString(fmt.Sprintf("JSON_TYPE(%s) = ?", name))
+	case IsArray:
+		vv = "ARRAY"
+		buf.WriteString(fmt.Sprintf("JSON_TYPE(%s) = ?", name))
 	}
 
-	log.Println(buf.String())
-	return buf.String(), nil
+	args = append(args, vv)
+	return buf.String(), args, nil
 }
 
 func (s *sequel) Value(it interface{}) string {
@@ -141,10 +182,6 @@ func (s *sequel) Value(it interface{}) string {
 		str = fmt.Sprintf("%v", vi)
 	}
 	return str
-}
-
-func (s sequel) JSONColumn(col string, path string) string {
-	return fmt.Sprintf("%s ->> %s", s.Quote(col), s.Value(fmt.Sprintf("$.%s", path)))
 }
 
 // DataType :

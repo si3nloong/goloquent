@@ -3,6 +3,7 @@ package goloquent
 import (
 	"bytes"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"reflect"
@@ -69,12 +70,79 @@ func (p postgres) Bind(i uint) string {
 	return fmt.Sprintf("$%d", i)
 }
 
-func (p postgres) JSONColumn(col string, path string) string {
-	return fmt.Sprintf("%s ->> %s", p.Quote(col), p.Value(path))
+func (p postgres) SplitJSON(name string) string {
+	paths := strings.SplitN(name, ">", 2)
+	if len(paths) <= 1 {
+		return p.Quote(paths[0])
+	}
+	vv := strings.Split(strings.TrimSpace(paths[1]), `.`)
+	return fmt.Sprintf(`%s->%s`,
+		p.Quote(strings.TrimSpace(paths[0])),
+		`'`+strings.Join(vv, p.Value(`->`))+`'`)
 }
 
-func (p postgres) escapeQuote(v string) string {
-	return strings.Replace(v, `'`, `''`, -1)
+func (p postgres) JSONMarshal(v interface{}) (b json.RawMessage) {
+	switch vi := v.(type) {
+	case json.RawMessage:
+		return vi
+	case nil:
+		b = json.RawMessage("null")
+	case string:
+		b = json.RawMessage(fmt.Sprintf("%q", vi))
+	default:
+		b = json.RawMessage(fmt.Sprintf("%v", vi))
+	}
+	return
+}
+
+func (p postgres) FilterJSON(f Filter) (string, []interface{}, error) {
+	vv, err := f.Interface()
+	if err != nil {
+		return "", nil, err
+	}
+	if vv == nil {
+		vv = json.RawMessage("null")
+	}
+	name := p.SplitJSON(f.Field())
+	buf, args := new(bytes.Buffer), make([]interface{}, 0)
+	switch f.operator {
+	case Equal:
+		buf.WriteString(fmt.Sprintf("(%s) = ?", name))
+	case NotEqual:
+		buf.WriteString(fmt.Sprintf("(%s) <> ?", name))
+	case GreaterThan:
+		buf.WriteString(fmt.Sprintf("%s > ?", name))
+	case GreaterEqual:
+		buf.WriteString(fmt.Sprintf("%s >= ?", name))
+	case In:
+		x, isOk := vv.([]interface{})
+		if !isOk {
+			x = append(x, vv)
+		}
+		if len(x) <= 0 {
+			return "", nil, fmt.Errorf(`goloquent: value for "In" operator cannot be empty`)
+		}
+		buf.WriteString("(")
+		for i := 0; i < len(x); i++ {
+			buf.WriteString(fmt.Sprintf("JSON_CONTAINS(%s, ?) OR ", name))
+			args = append(args, p.JSONMarshal(x[i]))
+		}
+		buf.Truncate(buf.Len() - 4)
+		buf.WriteString(")")
+		return buf.String(), args, nil
+	case NotIn:
+		vv = p.JSONMarshal(vv)
+		buf.WriteString(fmt.Sprintf("JSON_CONTAINS(%s, ?) = false", name))
+	case IsObject:
+		vv = "{}"
+		buf.WriteString(fmt.Sprintf("(%s)::jsonb @> ?::jsonb", name))
+	case IsArray:
+		vv = "[]"
+		buf.WriteString(fmt.Sprintf("(%s)::jsonb @> ?::jsonb", name))
+	}
+
+	args = append(args, vv)
+	return buf.String(), args, nil
 }
 
 func (p postgres) Value(it interface{}) string {
@@ -83,7 +151,7 @@ func (p postgres) Value(it interface{}) string {
 	case nil:
 		str = "NULL"
 	case string, []byte:
-		str = fmt.Sprintf(`'%s'`, p.escapeQuote(fmt.Sprintf(`%s`, vi)))
+		str = fmt.Sprintf(`'%s'`, escapeSingleQuote(fmt.Sprintf(`%s`, vi)))
 	default:
 		str = fmt.Sprintf("%v", vi)
 	}

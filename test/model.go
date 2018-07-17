@@ -15,6 +15,12 @@ type Address struct {
 	Line2    string
 	Country  string
 	PostCode uint
+	Region   struct {
+		TimeZone    time.Time
+		Keys        []*datastore.Key   `goloquent:"keys"`
+		CountryCode string             `goloquent:"regionCode"`
+		Geolocation datastore.GeoPoint `goloquent:"geo"`
+	} `goloquent:"region"`
 }
 
 // User :
@@ -25,7 +31,7 @@ type User struct {
 	Password        string         `goloquent:",datatype=varchar(100)" faker:"password"`
 	Age             uint           ``
 	CreditLimit     float64        `goloquent:",unsigned"`
-	Address         Address
+	Address         Address        `faker:"-"`
 	Birthdate       goloquent.Date `faker:"-"`
 	Email           []string       `goloquent:"" faker:"email"`
 	Status          string         `goloquent:",charset=latin1" faker:""`

@@ -37,9 +37,6 @@ func (f Filter) JSON() *JSON {
 
 // Interface :
 func (f *Filter) Interface() (interface{}, error) {
-	if f.value == nil {
-		return nil, nil
-	}
 	v, err := normalizeValue(f.value)
 	if err != nil {
 		return nil, err
@@ -51,6 +48,9 @@ func (f *Filter) Interface() (interface{}, error) {
 // string, bool, uint64, int64, float64, []byte
 // time.Time, *datastore.Key, datastore.GeoPoint, []interface{}
 func normalizeValue(val interface{}) (interface{}, error) {
+	if val == nil {
+		return nil, nil
+	}
 	v := reflect.ValueOf(val)
 	var it interface{}
 	t := v.Type()

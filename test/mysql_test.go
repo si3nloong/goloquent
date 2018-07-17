@@ -205,10 +205,19 @@ func TestMySQLGet(t *testing.T) {
 
 }
 
-func TestMySQLJSON(t *testing.T) {
+func TestMySQLJSONEqual(t *testing.T) {
 	users := new([]User)
 	if err := my.NewQuery().
-		WhereJSONEqual("Address:PostCode", 85).
+		WhereJSONEqual("Address > PostCode", 85).
+		Get(users); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func TestMySQLJSONIn(t *testing.T) {
+	users := new([]User)
+	if err := my.NewQuery().
+		WhereJSONEqual("Address > PostCode", 85).
 		Get(users); err != nil {
 		log.Fatal(err)
 	}

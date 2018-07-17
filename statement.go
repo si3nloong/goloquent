@@ -51,6 +51,9 @@ func (s Stmt) TimeElapse() time.Duration {
 // Raw :
 func (s *Stmt) Raw() string {
 	buf := new(bytes.Buffer)
+	if len(s.arguments) <= 0 {
+		return s.string()
+	}
 	arr := strings.Split(s.string(), variable)
 	for i := 0; i < len(arr); i++ {
 		str := arr[i] + s.replacer.Bind(uint(i+1))

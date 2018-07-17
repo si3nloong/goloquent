@@ -5,9 +5,7 @@ import (
 	"crypto/sha1"
 	"database/sql"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"log"
 	"reflect"
 	"regexp"
 	"strings"
@@ -117,16 +115,13 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 		}
 
 		if f.IsJSON() {
-			log.Println("JSON :", v, reflect.TypeOf(v))
-			vv, _ := b.db.dialect.FilterJSON(f)
-			wheres = append(wheres, vv)
-			args = append(args, json.RawMessage("ID,12312893912/Test,'abc'"))
+			str, vv, err := b.db.dialect.FilterJSON(f)
+			if err != nil {
+				return nil, fmt.Errorf("goloquent: %v", err)
+			}
+			wheres = append(wheres, str)
+			args = append(args, vv...)
 			continue
-			// paths := strings.SplitN(f.Name(), jsonDelimeter, 2)
-			// if len(paths) != 2 {
-			// 	return nil, fmt.Errorf("goloquent: invalid json column name: %q", f.Name())
-			// }
-			// name = b.db.dialect.JSONColumn(paths[0], paths[1])
 		}
 
 		switch f.Field() {
@@ -140,32 +135,32 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 
 		op, vv := "=", variable
 		switch f.operator {
-		case equal:
+		case Equal:
 			if v == nil {
 				wheres = append(wheres, fmt.Sprintf("%s IS NULL", name))
 				continue
 			}
-		case equalTo:
+		case EqualTo:
 			op = "<=>"
-		case notEqual:
+		case NotEqual:
 			op = "<>"
 			if v == nil {
 				wheres = append(wheres, fmt.Sprintf("%s IS NOT NULL", name))
 				continue
 			}
-		case greaterThan:
+		case GreaterThan:
 			op = ">"
-		case greaterEqual:
+		case GreaterEqual:
 			op = ">="
-		case lessThan:
+		case LessThan:
 			op = "<"
-		case lessEqual:
+		case LessEqual:
 			op = "<="
-		case like:
+		case Like:
 			op = "LIKE"
-		case notLike:
+		case NotLike:
 			op = "NOT LIKE"
-		case in:
+		case In:
 			op = "IN"
 			x, isOk := v.([]interface{})
 			if !isOk {
@@ -179,7 +174,7 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 			wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vv))
 			args = append(args, x...)
 			continue
-		case notIn:
+		case NotIn:
 			op = "NOT IN"
 			x, isOk := v.([]interface{})
 			if !isOk {
@@ -307,7 +302,7 @@ func (b *builder) getCommand(e *entity) (*stmt, error) {
 	if !query.noScope && e.hasSoftDelete() {
 		query.filters = append(query.filters, Filter{
 			field:    softDeleteColumn,
-			operator: equal,
+			operator: Equal,
 			value:    nil,
 		})
 	}
@@ -395,6 +390,10 @@ func (b *builder) get(model interface{}, mustExist bool) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		v := reflect.ValueOf(model)
+		vi := reflect.New(v.Type().Elem())
+		v.Elem().Set(vi.Elem())
 	}
 	return nil
 }

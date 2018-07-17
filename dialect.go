@@ -2,8 +2,21 @@ package goloquent
 
 import (
 	"database/sql"
+	"encoding/json"
+	"fmt"
+	"io"
 	"reflect"
 )
+
+// Writer :
+type Writer interface {
+	Len() int
+	Reset()
+	io.Writer
+	WriteRune(rune) (int, error)
+	WriteString(s string) (n int, err error)
+	fmt.Stringer
+}
 
 // Dialect :
 type Dialect interface {
@@ -14,8 +27,8 @@ type Dialect interface {
 	CurrentDB() (n string)
 	Quote(n string) string
 	Bind(i uint) string
-	FilterJSON(f Filter) (string, []interface{})
-	JSONColumn(c string, path string) string
+	FilterJSON(f Filter) (s string, args []interface{}, err error)
+	JSONMarshal(i interface{}) (b json.RawMessage)
 	Value(v interface{}) string
 	GetSchema(c Column) []Schema
 	DataType(s Schema) string

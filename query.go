@@ -13,25 +13,19 @@ type operator int
 
 // JSON :
 const (
-	equal operator = iota
-	equalTo
-	notEqual
-	lessThan
-	lessEqual
-	greaterThan
-	greaterEqual
-	like
-	notLike
-	in
-	notIn
-	JSONEqual
-	JSONNotEqual
-	JSONContainAny
-	JSONContainAll
-	JSONIsObject
-	JSONIsArray
-	JSONSupersetOf
-	JSONSubsetOf
+	Equal operator = iota
+	EqualTo
+	NotEqual
+	LessThan
+	LessEqual
+	GreaterThan
+	GreaterEqual
+	Like
+	NotLike
+	In
+	NotIn
+	IsObject
+	IsArray
 )
 
 type sortDirection int
@@ -259,43 +253,61 @@ func (q *Query) Ancestor(ancestor *datastore.Key) *Query {
 	return q
 }
 
-func (q *Query) where(field, op string, value interface{}) *Query {
-	op = strings.TrimSpace(op)
-
+func (q *Query) where(field, op string, value interface{}, isJSON bool) *Query {
+	op = strings.TrimSpace(strings.ToLower(op))
 	var optr operator
-	switch strings.ToLower(op) {
-	// TODO: safe equal
-	// case "<=>", "==":
-	// 	optr = equalTo
-	case "=", "eq", "$eq":
-		optr = equal
-	case "!=", "<>", "ne", "$ne":
-		optr = notEqual
+
+	switch op {
+	case "=", "eq", "$eq", "equal":
+		optr = Equal
+	case "!=", "<>", "ne", "$ne", "notequal", "not equal":
+		optr = NotEqual
 	case ">", "!<", "gt", "$gt":
-		optr = greaterThan
+		optr = GreaterThan
 	case "<", "!>", "lt", "$lt":
-		optr = lessThan
+		optr = LessThan
 	case ">=", "gte", "$gte":
-		optr = greaterEqual
+		optr = GreaterEqual
 	case "<=", "lte", "$lte":
-		optr = lessEqual
-	case "like", "$like":
-		optr = like
-	case "nlike", "!like", "$nlike":
-		optr = notLike
+		optr = LessEqual
 	case "in", "$in":
-		optr = in
-	case "nin", "!in", "$nin":
-		optr = notIn
+		optr = In
+	case "nin", "!in", "$nin", "not in", "notin":
+		optr = NotIn
+	case "like", "$like":
+		if isJSON {
+			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q for json", op))
+			return q
+		}
+		optr = Like
+	case "nlike", "!like", "$nlike":
+		if isJSON {
+			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q for json", op))
+			return q
+		}
+		optr = NotLike
 	default:
-		q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q", op))
-		return q
+		if !isJSON {
+			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q", op))
+			return q
+		}
+
+		switch op {
+		case "isobject":
+			optr = IsObject
+		case "isarray":
+			optr = IsArray
+		default:
+			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q for json", op))
+			return q
+		}
 	}
 
 	q.filters = append(q.filters, Filter{
 		field:    field,
 		operator: optr,
 		value:    value,
+		isJSON:   isJSON,
 	})
 	return q
 }
@@ -303,7 +315,7 @@ func (q *Query) where(field, op string, value interface{}) *Query {
 // Where :
 func (q *Query) Where(field string, op string, value interface{}) *Query {
 	q = q.clone()
-	return q.where(field, op, value)
+	return q.where(field, op, value, false)
 }
 
 // WhereEqual :
@@ -346,66 +358,44 @@ func (q *Query) WhereNotLike(field, v string) *Query {
 	return q.Where(field, "nlike", v)
 }
 
-func (q *Query) whereJSON(field, op string, value interface{}) *Query {
-	field = strings.TrimSpace(field)
-	op = strings.TrimSpace(op)
-
-	var optr operator
-	switch strings.ToLower(op) {
-	case "equal":
-		optr = JSONEqual
-	case "notequal":
-		optr = JSONNotEqual
-	case "containany":
-		optr = JSONContainAny
-	case "containall":
-		optr = JSONContainAll
-	case "isobject":
-		optr = JSONIsObject
-	case "isarray":
-		optr = JSONIsArray
-	default:
-		q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q", op))
-		return q
-	}
-
-	q.filters = append(q.filters, Filter{
-		field:    field,
-		operator: optr,
-		value:    value,
-		isJSON:   true,
-	})
-	return q
+// WhereJSON :
+func (q *Query) WhereJSON(field, op string, v interface{}) *Query {
+	return q.where(field, op, v, true)
 }
 
 // WhereJSONEqual :
 func (q *Query) WhereJSONEqual(field string, v interface{}) *Query {
-	return q.whereJSON(field, "equal", v)
+	return q.WhereJSON(field, "=", v)
 }
 
 // WhereJSONNotEqual :
 func (q *Query) WhereJSONNotEqual(field string, v interface{}) *Query {
-	return q.whereJSON(field, "notEqual", v)
+	return q.WhereJSON(field, "!=", v)
+}
+
+// WhereJSONIn :
+func (q *Query) WhereJSONIn(field string, v []interface{}) *Query {
+	return q.WhereJSON(field, "in", v)
 }
 
 // WhereJSONContainAny :
 func (q *Query) WhereJSONContainAny(field string, v interface{}) *Query {
-	return q.whereJSON(field, "containAny", v)
+	return q.WhereJSON(field, "in", v)
 }
 
-// WhereJSONContainAll :
-func (q *Query) WhereJSONContainAll(field string, v interface{}) *Query {
-	return q.whereJSON(field, "containAll", v)
-}
+// // WhereJSONContainAll :
+// func (q *Query) WhereJSONContainAll(field string, v interface{}) *Query {
+// 	return q.WhereJSON(field, "containAll", v)
+// }
 
 // WhereJSONIsObject :
 func (q *Query) WhereJSONIsObject(field string) *Query {
-	return q.whereJSON(field, "isObject", "OBJECT")
+	return q.WhereJSON(field, "isObject", nil)
 }
 
 // WhereJSONIsArray :
 func (q *Query) WhereJSONIsArray(field string) *Query {
-	return q.whereJSON(field, "isArray", "ARRAY")
+	return q.WhereJSON(field, "isArray", nil)
 }
 
 // Lock :

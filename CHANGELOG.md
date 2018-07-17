@@ -23,6 +23,8 @@
 - (2018-07-05) Fix `Postgres` `GetColumns` bug, it return empty array even database have records
 - (2018-07-11) Fix `Update` func bug. It doesn't marshal the map[string]interface nor []interface{} to string after normalization
 - (2018-07-13) Fix func `Unmarshal` of data type `Date`. It suppose using `YYYY-MM-DD` format.
+- (2018-07-17) Fix panic when value of `WhereIn` or `WhereNotIn` contains `nil` value.
+- (2018-07-17) Fix `First` func bug. Entity value doesn't override if the result is empty.
 
 # Breaking Changes
 
@@ -32,9 +34,9 @@
 - Drop function `SetDebug(boolean)`
 - Drop datastore support
 - `Delete` function using entity model instead of `*datastore.Key`
-- Change params in function `RunInTransaction` from `*goloquent.Connection` to `*goloquent.DB`
-- Change function `LockForUpdate` to `WLock`
-- Change function `LockForShared` to `RLock`
+- Rename params in function `RunInTransaction` from `*goloquent.Connection` to `*goloquent.DB`
+- Rename function `LockForUpdate` to `WLock`
+- Rename function `LockForShared` to `RLock`
 - Change function single entity `Update` to `Save`
 - Change `Loader` interface `Load([]datastore.Property) error` to `Load() error`
 - Change `Saver` interface `Save() ([]datastore.Property,error)` to `Save() error`
@@ -45,9 +47,10 @@
 - (2018-06-21) Support extra option `datatype`, `charset`, `collate` on struct property, but it only limited to datatype of `string`
 - (2018-06-21) Allow `*` on func `Select`
 - (2018-06-24) Replace offset pagination with cursor pagination
-- (2018-07-05) Replace `WhereNe` with `WhereNotEqual`.
-- (2018-07-08) Replace `WhereEq` with `WhereEqual`.
+- (2018-07-05) Rename `WhereNe` with `WhereNotEqual`.
+- (2018-07-08) Rename `WhereEq` with `WhereEqual`.
 - (2018-07-08) Replace return parameter `Query` to `Table` on func `Table` of `goloquent.DB`
+- (2018-07-17) Expose operator to public.
 
 # New Features
 
@@ -69,3 +72,5 @@
 - (2018-07-05) Introduce `WhereJSONEqual` func.
 - (2018-07-08) Introduce new struct `Table` with new func, such as `Exists`, `DropIfExists`, `Truncate`, `AddIndex`, `AddUniqueIndex`
 - (2018-07-08) Introduce new data type `Date`.
+- (2018-07-17) Enhance data type `Date`, add func `MarshalText` and `UnmarshalText`.
+- (2018-07-) Introduce JSON filtering func `WhereJSONNotEqual`, `WhereJSONIn`, `WhereNotIn`, `WhereJSONContainAny`, `WhereJSONIsObject`, `WhereJSONIsArray`

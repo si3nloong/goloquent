@@ -165,9 +165,33 @@ func TestPostgresGet(t *testing.T) {
 func TestPostgresJSON(t *testing.T) {
 	users := new([]User)
 	if err := pg.NewQuery().
-		WhereJSONEqual("Address:PostCode", 85).
+		WhereJSONEqual("Address>PostCode", 85).
 		Get(users); err != nil {
 		log.Fatal(err)
+	}
+
+	if err := pg.NewQuery().
+		WhereJSONIsObject("Address>region").
+		Get(users); err != nil {
+		log.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal("JSON isObject has unexpected result")
+	}
+
+	if err := pg.NewQuery().
+		WhereJSONEqual("Address>Line1", "").
+		Get(users); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := pg.NewQuery().
+		WhereJSONIsArray("Address>region.keys").
+		Get(users); err != nil {
+		log.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal("JSON isArray has unexpected result")
 	}
 }
 

@@ -127,13 +127,13 @@ func (s sequel) FilterJSON(f Filter) (string, []interface{}, error) {
 	buf, args := new(bytes.Buffer), make([]interface{}, 0)
 	switch f.operator {
 	case Equal:
-		buf.WriteString(fmt.Sprintf("(%s) = ?", name))
+		buf.WriteString(fmt.Sprintf("(%s) = %s", name, variable))
 	case NotEqual:
-		buf.WriteString(fmt.Sprintf("(%s) <> ?", name))
+		buf.WriteString(fmt.Sprintf("(%s) <> %s", name, variable))
 	case GreaterThan:
-		buf.WriteString(fmt.Sprintf("(%s) > ?", name))
+		buf.WriteString(fmt.Sprintf("(%s) > %s", name, variable))
 	case GreaterEqual:
-		buf.WriteString(fmt.Sprintf("%s >= ?", name))
+		buf.WriteString(fmt.Sprintf("(%s) >= %s", name, variable))
 	case In:
 		x, isOk := vv.([]interface{})
 		if !isOk {
@@ -144,21 +144,36 @@ func (s sequel) FilterJSON(f Filter) (string, []interface{}, error) {
 		}
 		buf.WriteString("(")
 		for i := 0; i < len(x); i++ {
-			buf.WriteString(fmt.Sprintf("JSON_CONTAINS(%s, ?) OR ", name))
+			buf.WriteString(fmt.Sprintf("JSON_CONTAINS(%s, %s) OR ", name, variable))
 			args = append(args, s.JSONMarshal(x[i]))
 		}
 		buf.Truncate(buf.Len() - 4)
 		buf.WriteString(")")
 		return buf.String(), args, nil
 	case NotIn:
-		vv = s.JSONMarshal(vv)
-		buf.WriteString(fmt.Sprintf("JSON_CONTAINS(%s, ?) = false", name))
+		x, isOk := vv.([]interface{})
+		if !isOk {
+			x = append(x, vv)
+		}
+		if len(x) <= 0 {
+			return "", nil, fmt.Errorf(`goloquent: value for "In" operator cannot be empty`)
+		}
+		buf.WriteString("(")
+		for i := 0; i < len(x); i++ {
+			buf.WriteString(fmt.Sprintf("%s <> %s AND ", name, variable))
+			args = append(args, s.JSONMarshal(x[i]))
+		}
+		buf.Truncate(buf.Len() - 4)
+		buf.WriteString(")")
+		return buf.String(), args, nil
+	case IsType:
+		buf.WriteString(fmt.Sprintf("JSON_TYPE(%s) = UPPER(%s)", name, variable))
 	case IsObject:
 		vv = "OBJECT"
-		buf.WriteString(fmt.Sprintf("JSON_TYPE(%s) = ?", name))
+		buf.WriteString(fmt.Sprintf("JSON_TYPE(%s) = %s", name, variable))
 	case IsArray:
 		vv = "ARRAY"
-		buf.WriteString(fmt.Sprintf("JSON_TYPE(%s) = ?", name))
+		buf.WriteString(fmt.Sprintf("JSON_TYPE(%s) = %s", name, variable))
 	}
 
 	args = append(args, vv)

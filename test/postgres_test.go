@@ -3,6 +3,7 @@ package test
 import (
 	"fmt"
 	"log"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,29 +31,38 @@ func TestPostgresConn(t *testing.T) {
 	pg = conn
 }
 
+func TestPostgresTruncate(t *testing.T) {
+	log.Println(strings.Repeat("-", 100))
+	log.Println("POSTGRES TRUNCATE")
+	log.Println(strings.Repeat("-", 100))
+	if err := pg.Truncate(new(User)); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestPostgresMigration(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("POSTGRES MIGRATION")
 	// log.Println(strings.Repeat("-", 100))
 	if err := pg.Migrate(new(User)); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 }
 
 func TestPostgresTableExists(t *testing.T) {
 	if isExist := pg.Table("User").Exists(); isExist != true {
-		log.Fatal(fmt.Errorf("Unexpected error, table %q should exists", "User"))
+		t.Fatal(fmt.Errorf("Unexpected error, table %q should exists", "User"))
 	}
 }
 
 func TestPostgresAddIndex(t *testing.T) {
 	if err := pg.Table("User").
 		AddUniqueIndex("Username"); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	if err := pg.Table("User").
 		AddIndex("Age"); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 }
 
@@ -62,7 +72,7 @@ func TestPostgresCreate(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	u := getFakeUser()
 	if err := pg.Create(u); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// log.Println(strings.Repeat("-", 100))
@@ -70,7 +80,7 @@ func TestPostgresCreate(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	u = getFakeUser()
 	if err := pg.Create(u, nameKey); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// log.Println(strings.Repeat("-", 100))
@@ -78,7 +88,7 @@ func TestPostgresCreate(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	u = getFakeUser()
 	if err := pg.Create(u, idKey); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// log.Println(strings.Repeat("-", 100))
@@ -87,7 +97,7 @@ func TestPostgresCreate(t *testing.T) {
 
 	users := []*User{getFakeUser(), getFakeUser()}
 	if err := pg.Create(&users); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 }
 
@@ -98,7 +108,7 @@ func TestPostgresSelect(t *testing.T) {
 	u := new(User)
 	if err := pg.
 		Select("*", "Name").First(u); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 }
 
@@ -109,7 +119,7 @@ func TestPostgresDistinctOn(t *testing.T) {
 	u := new(User)
 	if err := pg.NewQuery().
 		DistinctOn("*").First(u); err == nil {
-		log.Fatal("Expected `DistinctOn` cannot allow *")
+		t.Fatal("Expected `DistinctOn` cannot allow *")
 	}
 
 	// log.Println(strings.Repeat("-", 100))
@@ -117,7 +127,7 @@ func TestPostgresDistinctOn(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	if err := pg.NewQuery().
 		DistinctOn("").First(u); err == nil {
-		log.Fatal("Expected `DistinctOn` cannot have empty")
+		t.Fatal("Expected `DistinctOn` cannot have empty")
 	}
 
 	// log.Println(strings.Repeat("-", 100))
@@ -125,7 +135,7 @@ func TestPostgresDistinctOn(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	if err := pg.NewQuery().
 		DistinctOn("Name", "Password").First(u); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 }
 
@@ -136,59 +146,160 @@ func TestPostgresGet(t *testing.T) {
 	// log.Println("POSTGRES FIRST")
 	// log.Println(strings.Repeat("-", 100))
 	if err := pg.First(u); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("POSTGRES FIND")
 	// log.Println(strings.Repeat("-", 100))
 	if err := pg.Find(u.Key, u); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("POSTGRES GET")
 	// log.Println(strings.Repeat("-", 100))
 	if err := pg.Get(users); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// log.Println(strings.Repeat("-", 100))
 	// log.Println("POSTGRES GET WITH UNSCOPED")
 	// log.Println(strings.Repeat("-", 100))
 	if err := pg.NewQuery().Unscoped().Get(users); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 }
 
-func TestPostgresJSON(t *testing.T) {
+func TestPostgresJSONEqual(t *testing.T) {
+	var emptyStr string
+
 	users := new([]User)
 	if err := pg.NewQuery().
-		WhereJSONEqual("Address>PostCode", 85).
+		WhereJSONEqual("Address>PostCode", int32(85)).
 		Get(users); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	if err := pg.NewQuery().
-		WhereJSONIsObject("Address>region").
+		WhereJSONEqual("Address>PostCode", uint32(85)).
 		Get(users); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
+	}
+
+	postCode := uint32(85)
+	if err := pg.NewQuery().
+		WhereJSONEqual("Address>PostCode", &postCode).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := pg.NewQuery().
+		WhereJSONEqual("Address>Line1", "7812, Jalan Section 22").
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal("JSON equal has unexpected result")
+	}
+
+	if err := pg.NewQuery().
+		WhereJSONEqual("Address>Line2", emptyStr).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal("JSON equal has unexpected result")
+	}
+
+	timeZone := new(time.Time)
+	if err := pg.NewQuery().
+		WhereJSONEqual("Address>region.TimeZone", timeZone).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal("JSON equal has unexpected result")
+	}
+}
+
+func TestPostgresJSONNotEqual(t *testing.T) {
+	var timeZone *time.Time
+	users := new([]User)
+	if err := pg.NewQuery().
+		WhereJSONNotEqual("Address>region.TimeZone", timeZone).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal("JSON equal has unexpected result")
+	}
+
+	if err := pg.NewQuery().
+		WhereJSONNotEqual("Address>Country", "").
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) > 0 {
+		t.Fatal("JSON equal has unexpected result")
+	}
+}
+
+func TestPostgresJSONIn(t *testing.T) {
+	users := new([]User)
+	if err := pg.NewQuery().
+		WhereJSONContainAny("Address>PostCode", []interface{}{0, 10, 20}).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal("JSON contain any has unexpected result")
+	}
+}
+
+func TestPostgresJSONNotIn(t *testing.T) {
+	users := new([]User)
+	if err := pg.NewQuery().
+		WhereJSONNotIn("Address>Line1", []interface{}{"PJ", "KL", "Cheras"}).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal("JSON contain any has unexpected result")
+	}
+}
+
+func TestPostgresJSONType(t *testing.T) {
+	users := new([]User)
+	if err := pg.NewQuery().
+		WhereJSONType("Address>region", "OBJECT").
+		Get(users); err != nil {
+		t.Fatal(err)
 	}
 	if len(*users) <= 0 {
 		t.Fatal("JSON isObject has unexpected result")
 	}
+}
 
+func TestPostgresJSONIsObject(t *testing.T) {
+	users := new([]User)
 	if err := pg.NewQuery().
-		WhereJSONEqual("Address>Line1", "").
+		WhereJSONIsObject("Address>region").
 		Get(users); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
+	if len(*users) <= 0 {
+		t.Fatal("JSON isObject has unexpected result")
+	}
+}
 
+func TestPostgresJSONIsArray(t *testing.T) {
+	users := new([]User)
 	if err := pg.NewQuery().
 		WhereJSONIsArray("Address>region.keys").
 		Get(users); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	if len(*users) <= 0 {
 		t.Fatal("JSON isArray has unexpected result")
@@ -204,7 +315,7 @@ func TestPostgresPaginate(t *testing.T) {
 		Limit: 10,
 	}
 	if err := pg.Paginate(p, users); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	// log.Println("Records :", p.Count())
 	// log.Println("Cursor :", p.NextCursor())
@@ -216,7 +327,7 @@ func TestPostgresUpsert(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	u := getFakeUser()
 	if err := pg.Upsert(u); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	// log.Println(strings.Repeat("-", 100))
@@ -224,7 +335,7 @@ func TestPostgresUpsert(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	users := []*User{getFakeUser(), getFakeUser()}
 	if err := pg.Upsert(&users); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 }
 
@@ -237,7 +348,7 @@ func TestPostgresUpdate(t *testing.T) {
 		Update(map[string]interface{}{
 			"Name": "sianloong",
 		}); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 }
 
@@ -247,10 +358,10 @@ func TestPostgresSoftDelete(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	u := getFakeUser()
 	if err := pg.Create(u); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	if err := pg.Delete(u); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 }
 
@@ -260,10 +371,10 @@ func TestPostgresHardDelete(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	u := new(User)
 	if err := pg.First(u); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	if err := pg.Destroy(u); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 }
 
@@ -272,19 +383,19 @@ func TestPostgresTable(t *testing.T) {
 	if err := pg.Table("User").
 		WhereLike("Name", "nick%").
 		Get(users); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	if err := pg.Table("User").
 		Where("Age", ">", 0).
 		Get(users); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	user := new(User)
 	if err := pg.Table("User").
 		First(user); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 }
 
@@ -303,7 +414,7 @@ func TestPostgresRunInTransaction(t *testing.T) {
 		u.UpdatedDateTime = time.Now().UTC()
 		return txn.Save(u)
 	}); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 }
 
@@ -315,22 +426,13 @@ func TestPostgresScan(t *testing.T) {
 	if err := pg.Table("User").
 		Select("COALESCE(COUNT(*),0)", fmt.Sprintf("COALESCE(SUM(%q),0)", "Age")).
 		Scan(&count, &sum); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	// log.Println("Count :", count, ", Sum :", sum)
 }
 
-func TestPostgresTruncate(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES TRUNCATE")
-	// log.Println(strings.Repeat("-", 100))
-	// if err := pg.Truncate(new(User)); err != nil {
-	// 	log.Fatal(err)
-	// }
-}
-
 func TestPostgresDropTableIfExists(t *testing.T) {
 	// if err := pg.Table("User").DropIfExists(); err != nil {
-	// 	log.Fatal(err)
+	// 	t.Fatal(err)
 	// }
 }

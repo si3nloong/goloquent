@@ -44,5 +44,7 @@ func getFakeUser() *User {
 	faker.FakeData(u)
 	u.Username = fmt.Sprintf("%d", time.Now().UnixNano())
 	u.Birthdate = goloquent.Date(time.Now())
+	u.Address.Line1 = "7812, Jalan Section 22"
+	u.Status = "ACTIVE"
 	return u
 }

@@ -25,6 +25,7 @@
 - (2018-07-13) Fix func `Unmarshal` of data type `Date`. It suppose using `YYYY-MM-DD` format.
 - (2018-07-17) Fix panic when value of `WhereIn` or `WhereNotIn` contains `nil` value.
 - (2018-07-17) Fix `First` func bug. Entity value doesn't override if the result is empty.
+- (2018-07-18) Fix panic when `Where` value is data type of `uint`, `int8` etc.
 
 # Breaking Changes
 
@@ -73,4 +74,4 @@
 - (2018-07-08) Introduce new struct `Table` with new func, such as `Exists`, `DropIfExists`, `Truncate`, `AddIndex`, `AddUniqueIndex`
 - (2018-07-08) Introduce new data type `Date`.
 - (2018-07-17) Enhance data type `Date`, add func `MarshalText` and `UnmarshalText`.
-- (2018-07-) Introduce JSON filtering func `WhereJSONNotEqual`, `WhereJSONIn`, `WhereNotIn`, `WhereJSONContainAny`, `WhereJSONIsObject`, `WhereJSONIsArray`
+- (2018-07-) Introduce JSON filtering func `WhereJSON`, `WhereJSONNotEqual`, `WhereJSONIn`, `WhereNotIn`, `WhereJSONType`, `WhereJSONIsObject`, `WhereJSONIsArray`

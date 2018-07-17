@@ -26,6 +26,7 @@ const (
 	NotIn
 	IsObject
 	IsArray
+	IsType
 )
 
 type sortDirection int
@@ -297,6 +298,8 @@ func (q *Query) where(field, op string, value interface{}, isJSON bool) *Query {
 			optr = IsObject
 		case "isarray":
 			optr = IsArray
+		case "istype":
+			optr = IsType
 		default:
 			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q for json", op))
 			return q
@@ -378,6 +381,11 @@ func (q *Query) WhereJSONIn(field string, v []interface{}) *Query {
 	return q.WhereJSON(field, "in", v)
 }
 
+// WhereJSONNotIn :
+func (q *Query) WhereJSONNotIn(field string, v []interface{}) *Query {
+	return q.WhereJSON(field, "nin", v)
+}
+
 // WhereJSONContainAny :
 func (q *Query) WhereJSONContainAny(field string, v interface{}) *Query {
 	return q.WhereJSON(field, "in", v)
@@ -387,6 +395,11 @@ func (q *Query) WhereJSONContainAny(field string, v interface{}) *Query {
 // func (q *Query) WhereJSONContainAll(field string, v interface{}) *Query {
 // 	return q.WhereJSON(field, "containAll", v)
 // }
+
+// WhereJSONType :
+func (q *Query) WhereJSONType(field, typ string) *Query {
+	return q.WhereJSON(field, "isType", strings.TrimSpace(strings.ToLower(typ)))
+}
 
 // WhereJSONIsObject :
 func (q *Query) WhereJSONIsObject(field string) *Query {

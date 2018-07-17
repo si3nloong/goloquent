@@ -98,9 +98,9 @@ func normalizeValue(val interface{}) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
-			vv := reflect.New(v.Type().Elem())
-			vv.Elem().Set(reflect.ValueOf(val))
-			it = vv.Interface()
+			vi := reflect.ValueOf(val).Interface()
+			it = &vi
+
 		default:
 			return nil, fmt.Errorf("goloquent: unsupported data type %v", t)
 		}

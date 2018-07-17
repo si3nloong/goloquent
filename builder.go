@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	variable      = "?"
+	variable      = "??"
 	jsonDelimeter = ":"
 )
 

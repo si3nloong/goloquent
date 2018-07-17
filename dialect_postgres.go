@@ -107,13 +107,13 @@ func (p postgres) FilterJSON(f Filter) (string, []interface{}, error) {
 	buf, args := new(bytes.Buffer), make([]interface{}, 0)
 	switch f.operator {
 	case Equal:
-		buf.WriteString(fmt.Sprintf("(%s) = ?", name))
+		buf.WriteString(fmt.Sprintf("(%s) = %s", name, variable))
 	case NotEqual:
-		buf.WriteString(fmt.Sprintf("(%s) <> ?", name))
+		buf.WriteString(fmt.Sprintf("(%s) <> %s", name, variable))
 	case GreaterThan:
-		buf.WriteString(fmt.Sprintf("%s > ?", name))
+		buf.WriteString(fmt.Sprintf("(%s) > %s", name, variable))
 	case GreaterEqual:
-		buf.WriteString(fmt.Sprintf("%s >= ?", name))
+		buf.WriteString(fmt.Sprintf("(%s) >= %s", name, variable))
 	case In:
 		x, isOk := vv.([]interface{})
 		if !isOk {
@@ -124,24 +124,41 @@ func (p postgres) FilterJSON(f Filter) (string, []interface{}, error) {
 		}
 		buf.WriteString("(")
 		for i := 0; i < len(x); i++ {
-			buf.WriteString(fmt.Sprintf("JSON_CONTAINS(%s, ?) OR ", name))
+			buf.WriteString(fmt.Sprintf("(%s = %s) OR ", name, variable))
 			args = append(args, p.JSONMarshal(x[i]))
 		}
 		buf.Truncate(buf.Len() - 4)
 		buf.WriteString(")")
 		return buf.String(), args, nil
 	case NotIn:
-		vv = p.JSONMarshal(vv)
-		buf.WriteString(fmt.Sprintf("JSON_CONTAINS(%s, ?) = false", name))
+		x, isOk := vv.([]interface{})
+		if !isOk {
+			x = append(x, vv)
+		}
+		if len(x) <= 0 {
+			return "", nil, fmt.Errorf(`goloquent: value for "In" operator cannot be empty`)
+		}
+		buf.WriteString("(")
+		for i := 0; i < len(x); i++ {
+			buf.WriteString(fmt.Sprintf("(%s <> %s) AND ", name, variable))
+			args = append(args, p.JSONMarshal(x[i]))
+		}
+		buf.Truncate(buf.Len() - 4)
+		buf.WriteString(")")
+		return buf.String(), args, nil
+	case IsType:
+		args = append(args, vv)
+		buf.WriteString(fmt.Sprintf("jsonb_typeof((%s)::jsonb) = LOWER(%s)", name, variable))
+		return buf.String(), args, nil
 	case IsObject:
-		vv = "{}"
-		buf.WriteString(fmt.Sprintf("(%s)::jsonb @> ?::jsonb", name))
+		vv = json.RawMessage([]byte("{}"))
+		buf.WriteString(fmt.Sprintf("(%s)::jsonb @> %s::jsonb", name, variable))
 	case IsArray:
-		vv = "[]"
-		buf.WriteString(fmt.Sprintf("(%s)::jsonb @> ?::jsonb", name))
+		vv = json.RawMessage([]byte("[]"))
+		buf.WriteString(fmt.Sprintf("(%s)::jsonb @> %s::jsonb", name, variable))
 	}
 
-	args = append(args, vv)
+	args = append(args, p.JSONMarshal(vv))
 	return buf.String(), args, nil
 }
 
@@ -150,6 +167,8 @@ func (p postgres) Value(it interface{}) string {
 	switch vi := it.(type) {
 	case nil:
 		str = "NULL"
+	case json.RawMessage:
+		str = fmt.Sprintf(`'%s'`, escapeSingleQuote(fmt.Sprintf(`%s`, vi)))
 	case string, []byte:
 		str = fmt.Sprintf(`'%s'`, escapeSingleQuote(fmt.Sprintf(`%s`, vi)))
 	default:
@@ -327,8 +346,10 @@ func (p *postgres) ToString(it interface{}) string {
 	switch vi := it.(type) {
 	case nil:
 		v = "NULL"
+	case json.RawMessage:
+		v = fmt.Sprintf(`'%s'`, vi)
 	case string:
-		v = fmt.Sprintf(`'%s'`, "")
+		v = fmt.Sprintf(`'%s'`, vi)
 	case bool:
 		v = fmt.Sprintf("%t", vi)
 	case uint, uint8, uint16, uint32, uint64:

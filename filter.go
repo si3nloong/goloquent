@@ -8,47 +8,35 @@ import (
 	"cloud.google.com/go/datastore"
 )
 
-type columner interface {
-	Name() string
-	IsJSON() bool
-}
-
-type jsonColumn struct {
-	name string
-}
-
-func (c jsonColumn) Name() string {
-	return c.name
-}
-
-func (c jsonColumn) IsJSON() bool {
-	return true
-}
-
-type rawColumn struct {
-	name string
-}
-
-func (c rawColumn) Name() string {
-	return c.name
-}
-
-func (c rawColumn) IsJSON() bool {
-	return false
-}
-
 // Filter :
 type Filter struct {
-	columner
+	field    string
 	operator operator
 	value    interface{}
+	isJSON   bool
+}
+
+// Field :
+func (f Filter) Field() string {
+	return f.field
+}
+
+// IsJSON :
+func (f Filter) IsJSON() bool {
+	return f.isJSON
+}
+
+// JSON :
+type JSON struct {
+}
+
+// JSON :
+func (f Filter) JSON() *JSON {
+	return &JSON{}
 }
 
 // Interface :
 func (f *Filter) Interface() (interface{}, error) {
-	if f.value == nil {
-		return nil, nil
-	}
 	v, err := normalizeValue(f.value)
 	if err != nil {
 		return nil, err
@@ -60,6 +48,9 @@ func (f *Filter) Interface() (interface{}, error) {
 // string, bool, uint64, int64, float64, []byte
 // time.Time, *datastore.Key, datastore.GeoPoint, []interface{}
 func normalizeValue(val interface{}) (interface{}, error) {
+	if val == nil {
+		return nil, nil
+	}
 	v := reflect.ValueOf(val)
 	var it interface{}
 	t := v.Type()
@@ -69,10 +60,12 @@ func normalizeValue(val interface{}) (interface{}, error) {
 			return nil, nil
 		}
 		it = vi
-	case time.Time:
-		it = vi
 	case datastore.GeoPoint:
 		it = geoLocation{vi.Lat, vi.Lng}
+	case time.Time:
+		it = vi
+	case Date:
+		it = vi
 	default:
 		switch t.Kind() {
 		case reflect.String:
@@ -107,9 +100,9 @@ func normalizeValue(val interface{}) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
-			vv := reflect.New(v.Type().Elem())
-			vv.Elem().Set(reflect.ValueOf(val))
-			it = vv.Interface()
+			vi := reflect.ValueOf(val).Interface()
+			it = &vi
+
 		default:
 			return nil, fmt.Errorf("goloquent: unsupported data type %v", t)
 		}

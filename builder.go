@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	variable      = "?"
+	variable      = "??"
 	jsonDelimeter = ":"
 )
 
@@ -41,14 +41,17 @@ func newBuilder(query *Query) *builder {
 
 func (b *builder) addIndex(fields []string, idx index) error {
 	table := b.query.table
-	idxName := fmt.Sprintf("%s_%s_idx", table, strings.Join(fields, "_"))
-	if b.db.dialect.HasIndex(table, idxName) {
-		return nil
-	}
 	buf := new(bytes.Buffer)
 	buf.WriteString("CREATE")
-	if idx == uniqueIdx {
+	idxName := fmt.Sprintf("%s_%s_idx", table, strings.Join(fields, "_"))
+	switch idx {
+	case uniqueIdx:
+		idxName = fmt.Sprintf("%s_%s_unique", table, strings.Join(fields, "_"))
 		buf.WriteString(" UNIQUE")
+	default:
+	}
+	if b.db.dialect.HasIndex(table, idxName) {
+		return nil
 	}
 	buf.WriteString(fmt.Sprintf(" INDEX %s ON %s (%s)",
 		b.db.dialect.Quote(idxName),
@@ -105,21 +108,23 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 	wheres := make([]string, 0)
 	args := make([]interface{}, 0)
 	for _, f := range query.filters {
-		name := b.db.dialect.Quote(f.Name())
-		if f.IsJSON() {
-			paths := strings.SplitN(f.Name(), jsonDelimeter, 2)
-			if len(paths) != 2 {
-				return nil, fmt.Errorf("goloquent: invalid json column name: %q", f.Name())
-			}
-			name = b.db.dialect.JSONColumn(paths[0], paths[1])
-		}
-
+		name := b.db.dialect.Quote(f.Field())
 		v, err := f.Interface()
 		if err != nil {
 			return nil, err
 		}
 
-		switch f.Name() {
+		if f.IsJSON() {
+			str, vv, err := b.db.dialect.FilterJSON(f)
+			if err != nil {
+				return nil, fmt.Errorf("goloquent: %v", err)
+			}
+			wheres = append(wheres, str)
+			args = append(args, vv...)
+			continue
+		}
+
+		switch f.Field() {
 		case keyFieldName, pkColumn:
 			name = b.db.dialect.Quote(pkColumn)
 			v, err = interfaceToKeyString(f.value)
@@ -130,32 +135,32 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 
 		op, vv := "=", variable
 		switch f.operator {
-		case equal:
+		case Equal:
 			if v == nil {
 				wheres = append(wheres, fmt.Sprintf("%s IS NULL", name))
 				continue
 			}
-		case equalTo:
+		case EqualTo:
 			op = "<=>"
-		case notEqual:
+		case NotEqual:
 			op = "<>"
 			if v == nil {
 				wheres = append(wheres, fmt.Sprintf("%s IS NOT NULL", name))
 				continue
 			}
-		case greaterThan:
+		case GreaterThan:
 			op = ">"
-		case greaterEqual:
+		case GreaterEqual:
 			op = ">="
-		case lessThan:
+		case LessThan:
 			op = "<"
-		case lessEqual:
+		case LessEqual:
 			op = "<="
-		case like:
+		case Like:
 			op = "LIKE"
-		case notLike:
+		case NotLike:
 			op = "NOT LIKE"
-		case in:
+		case In:
 			op = "IN"
 			x, isOk := v.([]interface{})
 			if !isOk {
@@ -169,7 +174,7 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 			wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vv))
 			args = append(args, x...)
 			continue
-		case notIn:
+		case NotIn:
 			op = "NOT IN"
 			x, isOk := v.([]interface{})
 			if !isOk {
@@ -296,8 +301,8 @@ func (b *builder) getCommand(e *entity) (*stmt, error) {
 	buf.WriteString(fmt.Sprintf(" FROM %s", b.db.dialect.GetTable(e.Name())))
 	if !query.noScope && e.hasSoftDelete() {
 		query.filters = append(query.filters, Filter{
-			columner: rawColumn{softDeleteColumn},
-			operator: equal,
+			field:    softDeleteColumn,
+			operator: Equal,
 			value:    nil,
 		})
 	}
@@ -385,6 +390,10 @@ func (b *builder) get(model interface{}, mustExist bool) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		v := reflect.ValueOf(model)
+		vi := reflect.New(v.Type().Elem())
+		v.Elem().Set(vi.Elem())
 	}
 	return nil
 }

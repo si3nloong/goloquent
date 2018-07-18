@@ -33,3 +33,10 @@ func TestUtils(t *testing.T) {
 		t.Errorf(errUnexpectedResult, "StringKey")
 	}
 }
+
+func TestEscapeSingleQuote(t *testing.T) {
+	str := `message is 'helllo's world'`
+	if escapeSingleQuote(str) != `message is ''helllo''s world''` {
+		t.Fatal(`Unexpected error occur in "escapeSingleQuote"`)
+	}
+}

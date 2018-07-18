@@ -227,3 +227,7 @@ func compareVersion(a, b string) (ret int) {
 	}
 	return
 }
+
+func escapeSingleQuote(v string) string {
+	return strings.Replace(v, `'`, `''`, -1)
+}

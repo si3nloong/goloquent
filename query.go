@@ -11,18 +11,24 @@ import (
 
 type operator int
 
+// JSON :
 const (
-	equal operator = iota
-	equalTo
-	notEqual
-	lessThan
-	lessEqual
-	greaterThan
-	greaterEqual
-	like
-	notLike
-	in
-	notIn
+	Equal operator = iota
+	EqualTo
+	NotEqual
+	LessThan
+	LessEqual
+	GreaterThan
+	GreaterEqual
+	Like
+	NotLike
+	ContainAny
+	ContainAll
+	In
+	NotIn
+	IsObject
+	IsArray
+	IsType
 )
 
 type sortDirection int
@@ -250,43 +256,65 @@ func (q *Query) Ancestor(ancestor *datastore.Key) *Query {
 	return q
 }
 
-func (q *Query) where(field columner, op string, value interface{}) *Query {
-	op = strings.TrimSpace(op)
-
+func (q *Query) where(field, op string, value interface{}, isJSON bool) *Query {
+	op = strings.TrimSpace(strings.ToLower(op))
 	var optr operator
-	switch strings.ToLower(op) {
-	// TODO: safe equal
-	// case "<=>", "==":
-	// 	optr = equalTo
-	case "=", "eq", "$eq":
-		optr = equal
-	case "!=", "<>", "ne", "$ne":
-		optr = notEqual
+
+	switch op {
+	case "=", "eq", "$eq", "equal":
+		optr = Equal
+	case "!=", "<>", "ne", "$ne", "notequal", "not equal":
+		optr = NotEqual
 	case ">", "!<", "gt", "$gt":
-		optr = greaterThan
+		optr = GreaterThan
 	case "<", "!>", "lt", "$lt":
-		optr = lessThan
+		optr = LessThan
 	case ">=", "gte", "$gte":
-		optr = greaterEqual
+		optr = GreaterEqual
 	case "<=", "lte", "$lte":
-		optr = lessEqual
-	case "like", "$like":
-		optr = like
-	case "nlike", "!like", "$nlike":
-		optr = notLike
+		optr = LessEqual
 	case "in", "$in":
-		optr = in
-	case "nin", "!in", "$nin":
-		optr = notIn
+		optr = In
+	case "nin", "!in", "$nin", "not in", "notin":
+		optr = NotIn
+	case "like", "$like":
+		if isJSON {
+			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q for json", op))
+			return q
+		}
+		optr = Like
+	case "nlike", "!like", "$nlike":
+		if isJSON {
+			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q for json", op))
+			return q
+		}
+		optr = NotLike
 	default:
-		q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q", op))
-		return q
+		if !isJSON {
+			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q", op))
+			return q
+		}
+
+		switch op {
+		case "containany":
+			optr = ContainAny
+		case "istype":
+			optr = IsType
+		case "isobject":
+			optr = IsObject
+		case "isarray":
+			optr = IsArray
+		default:
+			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q for json", op))
+			return q
+		}
 	}
 
 	q.filters = append(q.filters, Filter{
-		columner: field,
+		field:    field,
 		operator: optr,
 		value:    value,
+		isJSON:   isJSON,
 	})
 	return q
 }
@@ -294,8 +322,7 @@ func (q *Query) where(field columner, op string, value interface{}) *Query {
 // Where :
 func (q *Query) Where(field string, op string, value interface{}) *Query {
 	q = q.clone()
-	field = strings.TrimSpace(field)
-	return q.where(rawColumn{field}, op, value)
+	return q.where(field, op, value, false)
 }
 
 // WhereEqual :
@@ -338,10 +365,49 @@ func (q *Query) WhereNotLike(field, v string) *Query {
 	return q.Where(field, "nlike", v)
 }
 
+// WhereJSON :
+func (q *Query) WhereJSON(field, op string, v interface{}) *Query {
+	return q.where(field, op, v, true)
+}
+
 // WhereJSONEqual :
 func (q *Query) WhereJSONEqual(field string, v interface{}) *Query {
-	field = strings.TrimSpace(field)
-	return q.where(jsonColumn{field}, "=", v)
+	return q.WhereJSON(field, "=", v)
+}
+
+// WhereJSONNotEqual :
+func (q *Query) WhereJSONNotEqual(field string, v interface{}) *Query {
+	return q.WhereJSON(field, "!=", v)
+}
+
+// WhereJSONIn :
+func (q *Query) WhereJSONIn(field string, v []interface{}) *Query {
+	return q.WhereJSON(field, "in", v)
+}
+
+// WhereJSONNotIn :
+func (q *Query) WhereJSONNotIn(field string, v []interface{}) *Query {
+	return q.WhereJSON(field, "nin", v)
+}
+
+// WhereJSONContainAny :
+func (q *Query) WhereJSONContainAny(field string, v interface{}) *Query {
+	return q.WhereJSON(field, "containAny", v)
+}
+
+// WhereJSONType :
+func (q *Query) WhereJSONType(field, typ string) *Query {
+	return q.WhereJSON(field, "isType", strings.TrimSpace(strings.ToLower(typ)))
+}
+
+// WhereJSONIsObject :
+func (q *Query) WhereJSONIsObject(field string) *Query {
+	return q.WhereJSON(field, "isObject", nil)
+}
+
+// WhereJSONIsArray :
+func (q *Query) WhereJSONIsArray(field string) *Query {
+	return q.WhereJSON(field, "isArray", nil)
 }
 
 // Lock :

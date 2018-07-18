@@ -33,6 +33,7 @@ type User struct {
 	CreditLimit     float64        `goloquent:",unsigned"`
 	Address         Address        `faker:"-"`
 	Birthdate       goloquent.Date `faker:"-"`
+	PrimaryEmail    string         `faker:"email"`
 	Email           []string       `goloquent:"" faker:"email"`
 	Status          string         `goloquent:",charset=latin1" faker:""`
 	UpdatedDateTime time.Time
@@ -44,7 +45,9 @@ func getFakeUser() *User {
 	faker.FakeData(u)
 	u.Username = fmt.Sprintf("%d", time.Now().UnixNano())
 	u.Birthdate = goloquent.Date(time.Now())
+	u.Age = 85
 	u.Address.Line1 = "7812, Jalan Section 22"
+	u.Email = []string{"support@hotmail.com", "support@gmail.com"}
 	u.Status = "ACTIVE"
 	return u
 }

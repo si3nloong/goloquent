@@ -146,6 +146,22 @@ func (p postgres) FilterJSON(f Filter) (string, []interface{}, error) {
 		buf.Truncate(buf.Len() - 4)
 		buf.WriteString(")")
 		return buf.String(), args, nil
+	case ContainAny:
+		x, isOk := vv.([]interface{})
+		if !isOk {
+			x = append(x, vv)
+		}
+		if len(x) <= 0 {
+			return "", nil, fmt.Errorf(`goloquent: value for "In" operator cannot be empty`)
+		}
+		buf.WriteString(fmt.Sprintf("%s ?| array[", name))
+		for i := 0; i < len(x); i++ {
+			buf.WriteString(variable + ",")
+			args = append(args, x[i])
+		}
+		buf.Truncate(buf.Len() - 1)
+		buf.WriteString("]")
+		return buf.String(), args, nil
 	case IsType:
 		args = append(args, vv)
 		buf.WriteString(fmt.Sprintf("jsonb_typeof((%s)::jsonb) = LOWER(%s)", name, variable))
@@ -156,6 +172,8 @@ func (p postgres) FilterJSON(f Filter) (string, []interface{}, error) {
 	case IsArray:
 		vv = json.RawMessage([]byte("[]"))
 		buf.WriteString(fmt.Sprintf("(%s)::jsonb @> %s::jsonb", name, variable))
+	default:
+		return "", nil, fmt.Errorf("unsupported operator")
 	}
 
 	args = append(args, p.JSONMarshal(vv))

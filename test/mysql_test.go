@@ -34,9 +34,6 @@ func TestMySQLConn(t *testing.T) {
 }
 
 func TestMySQLMigration(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL MIGRATION")
-	// log.Println(strings.Repeat("-", 100))
 	if err := my.Migrate(new(User)); err != nil {
 		t.Fatal(err)
 	}
@@ -49,9 +46,6 @@ func TestMySQLTableExists(t *testing.T) {
 }
 
 func TestMySQLTruncate(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL TRUNCATE")
-	// log.Println(strings.Repeat("-", 100))
 	if err := my.Truncate(new(User)); err != nil {
 		t.Fatal(err)
 	}
@@ -69,41 +63,26 @@ func TestMySQLAddIndex(t *testing.T) {
 }
 
 func TestMySQLCreate(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL SINGLE CREATE")
-	// log.Println(strings.Repeat("-", 100))
 	u := getFakeUser()
 	if err := my.Create(u); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL SINGLE CREATE WITH PARENT KEY (NAME KEY)")
-	// log.Println(strings.Repeat("-", 100))
 	u = getFakeUser()
 	if err := my.Create(u, nameKey); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL SINGLE CREATE WITH PARENT KEY (ID KEY)")
-	// log.Println(strings.Repeat("-", 100))
 	u = getFakeUser()
 	if err := my.Create(u, idKey); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL MULTI CREATE WITH SLICE STRUCT")
-	// log.Println(strings.Repeat("-", 100))
 	uu := []User{*getFakeUser(), *getFakeUser()}
 	if err := my.Create(&uu); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL MULTI CREATE WITH SLICE POINTER STRUCT")
-	// log.Println(strings.Repeat("-", 100))
 	users := []*User{getFakeUser(), getFakeUser()}
 	if err := my.Create(&users); err != nil {
 		t.Fatal(err)
@@ -112,9 +91,6 @@ func TestMySQLCreate(t *testing.T) {
 }
 
 func TestMySQLSelect(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL FIRST WITH SELECT QUERY")
-	// log.Println(strings.Repeat("-", 100))
 	u := new(User)
 	if err := my.Select("*", "Name").First(u); err != nil {
 		t.Fatal(err)
@@ -123,25 +99,16 @@ func TestMySQLSelect(t *testing.T) {
 
 func TestMySQLDistinctOn(t *testing.T) {
 	u := new(User)
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL DISTINCT ON WITH *")
-	// log.Println(strings.Repeat("-", 100))
 	if err := my.NewQuery().
 		DistinctOn("*").First(u); err == nil {
 		t.Fatal("Expected `DistinctOn` cannot allow *")
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL DISTINCT ON WITH EMPTY INPUT")
-	// log.Println(strings.Repeat("-", 100))
 	if err := my.NewQuery().
 		DistinctOn("").First(u); err == nil {
 		t.Fatal("Expected `DistinctOn` cannot have empty")
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL DISTINCT ON WITH COLUMN")
-	// log.Println(strings.Repeat("-", 100))
 	if err := my.NewQuery().
 		DistinctOn("Name", "Password").First(u); err != nil {
 		t.Fatal(err)
@@ -170,39 +137,62 @@ func TestMySQLEmptySliceInJSON(t *testing.T) {
 func TestMySQLGet(t *testing.T) {
 	u := new(User)
 	users := new([]User)
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL FIRST")
-	// log.Println(strings.Repeat("-", 100))
 	if err := my.First(u); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL FIND")
-	// log.Println(strings.Repeat("-", 100))
 	if err := my.Find(u.Key, u); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL GET")
-	// log.Println(strings.Repeat("-", 100))
 	if err := my.Get(users); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL GET WITH UNSCOPED")
-	// log.Println(strings.Repeat("-", 100))
 	if err := my.NewQuery().Unscoped().Get(users); err != nil {
 		t.Fatal(err)
 	}
+}
 
+func TestMySQLWhereFilter(t *testing.T) {
+	users := new([]User)
+	age := uint8(85)
+	if err := my.Where("Age", "=", &age).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal(`Unexpected result from filter using "Where"`)
+	}
+
+	if err := my.Where("Birthdate", "=", goloquent.Date(time.Now())).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal(`Unexpected result from filter using "Where"`)
+	}
+
+	var nilAge *int16
+	if err := my.Where("Age", "=", nilAge).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) > 0 {
+		t.Fatal(`Unexpected result from filter using "Where"`)
+	}
+
+	limit := float32(0.1036772)
+	if err := my.Where("CreditLimit", ">", &limit).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal(`Unexpected result from filter using "Where"`)
+	}
 }
 
 func TestMySQLJSONEqual(t *testing.T) {
-	var emptyStr string
-
 	users := new([]User)
 	if err := my.NewQuery().
 		WhereJSONEqual("Address>PostCode", int32(85)).
@@ -232,6 +222,7 @@ func TestMySQLJSONEqual(t *testing.T) {
 		t.Fatal("JSON equal has unexpected result")
 	}
 
+	var emptyStr string
 	if err := my.NewQuery().
 		WhereJSONEqual("Address>Line2", emptyStr).
 		Get(users); err != nil {
@@ -277,12 +268,12 @@ func TestMySQLJSONNotEqual(t *testing.T) {
 func TestMySQLJSONIn(t *testing.T) {
 	users := new([]User)
 	if err := my.NewQuery().
-		WhereJSONContainAny("Address>PostCode", []interface{}{0, 10, 20}).
+		WhereJSONIn("Address>PostCode", []interface{}{0, 10, 20}).
 		Get(users); err != nil {
 		t.Fatal(err)
 	}
 	if len(*users) <= 0 {
-		t.Fatal("JSON contain any has unexpected result")
+		t.Fatal("JSON in has unexpected result")
 	}
 }
 
@@ -294,6 +285,31 @@ func TestMySQLJSONNotIn(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(*users) <= 0 {
+		t.Fatal("JSON contain any has unexpected result")
+	}
+}
+
+func TestMySQLJSONContainAny(t *testing.T) {
+	users := new([]User)
+	if err := my.NewQuery().
+		WhereJSONContainAny("Email", []string{
+			"support@hotmail.com",
+			"invalid@gmail.com",
+		}).Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal("JSON contain any has unexpected result")
+	}
+
+	if err := my.NewQuery().
+		WhereJSONContainAny("Email", []string{
+			"invalid@gmail.com",
+			"invalid@hotmail.com",
+		}).Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) > 0 {
 		t.Fatal("JSON contain any has unexpected result")
 	}
 }

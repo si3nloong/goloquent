@@ -64,6 +64,8 @@ func normalizeValue(val interface{}) (interface{}, error) {
 		it = geoLocation{vi.Lat, vi.Lng}
 	case time.Time:
 		it = vi
+	case Date:
+		it = vi
 	default:
 		switch t.Kind() {
 		case reflect.String:

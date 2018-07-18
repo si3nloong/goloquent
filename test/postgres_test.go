@@ -155,21 +155,51 @@ func TestPostgresGet(t *testing.T) {
 	if err := pg.Find(u.Key, u); err != nil {
 		t.Fatal(err)
 	}
-
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES GET")
-	// log.Println(strings.Repeat("-", 100))
 	if err := pg.Get(users); err != nil {
 		t.Fatal(err)
 	}
-
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES GET WITH UNSCOPED")
-	// log.Println(strings.Repeat("-", 100))
 	if err := pg.NewQuery().Unscoped().Get(users); err != nil {
 		t.Fatal(err)
 	}
 
+}
+
+func TestPostgresWhereFilter(t *testing.T) {
+	users := new([]User)
+	age := uint8(85)
+	if err := pg.Where("Age", "=", &age).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal(`Unexpected result from filter using "Where"`)
+	}
+
+	if err := pg.Where("Birthdate", "=", goloquent.Date(time.Now())).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal(`Unexpected result from filter using "Where"`)
+	}
+
+	var nilAge *int16
+	if err := pg.Where("Age", "=", nilAge).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) > 0 {
+		t.Fatal(`Unexpected result from filter using "Where"`)
+	}
+
+	limit := float32(0.1036772)
+	if err := pg.Where("CreditLimit", ">", &limit).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal(`Unexpected result from filter using "Where"`)
+	}
 }
 
 func TestPostgresJSONEqual(t *testing.T) {
@@ -249,7 +279,7 @@ func TestPostgresJSONNotEqual(t *testing.T) {
 func TestPostgresJSONIn(t *testing.T) {
 	users := new([]User)
 	if err := pg.NewQuery().
-		WhereJSONContainAny("Address>PostCode", []interface{}{0, 10, 20}).
+		WhereJSONIn("Address>PostCode", []interface{}{0, 10, 20}).
 		Get(users); err != nil {
 		t.Fatal(err)
 	}
@@ -266,6 +296,31 @@ func TestPostgresJSONNotIn(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(*users) <= 0 {
+		t.Fatal("JSON contain any has unexpected result")
+	}
+}
+
+func TestPostgresJSONContainAny(t *testing.T) {
+	users := new([]User)
+	if err := pg.NewQuery().
+		WhereJSONContainAny("Email", []string{
+			"support@hotmail.com",
+			"invalid@gmail.com",
+		}).Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal("JSON contain any has unexpected result")
+	}
+
+	if err := pg.NewQuery().
+		WhereJSONContainAny("Email", []string{
+			"invalid@gmail.com",
+			"invalid@hotmail.com",
+		}).Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) > 0 {
 		t.Fatal("JSON contain any has unexpected result")
 	}
 }

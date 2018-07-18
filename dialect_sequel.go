@@ -156,11 +156,27 @@ func (s sequel) FilterJSON(f Filter) (string, []interface{}, error) {
 			x = append(x, vv)
 		}
 		if len(x) <= 0 {
-			return "", nil, fmt.Errorf(`goloquent: value for "In" operator cannot be empty`)
+			return "", nil, fmt.Errorf(`goloquent: value for "NotIn" operator cannot be empty`)
 		}
 		buf.WriteString("(")
 		for i := 0; i < len(x); i++ {
 			buf.WriteString(fmt.Sprintf("%s <> %s AND ", name, variable))
+			args = append(args, s.JSONMarshal(x[i]))
+		}
+		buf.Truncate(buf.Len() - 4)
+		buf.WriteString(")")
+		return buf.String(), args, nil
+	case ContainAny:
+		x, isOk := vv.([]interface{})
+		if !isOk {
+			x = append(x, vv)
+		}
+		if len(x) <= 0 {
+			return "", nil, fmt.Errorf(`goloquent: value for "ContainAny" operator cannot be empty`)
+		}
+		buf.WriteString("(")
+		for i := 0; i < len(x); i++ {
+			buf.WriteString(fmt.Sprintf("JSON_CONTAINS(%s, %s) OR ", name, variable))
 			args = append(args, s.JSONMarshal(x[i]))
 		}
 		buf.Truncate(buf.Len() - 4)
@@ -174,6 +190,8 @@ func (s sequel) FilterJSON(f Filter) (string, []interface{}, error) {
 	case IsArray:
 		vv = "ARRAY"
 		buf.WriteString(fmt.Sprintf("JSON_TYPE(%s) = %s", name, variable))
+	default:
+		return "", nil, fmt.Errorf("unsupported operator")
 	}
 
 	args = append(args, vv)

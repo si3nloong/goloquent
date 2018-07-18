@@ -13,9 +13,9 @@ This repo still under development. We accept any pull request. ^\_^
 
 ```bash
   // dependency
-  $ go get -u github.com/go-sql-driver/mysql
+  $ go get -u github.com/go-sql-driver/mysql // Mysql
+  $ go get -u github.com/lib/pq // Postgres
   $ go get -u cloud.google.com/go/datastore
-
   $ go get -u github.com/si3nloong/goloquent
 ```
 
@@ -55,13 +55,29 @@ This repo still under development. We accept any pull request. ^\_^
 #### User Table
 
 ```go
+// Address :
+type Address struct {
+	Line1    string
+	Line2    string
+	Country  string
+	PostCode uint
+	Region   struct {
+		TimeZone    time.Time
+		Keys        []*datastore.Key   `goloquent:"keys"`
+		CountryCode string             `goloquent:"regionCode"`
+		Geolocation datastore.GeoPoint `goloquent:"geo"`
+	} `goloquent:"region"`
+}
+
 // User : User kind parent is Merchant
 type User struct {
     Key             *datastore.Key `goloquent:"__key__"` // load table key
     Name            string
+    Nicknames       []string
     CountryCode     string
     PhoneNumber     string
     Email           string
+    Address         Address
     Age             int64          `goloquent:",unsigned"`
     CreatedDateTime time.Time
     UpdatedDateTime time.Time
@@ -400,6 +416,7 @@ func (x *User) Save() (error) {
 - **Database Migration**
 
 ```go
+    import "github.com/si3nloong/goloquent/db"
     // Example
     user := new(User)
     if err := db.Migrate(
@@ -414,6 +431,7 @@ func (x *User) Save() (error) {
 - **Filter Query**
 
 ```go
+    import "github.com/si3nloong/goloquent/db"
     // Update single record
     user := new(User)
     if err := db.NewQuery().
@@ -433,6 +451,7 @@ func (x *User) Save() (error) {
 - **Update Query**
 
 ```go
+    import "github.com/si3nloong/goloquent/db"
     // Update multiple record
     if err := db.Table("User").
         Where("Age", ">", 10).
@@ -454,6 +473,77 @@ func (x *User) Save() (error) {
         }); err != nil {
         log.Println(err) // error while retrieving record or record not found
     }
+```
+
+- **JSON Filter**
+
+```go
+    import "github.com/si3nloong/goloquent/db"
+
+    // JSON equal
+    users := new([]User)
+    postCode := uint32(63000)
+	if err := db.NewQuery().
+		WhereJSONEqual("Address>PostCode", &postCode).
+		Get(users); err != nil {
+		log.Println(err)
+    }
+
+    // JSON not equal
+    var timeZone *time.Time
+	if err := db.NewQuery().
+		WhereJSONNotEqual("Address>region.TimeZone", timeZone).
+		Get(users); err != nil {
+		log.Println(err)
+    }
+
+    // JSON contains any
+    if err := db.NewQuery().
+		WhereJSONContainAny("Nicknames", []string{
+            "Joe", "John", "Robert",
+        }).Get(users); err != nil {
+		log.Println(err)
+    }
+
+    // JSON check type
+    if err := db.NewQuery().
+		WhereJSONType("Address>region", "Object").
+        Get(users); err != nil {
+		log.Println(err)
+    }
+
+    // JSON check is object type
+    if err := db.NewQuery().
+		WhereJSONIsObject("Address>region").
+        Get(users); err != nil {
+		log.Println(err)
+    }
+
+    // JSON check is array type
+    if err := db.NewQuery().
+		WhereJSONIsArray("Address>region.keys").
+        Get(users); err != nil {
+		log.Println(err)
+    }
+```
+
+- **Data Type Support for Where Filtering**
+
+The supported data type are :
+
+```go
+- string
+- bool
+- int, int8, int16, int32 and int64 (signed integers)
+- uint, uint8, uint16, uint32 and uint64
+- float32 and float64
+- []byte
+- *datastore.Key
+- datastore.GeoPoint
+- goloquent.Date
+- time.Time
+- pointers to any one of the above
+- slices of any of the above
 ```
 
 - **Extra Schema Option**

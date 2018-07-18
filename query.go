@@ -22,6 +22,8 @@ const (
 	GreaterEqual
 	Like
 	NotLike
+	ContainAny
+	ContainAll
 	In
 	NotIn
 	IsObject
@@ -294,12 +296,14 @@ func (q *Query) where(field, op string, value interface{}, isJSON bool) *Query {
 		}
 
 		switch op {
+		case "containany":
+			optr = ContainAny
+		case "istype":
+			optr = IsType
 		case "isobject":
 			optr = IsObject
 		case "isarray":
 			optr = IsArray
-		case "istype":
-			optr = IsType
 		default:
 			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q for json", op))
 			return q
@@ -388,13 +392,8 @@ func (q *Query) WhereJSONNotIn(field string, v []interface{}) *Query {
 
 // WhereJSONContainAny :
 func (q *Query) WhereJSONContainAny(field string, v interface{}) *Query {
-	return q.WhereJSON(field, "in", v)
+	return q.WhereJSON(field, "containAny", v)
 }
-
-// // WhereJSONContainAll :
-// func (q *Query) WhereJSONContainAll(field string, v interface{}) *Query {
-// 	return q.WhereJSON(field, "containAll", v)
-// }
 
 // WhereJSONType :
 func (q *Query) WhereJSONType(field, typ string) *Query {

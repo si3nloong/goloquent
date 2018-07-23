@@ -27,7 +27,7 @@ func (p *postgres) Open(conf Config) (*sql.DB, error) {
 	buf.WriteString("postgres://")
 	buf.WriteString(conf.Username + ":" + conf.Password)
 	if conf.UnixSocket != "" {
-		addr += fmt.Sprintf("/%s", conf.UnixSocket)
+		addr += fmt.Sprintf("/%s", strings.Trim(conf.UnixSocket, `/`))
 	} else {
 		host, port := "localhost", "5432"
 		if conf.Host != "" {

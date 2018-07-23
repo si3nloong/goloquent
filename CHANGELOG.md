@@ -26,7 +26,7 @@
 - (2018-07-17) Fix panic when value of `WhereIn` or `WhereNotIn` contains `nil` value.
 - (2018-07-17) Fix `First` func bug. Entity value doesn't override if the result is empty.
 - (2018-07-18) Fix panic when `Where` value is pointer of `int`, `int8`, `int16`, `int32`, `uint`, `uint8`, `uint16`, `uint32`, `float32`.
-- (2018-07-23) Fix `DB` connection bug when passing empty port.
+- (2018-07-23) Fix `DB` connection bug when passing empty port and postgres unable to establish connection thru unix socket.
 
 # Breaking Changes
 

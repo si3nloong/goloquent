@@ -21,13 +21,17 @@ func init() {
 	RegisterDialect("postgres", new(postgres))
 }
 
+func (p postgres) escapeSingleQuote(n string) string {
+	return strings.Replace(n, `'`, `\'`, -1)
+}
+
 // Open :
 func (p *postgres) Open(conf Config) (*sql.DB, error) {
-	addr, buf := "@", new(bytes.Buffer)
-	buf.WriteString("postgres://")
-	buf.WriteString(conf.Username + ":" + conf.Password)
+	buf := new(bytes.Buffer)
+	buf.WriteString(fmt.Sprintf("user='%s' ", p.escapeSingleQuote(conf.Username)))
+	buf.WriteString(fmt.Sprintf("password='%s' ", p.escapeSingleQuote(conf.Password)))
 	if conf.UnixSocket != "" {
-		addr += fmt.Sprintf("/%s", strings.Trim(conf.UnixSocket, `/`))
+		buf.WriteString(fmt.Sprintf("host=/%s ", strings.Trim(conf.UnixSocket, `/`)))
 	} else {
 		host, port := "localhost", "5432"
 		if conf.Host != "" {
@@ -36,11 +40,10 @@ func (p *postgres) Open(conf Config) (*sql.DB, error) {
 		if conf.Port != "" {
 			port = conf.Port
 		}
-		addr += fmt.Sprintf("%s:%s", host, port)
+		buf.WriteString(fmt.Sprintf("host=%s port=%s ", host, port))
 	}
-	buf.WriteString(addr)
-	buf.WriteString(fmt.Sprintf("/%s", conf.Database))
-	buf.WriteString("?sslmode=disable")
+	buf.WriteString(fmt.Sprintf("dbname='%s' ", p.escapeSingleQuote(conf.Database)))
+	buf.WriteString("sslmode=disable")
 	log.Println("Connection String :", buf.String())
 	client, err := sql.Open("postgres", buf.String())
 	if err != nil {

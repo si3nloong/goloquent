@@ -520,11 +520,11 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 	}
 
 	it, err := b.run(e.Name(), cmds)
-	it.stmt = &Stmt{stmt: oriCmd, replacer: b.db.dialect}
 	if err != nil {
 		return err
 	}
 
+	it.stmt = &Stmt{stmt: oriCmd, replacer: b.db.dialect}
 	i, v := uint(1), reflect.Indirect(reflect.ValueOf(model))
 	vv := reflect.MakeSlice(v.Type(), 0, 0)
 	isPtr, t := checkMultiPtr(v)

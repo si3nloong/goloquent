@@ -228,6 +228,11 @@ func (db *DB) NewQuery() *Query {
 	return newQuery(db)
 }
 
+// Query :
+func (db *DB) Query(stmt string, args ...interface{}) (*sql.Rows, error) {
+	return db.client.Query(stmt, args...)
+}
+
 // Exec :
 func (db *DB) Exec(stmt string, args ...interface{}) (sql.Result, error) {
 	return db.client.Exec(stmt, args...)

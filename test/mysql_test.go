@@ -154,6 +154,33 @@ func TestMySQLGet(t *testing.T) {
 	}
 }
 
+func TestMySQLAncestor(t *testing.T) {
+	users := new([]User)
+	if err := my.Ancestor(idKey).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal(`Unexpected result from filter "Ancestor" using id key`)
+	}
+
+	if err := my.Ancestor(nameKey).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal(`Unexpected result from filter "Ancestor" using name key`)
+	}
+
+	if err := my.AnyOfAncestor([]*datastore.Key{idKey, nameKey}).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal(`Unexpected result from filter "AnyOfAncestor"`)
+	}
+}
+
 func TestMySQLWhereFilter(t *testing.T) {
 	users := new([]User)
 	age := uint8(85)
@@ -530,4 +557,9 @@ func TestMySQLDropTableIfExists(t *testing.T) {
 	// if err := my.Table("User").DropIfExists(); err != nil {
 	// 	t.Fatal(err)
 	// }
+
+}
+
+func TestMySQLClose(t *testing.T) {
+	defer my.Close()
 }

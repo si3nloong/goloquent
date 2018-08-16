@@ -76,3 +76,4 @@
 - (2018-07-08) Introduce new data type `Date`.
 - (2018-07-17) Enhance data type `Date`, add func `MarshalText` and `UnmarshalText`.
 - (2018-07-18) Introduce JSON filtering func `WhereJSON`, `WhereJSONNotEqual`, `WhereJSONIn`, `WhereNotIn`, `WhereJSONContainAny`, `WhereJSONType`, `WhereJSONIsObject`, `WhereJSONIsArray`
+- (2018-08-16) Introduce new func `AnyOfAncestor`.

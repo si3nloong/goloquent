@@ -69,12 +69,17 @@ func checkSinglePtr(it interface{}) error {
 	return nil
 }
 
+type group struct {
+	isGroup bool
+	data    []interface{}
+}
+
 type scope struct {
 	table      string
 	distinctOn []string
 	projection []string
 	omits      []string
-	ancestors  []*datastore.Key
+	ancestors  []group
 	filters    []Filter
 	orders     []order
 	limit      int32
@@ -248,12 +253,35 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 
 // Ancestor :
 func (q *Query) Ancestor(ancestor *datastore.Key) *Query {
-	q = q.clone()
+	if ancestor == nil {
+		q.errs = append(q.errs, fmt.Errorf("goloquent: ancestor key cannot be nil"))
+		return q
+	}
 	if ancestor.Incomplete() {
 		q.errs = append(q.errs, fmt.Errorf("goloquent: ancestor key is incomplete, %v", ancestor))
 		return q
 	}
-	q.ancestors = append(q.ancestors, ancestor)
+	q = q.clone()
+	q.ancestors = append(q.ancestors, group{false, []interface{}{ancestor}})
+	return q
+}
+
+// AnyOfAncestor :
+func (q *Query) AnyOfAncestor(ancestors []*datastore.Key) *Query {
+	g := group{true, make([]interface{}, 0)}
+	for _, a := range ancestors {
+		if a == nil {
+			q.errs = append(q.errs, fmt.Errorf("goloquent: ancestor key cannot be nil"))
+			return q
+		}
+		if a.Incomplete() {
+			q.errs = append(q.errs, fmt.Errorf("goloquent: ancestor key is incomplete, %v", a))
+			return q
+		}
+		g.data = append(g.data, a)
+	}
+	q = q.clone()
+	q.ancestors = append(q.ancestors, g)
 	return q
 }
 

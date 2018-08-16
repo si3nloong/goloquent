@@ -53,7 +53,7 @@ func (b *builder) addIndex(fields []string, idx index) error {
 	if b.db.dialect.HasIndex(table, idxName) {
 		return nil
 	}
-	buf.WriteString(fmt.Sprintf(" INDEX %s ON %s (%s)",
+	buf.WriteString(fmt.Sprintf(" INDEX %s ON %s (%s);",
 		b.db.dialect.Quote(idxName),
 		b.db.dialect.GetTable(table),
 		b.db.dialect.Quote(strings.Join(fields, ","))))
@@ -213,8 +213,21 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 	}
 
 	for _, aa := range query.ancestors {
+		if aa.isGroup {
+			buf := new(bytes.Buffer)
+			buf.WriteString("(")
+			for _, x := range aa.data {
+				buf.WriteString(fmt.Sprintf("%s LIKE %s OR ", b.db.dialect.Quote(pkColumn), variable))
+				args = append(args, fmt.Sprintf("%%%s/%%", stringifyKey(x.(*datastore.Key))))
+			}
+			buf.Truncate(buf.Len() - 4)
+			buf.WriteString(")")
+			wheres = append(wheres, buf.String())
+			continue
+		}
+
 		wheres = append(wheres, fmt.Sprintf("%s LIKE %s", b.db.dialect.Quote(pkColumn), variable))
-		args = append(args, fmt.Sprintf("%%%s/%%", stringifyKey(aa)))
+		args = append(args, fmt.Sprintf("%%%s/%%", stringifyKey(aa.data[0].(*datastore.Key))))
 	}
 
 	if len(wheres) > 0 {

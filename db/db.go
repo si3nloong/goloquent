@@ -21,6 +21,11 @@ func Connection(driver string) *goloquent.DB {
 	return nil
 }
 
+// Query :
+func Query(stmt string, args ...interface{}) (*sql.Rows, error) {
+	return defaultDB.Query(stmt, args...)
+}
+
 // Exec :
 func Exec(stmt string, args ...interface{}) (sql.Result, error) {
 	return defaultDB.Exec(stmt, args...)

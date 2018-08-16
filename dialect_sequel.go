@@ -76,7 +76,7 @@ func (s *sequel) CurrentDB() (name string) {
 		return
 	}
 
-	s.db.QueryRow("SELECT DATABASE()").Scan(&name)
+	s.db.QueryRow("SELECT DATABASE();").Scan(&name)
 	s.dbName = name
 	return
 }

@@ -339,6 +339,16 @@ func (db *DB) Paginate(p *Pagination, model interface{}) error {
 	return db.NewQuery().Paginate(p, model)
 }
 
+// Ancestor :
+func (db *DB) Ancestor(ancestor *datastore.Key) *Query {
+	return db.NewQuery().Ancestor(ancestor)
+}
+
+// AnyOfAncestor :
+func (db *DB) AnyOfAncestor(ancestors []*datastore.Key) *Query {
+	return db.NewQuery().AnyOfAncestor(ancestors)
+}
+
 // Where :
 func (db *DB) Where(field string, operator string, value interface{}) *Query {
 	return db.NewQuery().Where(field, operator, value)

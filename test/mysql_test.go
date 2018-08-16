@@ -88,6 +88,16 @@ func TestMySQLCreate(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	var i *User
+	if err := my.Create(i); err == nil {
+		t.Fatal(err)
+	}
+
+	users = []*User{nil, nil}
+	if err := my.Create(&users); err == nil {
+		t.Fatal(err)
+	}
+
 }
 
 func TestMySQLSelect(t *testing.T) {
@@ -126,6 +136,7 @@ func TestMySQLEmptySliceInJSON(t *testing.T) {
 
 	u2 := getFakeUser()
 	u2.Email = nil
+	u2.PrimaryEmail = "sianloong@hotmail.com"
 	if err := my.Create(u2); err != nil {
 		t.Fatal(err)
 	}
@@ -216,6 +227,21 @@ func TestMySQLWhereFilter(t *testing.T) {
 	}
 	if len(*users) <= 0 {
 		t.Fatal(`Unexpected result from filter using "Where"`)
+	}
+}
+
+func TestMySQLWhereAnyLike(t *testing.T) {
+	users := new([]User)
+	if err := my.NewQuery().
+		WhereAnyLike("PrimaryEmail", []string{
+			"lzPskFb@OOxzA.net",
+			"sianloong%",
+		}).Get(users); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(*users) <= 0 {
+		t.Fatal(`Unexpected result from filter using "WhereAnyLike"`)
 	}
 }
 

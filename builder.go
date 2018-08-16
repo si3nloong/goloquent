@@ -156,6 +156,25 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 			op = "<"
 		case LessEqual:
 			op = "<="
+		case AnyLike:
+			x, isOk := v.([]interface{})
+			if !isOk {
+				x = append(x, v)
+			}
+			if len(x) <= 0 {
+				return nil, fmt.Errorf(`goloquent: value for "AnyLike" operator cannot be empty`)
+			}
+			buf := new(bytes.Buffer)
+			buf.WriteString("(")
+			for j := 0; j < len(x); j++ {
+				buf.WriteString(fmt.Sprintf("%s LIKE %s OR ", name, variable))
+			}
+			buf.Truncate(buf.Len() - 4)
+			buf.WriteString(")")
+
+			wheres = append(wheres, buf.String())
+			args = append(args, x...)
+			continue
 		case Like:
 			op = "LIKE"
 		case NotLike:
@@ -588,6 +607,9 @@ func (b *builder) putStmt(parentKey []*datastore.Key, e *entity) (*stmt, error) 
 
 	for i := 0; i < v.Len(); i++ {
 		f := reflect.Indirect(v.Index(i))
+		if !f.IsValid() {
+			return nil, fmt.Errorf("goloquent: invalid value entity value %v", f)
+		}
 
 		vi := reflect.New(f.Type())
 		vi.Elem().Set(f)

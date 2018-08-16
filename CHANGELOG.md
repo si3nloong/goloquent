@@ -27,6 +27,7 @@
 - (2018-07-17) Fix `First` func bug. Entity value doesn't override if the result is empty.
 - (2018-07-18) Fix panic when `Where` value is pointer of `int`, `int8`, `int16`, `int32`, `uint`, `uint8`, `uint16`, `uint32`, `float32`.
 - (2018-07-23) Fix `DB` connection bug when passing empty port and postgres unable to establish connection thru unix socket.
+- (2018-08-16) Fix panic when `nil` value passing in with func `Create` or `Upsert`, it should return error instead.
 
 # Breaking Changes
 
@@ -76,4 +77,4 @@
 - (2018-07-08) Introduce new data type `Date`.
 - (2018-07-17) Enhance data type `Date`, add func `MarshalText` and `UnmarshalText`.
 - (2018-07-18) Introduce JSON filtering func `WhereJSON`, `WhereJSONNotEqual`, `WhereJSONIn`, `WhereNotIn`, `WhereJSONContainAny`, `WhereJSONType`, `WhereJSONIsObject`, `WhereJSONIsArray`
-- (2018-08-16) Introduce new func `AnyOfAncestor`.
+- (2018-08-16) Introduce new func `AnyOfAncestor` and func `WhereAnyLike`.

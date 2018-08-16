@@ -20,6 +20,7 @@ const (
 	LessEqual
 	GreaterThan
 	GreaterEqual
+	AnyLike
 	Like
 	NotLike
 	ContainAny
@@ -305,6 +306,8 @@ func (q *Query) where(field, op string, value interface{}, isJSON bool) *Query {
 		optr = In
 	case "nin", "!in", "$nin", "not in", "notin":
 		optr = NotIn
+	case "anylike":
+		optr = AnyLike
 	case "like", "$like":
 		if isJSON {
 			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q for json", op))
@@ -391,6 +394,17 @@ func (q *Query) WhereLike(field, v string) *Query {
 // WhereNotLike :
 func (q *Query) WhereNotLike(field, v string) *Query {
 	return q.Where(field, "nlike", v)
+}
+
+// WhereAnyLike :
+func (q *Query) WhereAnyLike(field string, v interface{}) *Query {
+	vv := reflect.Indirect(reflect.ValueOf(v))
+	t := vv.Type()
+	if t.Kind() != reflect.Slice && t.Kind() != reflect.Array {
+		q.errs = append(q.errs, fmt.Errorf(`goloquent: value must be either slice or array for "WhereAnyLike"`))
+		return q
+	}
+	return q.Where(field, "anylike", v)
 }
 
 // WhereJSON :

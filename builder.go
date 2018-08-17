@@ -507,10 +507,7 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		if err != nil {
 			return err
 		}
-		if !cmd.isZero() {
-			args = append(args, cmd.arguments...)
-			buf.WriteString(cmd.string() + " AND ")
-		}
+
 		orders := query.orders
 		projection := make([]string, 0, len(orders))
 		for _, o := range orders {
@@ -519,6 +516,14 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		values, or := make([]interface{}, len(orders)), make([]string, 0)
 		for i := 0; i < len(values); i++ {
 			values[i] = &values[i]
+		}
+		if !cmd.isZero() {
+			args = append(args, cmd.arguments...)
+			buf.WriteString(cmd.string() + " AND ")
+		} else {
+			if len(orders) > 0 {
+				buf.WriteString(" WHERE ")
+			}
 		}
 		if err := b.db.Table(e.Name()).
 			WhereEqual(keyFieldName, c.Key).

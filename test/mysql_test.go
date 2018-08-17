@@ -22,6 +22,7 @@ func TestMySQLConn(t *testing.T) {
 	// log.Println("CONNECT TO MYSQL " + strings.Repeat("-", 80))
 	conn, err := db.Open("mysql", db.Config{
 		Username: "root",
+		Password: "av2018#RM",
 		Database: "goloquent",
 		Logger: func(stmt *goloquent.Stmt) {
 			log.Println(fmt.Sprintf("[%.3fms] %s", stmt.TimeElapse().Seconds()*1000, stmt.String()))
@@ -409,13 +410,41 @@ func TestMySQLPaginate(t *testing.T) {
 	// log.Println(strings.Repeat("-", 100))
 	users := new([]User)
 	p := &goloquent.Pagination{
-		Limit: 10,
+		Limit: 1,
 	}
 	if err := my.Paginate(p, users); err != nil {
 		t.Fatal(err)
 	}
-	// log.Println("Records :", p.Count())
-	// log.Println("Cursor :", p.NextCursor())
+	if len(*(users)) <= 0 {
+		t.Fatal(fmt.Errorf("paginate record set shouldn't empty"))
+	}
+
+	p.Cursor = p.NextCursor()
+	if err := my.Paginate(p, users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*(users)) <= 0 {
+		t.Fatal(fmt.Errorf("paginate record set shouldn't empty"))
+	}
+
+	p2 := &goloquent.Pagination{
+		Limit: 1,
+	}
+	if err := my.Ancestor(nameKey).
+		Paginate(p2, users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*(users)) <= 0 {
+		t.Fatal(fmt.Errorf("paginate record set shouldn't empty"))
+	}
+
+	p2.Cursor = p.NextCursor()
+	if err := my.Paginate(p2, users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*(users)) <= 0 {
+		t.Fatal(fmt.Errorf("paginate record set shouldn't empty"))
+	}
 }
 
 func TestMySQLUpsert(t *testing.T) {
@@ -568,11 +597,9 @@ func TestMySQLRunInTransaction(t *testing.T) {
 }
 
 func TestMySQLScan(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL SCAN")
-	// log.Println(strings.Repeat("-", 100))
 	var count, sum uint
-	if err := my.Table("User").Select("COALESCE(COUNT(*),0), COALESCE(SUM(Age),0)").
+	if err := my.Table("User").
+		Select("COALESCE(COUNT(*),0), COALESCE(SUM(Age),0)").
 		Scan(&count, &sum); err != nil {
 		t.Fatal(err)
 	}
@@ -583,7 +610,6 @@ func TestMySQLDropTableIfExists(t *testing.T) {
 	// if err := my.Table("User").DropIfExists(); err != nil {
 	// 	t.Fatal(err)
 	// }
-
 }
 
 func TestMySQLClose(t *testing.T) {

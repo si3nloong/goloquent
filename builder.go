@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"database/sql"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -596,6 +597,7 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 
 func (b *builder) putStmt(parentKey []*datastore.Key, e *entity) (*stmt, error) {
 	v := e.slice.Elem()
+
 	isInline := (parentKey == nil && len(parentKey) == 0)
 	buf, args := new(bytes.Buffer), make([]interface{}, 0)
 	keys := make([]*datastore.Key, v.Len(), v.Len())
@@ -679,6 +681,9 @@ func (b *builder) put(model interface{}, parentKey []*datastore.Key) error {
 		return err
 	}
 	e.setName(b.query.table)
+	if e.slice.Elem().Len() <= 0 {
+		return nil
+	}
 	cmd, err := b.putStmt(parentKey, e)
 	if err != nil {
 		return err
@@ -692,6 +697,9 @@ func (b *builder) upsert(model interface{}, parentKey []*datastore.Key) error {
 		return err
 	}
 	e.setName(b.query.table)
+	if e.slice.Elem().Len() <= 0 {
+		return nil
+	}
 	cmd, err := b.putStmt(parentKey, e)
 	if err != nil {
 		return err
@@ -774,6 +782,9 @@ func (b *builder) saveMutation(model interface{}) (*stmt, error) {
 
 func (b *builder) save(model interface{}) error {
 	v := reflect.ValueOf(model)
+	if v.IsValid() || v.IsNil() {
+		return errors.New("goloquent: invalid nil entity to save")
+	}
 	vi := reflect.MakeSlice(reflect.SliceOf(v.Type()), 1, 1)
 	vi.Index(0).Set(v)
 	vv := reflect.New(vi.Type())

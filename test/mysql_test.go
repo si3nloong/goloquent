@@ -1,6 +1,7 @@
 package test
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"testing"
@@ -49,6 +50,28 @@ func TestMySQLTableExists(t *testing.T) {
 func TestMySQLTruncate(t *testing.T) {
 	if err := my.Truncate(new(User)); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestMySQLEmptyInsertOrUpsert(t *testing.T) {
+	var users []User
+	if err := my.Create(&users); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := my.Upsert(&users); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMySQLSave(t *testing.T) {
+	e := errors.New("nil entity suppose not allow in `Save` func")
+	var u User
+	if err := my.Save(&u); err == nil {
+		t.Fatal(e)
+	}
+	if err := my.Save(nil); err == nil {
+		t.Fatal(e)
 	}
 }
 

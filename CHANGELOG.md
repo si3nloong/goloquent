@@ -28,6 +28,8 @@
 - (2018-07-18) Fix panic when `Where` value is pointer of `int`, `int8`, `int16`, `int32`, `uint`, `uint8`, `uint16`, `uint32`, `float32`.
 - (2018-07-23) Fix `DB` connection bug when passing empty port and postgres unable to establish connection thru unix socket.
 - (2018-08-16) Fix panic when `nil` value passing in with func `Create` or `Upsert`, it should return error instead.
+- (2018-08-17) Fix invalid sql statement on `Paginate()` when using next `Cursor` from `NextCursor()`.
+- (2018-08-23) Fix unicode string cannot save to `mysql`.
 
 # Breaking Changes
 

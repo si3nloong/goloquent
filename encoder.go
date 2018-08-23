@@ -164,6 +164,8 @@ func interfaceToValue(it interface{}) (interface{}, error) {
 		value = vi
 	case float32, float64:
 		value = vi
+	case json.RawMessage:
+		value = vi
 	case []byte:
 		value = base64.StdEncoding.EncodeToString(vi)
 	case *datastore.Key:
@@ -263,6 +265,8 @@ func saveField(f field, v reflect.Value) (interface{}, error) {
 
 	switch vi := v.Interface().(type) {
 	case *datastore.Key, time.Time:
+		it = vi
+	case json.RawMessage:
 		it = vi
 	case Date:
 		it = vi

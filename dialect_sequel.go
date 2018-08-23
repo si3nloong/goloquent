@@ -296,6 +296,9 @@ func (s *sequel) GetSchema(c Column) []Schema {
 	}
 
 	switch t {
+	case typeOfJSONRawMessage:
+		sc.DefaultValue = OmitDefault(nil)
+		sc.DataType = "json"
 	case typeOfByte:
 		sc.DefaultValue = OmitDefault(nil)
 		sc.DataType = "mediumblob"

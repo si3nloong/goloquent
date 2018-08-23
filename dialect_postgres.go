@@ -261,6 +261,9 @@ func (p postgres) GetSchema(c Column) []Schema {
 	}
 
 	switch t {
+	case typeOfJSONRawMessage:
+		sc.DefaultValue = OmitDefault(nil)
+		sc.DataType = "jsonb"
 	case typeOfByte:
 		sc.DefaultValue = OmitDefault(nil)
 		sc.DataType = "bytea"

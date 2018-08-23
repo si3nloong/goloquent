@@ -1,6 +1,7 @@
 package goloquent
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"sort"
@@ -12,11 +13,12 @@ import (
 )
 
 var (
-	typeOfByte       = reflect.TypeOf([]byte(nil))
-	typeOfTime       = reflect.TypeOf(time.Time{})
-	typeOfPtrKey     = reflect.TypeOf(&datastore.Key{})
-	typeOfGeoPoint   = reflect.TypeOf(datastore.GeoPoint{})
-	typeOfSoftDelete = reflect.TypeOf(SoftDelete(nil))
+	typeOfByte           = reflect.TypeOf([]byte(nil))
+	typeOfTime           = reflect.TypeOf(time.Time{})
+	typeOfPtrKey         = reflect.TypeOf(&datastore.Key{})
+	typeOfGeoPoint       = reflect.TypeOf(datastore.GeoPoint{})
+	typeOfSoftDelete     = reflect.TypeOf(SoftDelete(nil))
+	typeOfJSONRawMessage = reflect.TypeOf(json.RawMessage(nil))
 )
 
 type field struct {
@@ -142,6 +144,8 @@ func isBaseType(t reflect.Type) bool {
 	case k == reflect.String:
 		return true
 	case t == typeOfByte:
+		return true
+	case t == typeOfJSONRawMessage:
 		return true
 	case k == reflect.Bool:
 		return true

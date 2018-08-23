@@ -182,6 +182,7 @@ func (s mysql) ToString(it interface{}) string {
 		v = strconv.FormatFloat(vi, 'f', -1, 64)
 	case time.Time:
 		v = fmt.Sprintf(`"%s"`, vi.Format("2006-01-02 15:04:05"))
+	// case json.RawMessage:
 	case []interface{}:
 		v = fmt.Sprintf(`"%s"`, "[]")
 	case map[string]interface{}:

@@ -73,6 +73,11 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 			return nil, err
 		}
 		it = k
+	case typeOfJSONRawMessage:
+		if v == nil {
+			return json.RawMessage(nil), nil
+		}
+		it = json.RawMessage(v)
 	case typeOfTime:
 		if v == nil {
 			return time.Time{}, nil
@@ -395,6 +400,12 @@ func loadField(v reflect.Value, it interface{}) error {
 				return unmatchDataType(x, it)
 			}
 			v.SetBytes(x)
+		case typeOfJSONRawMessage:
+			x, isOk := it.(json.RawMessage)
+			if !isOk {
+				return unmatchDataType(x, it)
+			}
+			v.Set(reflect.ValueOf(x))
 
 		default:
 			x, isOk := it.([]interface{})

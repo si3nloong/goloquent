@@ -65,13 +65,18 @@ func TestMySQLEmptyInsertOrUpsert(t *testing.T) {
 }
 
 func TestMySQLSave(t *testing.T) {
-	e := errors.New("nil entity suppose not allow in `Save` func")
 	var u User
-	if err := my.Save(&u); err == nil {
-		t.Fatal(e)
+	if err := my.Save(u); err == nil {
+		t.Fatal(errors.New("`Save` func must addressable"))
 	}
 	if err := my.Save(nil); err == nil {
-		t.Fatal(e)
+		t.Fatal(errors.New("nil entity suppose not allow in `Save` func"))
+	}
+
+	u.Key = nameKey
+	u.Name = "Something"
+	if err := my.Save(&u); err != nil {
+		t.Fatal(err)
 	}
 }
 

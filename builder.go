@@ -782,8 +782,8 @@ func (b *builder) saveMutation(model interface{}) (*stmt, error) {
 
 func (b *builder) save(model interface{}) error {
 	v := reflect.ValueOf(model)
-	if v.IsValid() || v.IsNil() {
-		return errors.New("goloquent: invalid nil entity to save")
+	if !v.IsValid() {
+		return errors.New("goloquent: invalid entity to save")
 	}
 	vi := reflect.MakeSlice(reflect.SliceOf(v.Type()), 1, 1)
 	vi.Index(0).Set(v)

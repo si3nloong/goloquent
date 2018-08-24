@@ -1,6 +1,7 @@
 package test
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"testing"
@@ -35,7 +36,7 @@ func TestMySQLConn(t *testing.T) {
 }
 
 func TestMySQLMigration(t *testing.T) {
-	if err := my.Migrate(new(User)); err != nil {
+	if err := my.Migrate(new(User), new(TempUser)); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -47,7 +48,34 @@ func TestMySQLTableExists(t *testing.T) {
 }
 
 func TestMySQLTruncate(t *testing.T) {
-	if err := my.Truncate(new(User)); err != nil {
+	if err := my.Truncate(new(User), TempUser{}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMySQLEmptyInsertOrUpsert(t *testing.T) {
+	var users []User
+	if err := my.Create(&users); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := my.Upsert(&users); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMySQLSave(t *testing.T) {
+	var u User
+	if err := my.Save(u); err == nil {
+		t.Fatal(errors.New("`Save` func must addressable"))
+	}
+	if err := my.Save(nil); err == nil {
+		t.Fatal(errors.New("nil entity suppose not allow in `Save` func"))
+	}
+
+	u.Key = nameKey
+	u.Name = "Something"
+	if err := my.Save(&u); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -99,6 +127,14 @@ func TestMySQLCreate(t *testing.T) {
 		t.Fatal(err)
 	}
 
+}
+
+func TestMySQLReplaceInto(t *testing.T) {
+	if err := my.Table("User").
+		AnyOfAncestor(nameKey, idKey).
+		ReplaceInto("TempUser"); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestMySQLSelect(t *testing.T) {
@@ -184,7 +220,7 @@ func TestMySQLAncestor(t *testing.T) {
 		t.Fatal(`Unexpected result from filter "Ancestor" using name key`)
 	}
 
-	if err := my.AnyOfAncestor([]*datastore.Key{idKey, nameKey}).
+	if err := my.AnyOfAncestor(idKey, nameKey).
 		Get(users); err != nil {
 		t.Fatal(err)
 	}

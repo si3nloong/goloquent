@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"database/sql"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -594,8 +595,32 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 	return nil
 }
 
+func (b *builder) replaceInto(table string, columns []string) error {
+	buf, args := new(bytes.Buffer), make([]interface{}, 0)
+	buf.WriteString("REPLACE INTO ")
+	buf.WriteString(b.db.dialect.GetTable(table))
+	buf.WriteString(" ")
+	cmd := b.buildSelect(b.query)
+	buf.WriteString(cmd.string())
+	buf.WriteString(" FROM " + b.db.dialect.GetTable(b.query.table))
+	cmd, err := b.buildWhere(b.query)
+	if err != nil {
+		return err
+	}
+	if !cmd.isZero() {
+		buf.WriteString(cmd.string())
+		args = append(args, cmd.arguments...)
+	}
+	buf.WriteString(";")
+	return b.db.client.execStmt(&stmt{
+		statement: buf,
+		arguments: args,
+	})
+}
+
 func (b *builder) putStmt(parentKey []*datastore.Key, e *entity) (*stmt, error) {
 	v := e.slice.Elem()
+
 	isInline := (parentKey == nil && len(parentKey) == 0)
 	buf, args := new(bytes.Buffer), make([]interface{}, 0)
 	keys := make([]*datastore.Key, v.Len(), v.Len())
@@ -679,6 +704,9 @@ func (b *builder) put(model interface{}, parentKey []*datastore.Key) error {
 		return err
 	}
 	e.setName(b.query.table)
+	if e.slice.Elem().Len() <= 0 {
+		return nil
+	}
 	cmd, err := b.putStmt(parentKey, e)
 	if err != nil {
 		return err
@@ -692,6 +720,9 @@ func (b *builder) upsert(model interface{}, parentKey []*datastore.Key) error {
 		return err
 	}
 	e.setName(b.query.table)
+	if e.slice.Elem().Len() <= 0 {
+		return nil
+	}
 	cmd, err := b.putStmt(parentKey, e)
 	if err != nil {
 		return err
@@ -774,6 +805,9 @@ func (b *builder) saveMutation(model interface{}) (*stmt, error) {
 
 func (b *builder) save(model interface{}) error {
 	v := reflect.ValueOf(model)
+	if !v.IsValid() {
+		return errors.New("goloquent: invalid entity to save")
+	}
 	vi := reflect.MakeSlice(reflect.SliceOf(v.Type()), 1, 1)
 	vi.Index(0).Set(v)
 	vv := reflect.New(vi.Type())
@@ -1000,12 +1034,17 @@ func (b *builder) deleteByQuery() error {
 	return b.db.client.execStmt(cmd)
 }
 
-func (b *builder) truncate(table string) error {
-	buf := new(bytes.Buffer)
-	buf.WriteString(fmt.Sprintf("TRUNCATE TABLE %s;", b.db.dialect.GetTable(table)))
-	return b.db.client.execStmt(&stmt{
-		statement: buf,
-	})
+func (b *builder) truncate(tables ...string) error {
+	for _, n := range tables {
+		buf := new(bytes.Buffer)
+		buf.WriteString(fmt.Sprintf("TRUNCATE TABLE %s;", b.db.dialect.GetTable(n)))
+		if err := b.db.client.execStmt(&stmt{
+			statement: buf,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (b *builder) scan(dest ...interface{}) error {

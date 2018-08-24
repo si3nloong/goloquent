@@ -3,6 +3,7 @@ package goloquent
 import (
 	"bytes"
 	"database/sql"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -293,25 +294,27 @@ func (db *DB) Destroy(model interface{}) error {
 }
 
 // Truncate :
-func (db *DB) Truncate(model interface{}) error {
-	var table string
-	v := reflect.Indirect(reflect.ValueOf(model))
-	switch v.Type().Kind() {
-	case reflect.String:
-		table = v.String()
-	case reflect.Struct:
-		e, err := newEntity(model)
-		if err != nil {
-			return err
+func (db *DB) Truncate(model ...interface{}) error {
+	ns := make([]string, 0, len(model))
+	for _, m := range model {
+		var table string
+		v := reflect.Indirect(reflect.ValueOf(m))
+		switch v.Type().Kind() {
+		case reflect.String:
+			table = v.String()
+		case reflect.Struct:
+			table = v.Type().Name()
+		default:
+			return errors.New("goloquent: unsupported model")
 		}
-		table = e.name
-	default:
-		return fmt.Errorf("goloquent: unsupported model")
+
+		table = strings.TrimSpace(table)
+		if table == "" {
+			return errors.New("goloquent: missing table name")
+		}
+		ns = append(ns, table)
 	}
-	if table == "" {
-		return fmt.Errorf("goloquent: missing table name")
-	}
-	return newBuilder(db.NewQuery()).truncate(table)
+	return newBuilder(db.NewQuery()).truncate(ns...)
 }
 
 // Select :
@@ -345,8 +348,8 @@ func (db *DB) Ancestor(ancestor *datastore.Key) *Query {
 }
 
 // AnyOfAncestor :
-func (db *DB) AnyOfAncestor(ancestors []*datastore.Key) *Query {
-	return db.NewQuery().AnyOfAncestor(ancestors)
+func (db *DB) AnyOfAncestor(ancestors ...*datastore.Key) *Query {
+	return db.NewQuery().AnyOfAncestor(ancestors...)
 }
 
 // Where :

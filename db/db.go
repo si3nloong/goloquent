@@ -113,8 +113,8 @@ func Ancestor(ancestor *datastore.Key) *goloquent.Query {
 }
 
 // AnyOfAncestor :
-func AnyOfAncestor(ancestors []*datastore.Key) *goloquent.Query {
-	return defaultDB.NewQuery().AnyOfAncestor(ancestors)
+func AnyOfAncestor(ancestors ...*datastore.Key) *goloquent.Query {
+	return defaultDB.NewQuery().AnyOfAncestor(ancestors...)
 }
 
 // Unscoped :
@@ -158,6 +158,6 @@ func RunInTransaction(cb goloquent.TransactionHandler) error {
 }
 
 // Truncate :
-func Truncate(model interface{}) error {
-	return defaultDB.Truncate(model)
+func Truncate(model ...interface{}) error {
+	return defaultDB.Truncate(model...)
 }

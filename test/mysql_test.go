@@ -47,11 +47,11 @@ func TestMySQLTableExists(t *testing.T) {
 	}
 }
 
-// func TestMySQLTruncate(t *testing.T) {
-// 	if err := my.Truncate(new(User)); err != nil {
-// 		t.Fatal(err)
-// 	}
-// }
+func TestMySQLTruncate(t *testing.T) {
+	if err := my.Truncate(new(User), TempUser{}); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestMySQLEmptyInsertOrUpsert(t *testing.T) {
 	var users []User

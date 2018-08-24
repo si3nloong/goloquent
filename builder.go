@@ -1034,12 +1034,17 @@ func (b *builder) deleteByQuery() error {
 	return b.db.client.execStmt(cmd)
 }
 
-func (b *builder) truncate(table string) error {
-	buf := new(bytes.Buffer)
-	buf.WriteString(fmt.Sprintf("TRUNCATE TABLE %s;", b.db.dialect.GetTable(table)))
-	return b.db.client.execStmt(&stmt{
-		statement: buf,
-	})
+func (b *builder) truncate(tables ...string) error {
+	for _, n := range tables {
+		buf := new(bytes.Buffer)
+		buf.WriteString(fmt.Sprintf("TRUNCATE TABLE %s;", b.db.dialect.GetTable(n)))
+		if err := b.db.client.execStmt(&stmt{
+			statement: buf,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (b *builder) scan(dest ...interface{}) error {

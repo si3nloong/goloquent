@@ -345,8 +345,8 @@ func (db *DB) Ancestor(ancestor *datastore.Key) *Query {
 }
 
 // AnyOfAncestor :
-func (db *DB) AnyOfAncestor(ancestors []*datastore.Key) *Query {
-	return db.NewQuery().AnyOfAncestor(ancestors)
+func (db *DB) AnyOfAncestor(ancestors ...*datastore.Key) *Query {
+	return db.NewQuery().AnyOfAncestor(ancestors...)
 }
 
 // Where :

@@ -113,8 +113,8 @@ func Ancestor(ancestor *datastore.Key) *goloquent.Query {
 }
 
 // AnyOfAncestor :
-func AnyOfAncestor(ancestors []*datastore.Key) *goloquent.Query {
-	return defaultDB.NewQuery().AnyOfAncestor(ancestors)
+func AnyOfAncestor(ancestors ...*datastore.Key) *goloquent.Query {
+	return defaultDB.NewQuery().AnyOfAncestor(ancestors...)
 }
 
 // Unscoped :

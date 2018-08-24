@@ -2,6 +2,7 @@ package goloquent
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -254,7 +255,7 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 // Ancestor :
 func (q *Query) Ancestor(ancestor *datastore.Key) *Query {
 	if ancestor == nil {
-		q.errs = append(q.errs, fmt.Errorf("goloquent: ancestor key cannot be nil"))
+		q.errs = append(q.errs, errors.New("goloquent: ancestor key cannot be nil"))
 		return q
 	}
 	if ancestor.Incomplete() {
@@ -267,11 +268,15 @@ func (q *Query) Ancestor(ancestor *datastore.Key) *Query {
 }
 
 // AnyOfAncestor :
-func (q *Query) AnyOfAncestor(ancestors []*datastore.Key) *Query {
+func (q *Query) AnyOfAncestor(ancestors ...*datastore.Key) *Query {
+	if len(ancestors) <= 0 {
+		q.errs = append(q.errs, errors.New(`goloquent: "AnyOfAncestor" cannot be empty`))
+		return q
+	}
 	g := group{true, make([]interface{}, 0)}
 	for _, a := range ancestors {
 		if a == nil {
-			q.errs = append(q.errs, fmt.Errorf("goloquent: ancestor key cannot be nil"))
+			q.errs = append(q.errs, errors.New("goloquent: ancestor key cannot be nil"))
 			return q
 		}
 		if a.Incomplete() {
@@ -503,6 +508,11 @@ func (q *Query) Limit(limit int) *Query {
 func (q *Query) Offset(offset int) *Query {
 	q.offset = int32(offset)
 	return q
+}
+
+// ReplaceInto :
+func (q *Query) ReplaceInto(table string, columns ...string) error {
+	return newBuilder(q).replaceInto(table, columns)
 }
 
 // Update :

@@ -40,6 +40,11 @@ type User struct {
 	DeleteDateTime  goloquent.SoftDelete `faker:"-"`
 }
 
+// TempUser :
+type TempUser struct {
+	User
+}
+
 func getFakeUser() *User {
 	u := new(User)
 	faker.FakeData(u)

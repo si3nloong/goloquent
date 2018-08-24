@@ -19,7 +19,7 @@ var (
 func TestPostgresConn(t *testing.T) {
 	// log.Println("CONNECT TO POSTGRES " + strings.Repeat("-", 80))
 	conn, err := db.Open("postgres", db.Config{
-		Username: "sianloong",
+		Username: "SianLoong",
 		Database: "goloquent",
 		Logger: func(stmt *goloquent.Stmt) {
 			log.Println(fmt.Sprintf("[%.3fms] %s", stmt.TimeElapse().Seconds()*1000, stmt.String()))
@@ -29,15 +29,6 @@ func TestPostgresConn(t *testing.T) {
 		panic(err)
 	}
 	pg = conn
-}
-
-func TestPostgresTruncate(t *testing.T) {
-	log.Println(strings.Repeat("-", 100))
-	log.Println("POSTGRES TRUNCATE")
-	log.Println(strings.Repeat("-", 100))
-	if err := pg.Truncate(new(User)); err != nil {
-		t.Fatal(err)
-	}
 }
 
 func TestPostgresMigration(t *testing.T) {
@@ -52,6 +43,15 @@ func TestPostgresMigration(t *testing.T) {
 func TestPostgresTableExists(t *testing.T) {
 	if isExist := pg.Table("User").Exists(); isExist != true {
 		t.Fatal(fmt.Errorf("Unexpected error, table %q should exists", "User"))
+	}
+}
+
+func TestPostgresTruncate(t *testing.T) {
+	log.Println(strings.Repeat("-", 100))
+	log.Println("POSTGRES TRUNCATE")
+	log.Println(strings.Repeat("-", 100))
+	if err := pg.Truncate(new(User)); err != nil {
+		t.Fatal(err)
 	}
 }
 

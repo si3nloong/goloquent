@@ -56,27 +56,29 @@
 - (2018-07-08) Rename `WhereEq` with `WhereEqual`.
 - (2018-07-08) Replace return parameter `Query` to `Table` on func `Table` of `goloquent.DB`
 - (2018-07-17) Expose operator to public.
+- (2018-08-24) Change API `AnyOfAncestor` params data type from `[]*datastore.Key` to `...*datastore.Key`.
 
 # New Features
 
-- Introduce `Select` func.
-- Introduce `DistinctOn` func.
-- Introduce `Lock` func.
-- Introduce `Truncate` func.
-- Introduce `Flush` func.
+- Introduce `Select` api.
+- Introduce `DistinctOn` api.
+- Introduce `Lock` api.
+- Introduce `Truncate` api.
+- Introduce `Flush` api.
 - Introduce package `db`.
 - Introduce package `qson`. (Query JSON)
 - Replace statement debug using `LogHandler`.
 - Support unsigned integer, uint, uint8, uint16, uint32, uint64
 - Support any pointer of base data type and struct
 - (2018-06-14) Support **Postgres**.
-- (2018-06-18) Introduce `Scan` func.
-- (2018-06-22) Introduce hard delete func `Destroy`.
-- (2018-06-24) Introduce `Unscoped` func.
+- (2018-06-18) Introduce `Scan` api.
+- (2018-06-22) Introduce hard delete api `Destroy`.
+- (2018-06-24) Introduce `Unscoped` api.
 - (2018-07-05) Support **JSON** filter.
-- (2018-07-05) Introduce `WhereJSONEqual` func.
-- (2018-07-08) Introduce new struct `Table` with new func, such as `Exists`, `DropIfExists`, `Truncate`, `AddIndex`, `AddUniqueIndex`
+- (2018-07-05) Introduce `WhereJSONEqual` api.
+- (2018-07-08) Introduce new struct `Table` with new api, such as `Exists`, `DropIfExists`, `Truncate`, `AddIndex`, `AddUniqueIndex`
 - (2018-07-08) Introduce new data type `Date`.
 - (2018-07-17) Enhance data type `Date`, add func `MarshalText` and `UnmarshalText`.
-- (2018-07-18) Introduce JSON filtering func `WhereJSON`, `WhereJSONNotEqual`, `WhereJSONIn`, `WhereNotIn`, `WhereJSONContainAny`, `WhereJSONType`, `WhereJSONIsObject`, `WhereJSONIsArray`
-- (2018-08-16) Introduce new func `AnyOfAncestor` and func `WhereAnyLike`.
+- (2018-07-18) Introduce JSON filtering api `WhereJSON`, `WhereJSONNotEqual`, `WhereJSONIn`, `WhereNotIn`, `WhereJSONContainAny`, `WhereJSONType`, `WhereJSONIsObject`, `WhereJSONIsArray`
+- (2018-08-16) Introduce new api `AnyOfAncestor` and `WhereAnyLike`.
+- (2018-08-24) Introduce new api `ReplaceInto`.

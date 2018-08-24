@@ -86,6 +86,11 @@ func (t *Table) Paginate(p *Pagination, model interface{}) error {
 	return t.newQuery().Paginate(p, model)
 }
 
+// AnyOfAncestor :
+func (t *Table) AnyOfAncestor(ancestors ...*datastore.Key) *Query {
+	return t.newQuery().AnyOfAncestor(ancestors...)
+}
+
 // Ancestor :
 func (t *Table) Ancestor(ancestor *datastore.Key) *Query {
 	return t.newQuery().Ancestor(ancestor)
@@ -169,6 +174,11 @@ func (t *Table) Limit(limit int) *Query {
 // Offset :
 func (t *Table) Offset(offset int) *Query {
 	return t.newQuery().Offset(offset)
+}
+
+// ReplaceInto :
+func (t *Table) ReplaceInto(table string, columns ...string) error {
+	return t.newQuery().ReplaceInto(table, columns...)
 }
 
 // Update :

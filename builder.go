@@ -595,6 +595,29 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 	return nil
 }
 
+func (b *builder) replaceInto(table string, columns []string) error {
+	buf, args := new(bytes.Buffer), make([]interface{}, 0)
+	buf.WriteString("REPLACE INTO ")
+	buf.WriteString(b.db.dialect.GetTable(table))
+	buf.WriteString(" ")
+	cmd := b.buildSelect(b.query)
+	buf.WriteString(cmd.string())
+	buf.WriteString(" FROM " + b.db.dialect.GetTable(b.query.table))
+	cmd, err := b.buildWhere(b.query)
+	if err != nil {
+		return err
+	}
+	if !cmd.isZero() {
+		buf.WriteString(cmd.string())
+		args = append(args, cmd.arguments...)
+	}
+	buf.WriteString(";")
+	return b.db.client.execStmt(&stmt{
+		statement: buf,
+		arguments: args,
+	})
+}
+
 func (b *builder) putStmt(parentKey []*datastore.Key, e *entity) (*stmt, error) {
 	v := e.slice.Elem()
 

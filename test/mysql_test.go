@@ -36,7 +36,7 @@ func TestMySQLConn(t *testing.T) {
 }
 
 func TestMySQLMigration(t *testing.T) {
-	if err := my.Migrate(new(User)); err != nil {
+	if err := my.Migrate(new(User), new(TempUser)); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -47,11 +47,11 @@ func TestMySQLTableExists(t *testing.T) {
 	}
 }
 
-func TestMySQLTruncate(t *testing.T) {
-	if err := my.Truncate(new(User)); err != nil {
-		t.Fatal(err)
-	}
-}
+// func TestMySQLTruncate(t *testing.T) {
+// 	if err := my.Truncate(new(User)); err != nil {
+// 		t.Fatal(err)
+// 	}
+// }
 
 func TestMySQLEmptyInsertOrUpsert(t *testing.T) {
 	var users []User
@@ -127,6 +127,14 @@ func TestMySQLCreate(t *testing.T) {
 		t.Fatal(err)
 	}
 
+}
+
+func TestMySQLReplaceInto(t *testing.T) {
+	if err := my.Table("User").
+		AnyOfAncestor(nameKey, idKey).
+		ReplaceInto("TempUser"); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestMySQLSelect(t *testing.T) {
@@ -212,7 +220,7 @@ func TestMySQLAncestor(t *testing.T) {
 		t.Fatal(`Unexpected result from filter "Ancestor" using name key`)
 	}
 
-	if err := my.AnyOfAncestor([]*datastore.Key{idKey, nameKey}).
+	if err := my.AnyOfAncestor(idKey, nameKey).
 		Get(users); err != nil {
 		t.Fatal(err)
 	}

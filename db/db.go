@@ -158,6 +158,6 @@ func RunInTransaction(cb goloquent.TransactionHandler) error {
 }
 
 // Truncate :
-func Truncate(model interface{}) error {
-	return defaultDB.Truncate(model)
+func Truncate(model ...interface{}) error {
+	return defaultDB.Truncate(model...)
 }

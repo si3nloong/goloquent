@@ -54,7 +54,7 @@ const (
 )
 
 const (
-	maxLimit     = 1000
+	maxLimit     = 10000
 	keyFieldName = "__key__"
 )
 

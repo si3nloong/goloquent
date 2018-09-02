@@ -57,8 +57,9 @@
 - (2018-07-08) Replace return parameter `Query` to `Table` on func `Table` of `goloquent.DB`
 - (2018-07-17) Expose operator to public.
 - (2018-08-24) Change api `AnyOfAncestor` params data type from `[]*datastore.Key` to `...*datastore.Key`.
-- (2018-08-24) Change `Truncate` api to support multiple entity. 
+- (2018-08-24) Change `Truncate` api to support multiple entity.
 - (2018-08-24) Increase maximum limit of `Pagination` to `10000`.
+- (2018-09-02) Change api `WhereIn` and `WhereNotIn` value param from `[]interface{}` to `interface{}`.
 
 # New Features
 

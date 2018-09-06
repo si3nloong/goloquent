@@ -344,7 +344,7 @@ func (s *sequel) GetSchema(c Column) []Schema {
 			sc.DefaultValue = int16(0)
 			sc.DataType = "smallint"
 		case reflect.Int32:
-			sc.DefaultValue = int(0)
+			sc.DefaultValue = int32(0)
 			sc.DataType = "mediumint"
 		case reflect.Int64:
 			sc.DefaultValue = int64(0)
@@ -358,11 +358,11 @@ func (s *sequel) GetSchema(c Column) []Schema {
 			sc.DataType = "tinyint"
 			sc.IsUnsigned = true
 		case reflect.Uint16:
-			sc.DefaultValue = uint8(0)
+			sc.DefaultValue = uint16(0)
 			sc.DataType = "smallint"
 			sc.IsUnsigned = true
 		case reflect.Uint32:
-			sc.DefaultValue = uint(0)
+			sc.DefaultValue = uint32(0)
 			sc.DataType = "mediumint"
 			sc.IsUnsigned = true
 		case reflect.Uint64:

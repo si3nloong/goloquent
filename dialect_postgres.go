@@ -207,7 +207,7 @@ func (p postgres) DataType(sc Schema) string {
 	buf := new(bytes.Buffer)
 	buf.WriteString(sc.DataType)
 	if sc.IsUnsigned {
-		buf.WriteString(fmt.Sprintf(" CHECK (%s > 0)", p.Quote(sc.Name)))
+		buf.WriteString(fmt.Sprintf(" CHECK (%s >= 0)", p.Quote(sc.Name)))
 	}
 	if !sc.IsNullable {
 		buf.WriteString(" NOT NULL")
@@ -268,10 +268,15 @@ func (p postgres) GetSchema(c Column) []Schema {
 		sc.DefaultValue = OmitDefault(nil)
 		sc.DataType = "bytea"
 	case typeOfDate:
-		// sc.DefaultValue = time.Time{}
+		sc.DefaultValue = "0001-01-01"
 		sc.DataType = "date"
 	case typeOfTime:
 		sc.DefaultValue = time.Time{}
+		sc.DataType = "timestamp"
+	case typeOfSoftDelete:
+		sc.DefaultValue = OmitDefault(nil)
+		sc.IsNullable = true
+		sc.IsIndexed = true
 		sc.DataType = "timestamp"
 	default:
 		switch t.Kind() {
@@ -282,51 +287,49 @@ func (p postgres) GetSchema(c Column) []Schema {
 				sc.DefaultValue = nil
 				sc.DataType = "text"
 			}
-			if f.Get("datatype") != "" {
-				sc.DataType = f.Get("datatype")
-			}
-			sc.CharSet = utf8CharSet
-			charset := f.Get("charset")
-			if charset != "" {
-				sc.CharSet.Encoding = charset
-			}
 		case reflect.Bool:
 			sc.DefaultValue = false
 			sc.DataType = "bool"
+		case reflect.Int:
+			sc.DefaultValue = int(0)
+			sc.DataType = "integer"
 		case reflect.Int8:
 			sc.DefaultValue = int8(0)
 			sc.DataType = "smallint"
 		case reflect.Int16:
 			sc.DefaultValue = int16(0)
-			sc.DataType = "integer"
-		case reflect.Int, reflect.Int32:
+			sc.DataType = "smallint"
+		case reflect.Int32:
 			sc.DefaultValue = int32(0)
 			sc.DataType = "integer"
 		case reflect.Int64:
 			sc.DefaultValue = int64(0)
 			sc.DataType = "bigint"
+		case reflect.Uint:
+			sc.DefaultValue = uint(0)
+			sc.DataType = "integer"
+			sc.IsUnsigned = true
 		case reflect.Uint8:
 			sc.DefaultValue = uint8(0)
-			sc.IsUnsigned = true
 			sc.DataType = "smallint"
+			sc.IsUnsigned = true
 		case reflect.Uint16:
 			sc.DefaultValue = uint16(0)
+			sc.DataType = "smallint"
 			sc.IsUnsigned = true
-			sc.DataType = "integer"
-		case reflect.Uint, reflect.Uint32:
+		case reflect.Uint32:
 			sc.DefaultValue = uint32(0)
-			sc.IsUnsigned = true
 			sc.DataType = "integer"
+			sc.IsUnsigned = true
 		case reflect.Uint64:
 			sc.DefaultValue = uint64(0)
-			sc.IsUnsigned = true
 			sc.DataType = "bigint"
+			sc.IsUnsigned = true
 		case reflect.Float32, reflect.Float64:
 			sc.DefaultValue = float64(0)
 			sc.DataType = "real"
 		default:
 			sc.DataType = "jsonb"
-			sc.CharSet = utf8CharSet
 		}
 	}
 

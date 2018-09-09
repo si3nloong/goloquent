@@ -132,6 +132,26 @@ func Where(field string, operator string, value interface{}) *goloquent.Query {
 	return defaultDB.Where(field, operator, value)
 }
 
+// WhereEqual :
+func WhereEqual(field string, value interface{}) *goloquent.Query {
+	return defaultDB.NewQuery().WhereEqual(field, value)
+}
+
+// WhereNotEqual :
+func WhereNotEqual(field string, value interface{}) *goloquent.Query {
+	return defaultDB.NewQuery().WhereNotEqual(field, value)
+}
+
+// WhereNull :
+func WhereNull(field string) *goloquent.Query {
+	return defaultDB.NewQuery().WhereNull(field)
+}
+
+// WhereNotNull :
+func WhereNotNull(field string) *goloquent.Query {
+	return defaultDB.NewQuery().WhereNotNull(field)
+}
+
 // WhereJSON :
 func WhereJSON(field string, operator string, value interface{}) *goloquent.Query {
 	return defaultDB.NewQuery().WhereJSON(field, operator, value)

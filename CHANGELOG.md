@@ -8,7 +8,7 @@
 - (2018-06-03) Fix empty table name when using `Flush` func.
 - (2018-06-10) Fix panic occur on func `StringKey` when input parameter `*datastore.Key` is `nil`
 - (2018-06-18) Primary key should omitted in operation `Upsert`
-- (2018-06-18) Fix logger `String` func is output unexpected string when using `Postgres` driver
+- (2018-06-18) Fix logger `String` func is output unexpected string when using `postgres` driver
 - (2018-06-19) Fix flatten struct bug, flatten column using root data type instead of the subsequent data type
 - (2018-06-19) Fix primary key bug when using `WHERE $Key IN (?)`, key is not convert to primary key format
 - (2018-06-21) Fix alter table character set and collation bug, change from `ALTER TABLE xxx CONVERT TO CHARACTER SET utf8` to `ALTER TABLE xxx CHARACTER SET utf8`
@@ -16,11 +16,11 @@
 - (2018-06-22) Fix `Paginate` bug, model slice is appending instead of get replace
 - (2018-06-25) Fix struct property sequence bug
 - (2018-06-27) Fix struct codec, func `Select` and func `DistinctOn`
-- (2018-06-28) Fix `Postgres` update with limit clause bug. Only mysql support `UPDATE xxx SET xxx LIMIT 10`. Postgres instead will use `UPDATE xxx SET xxx WHERE key IN (SELECT xxx FROM xxx LIMIT 10)`.
+- (2018-06-28) Fix `postgres` update with limit clause bug. Only mysql support `UPDATE xxx SET xxx LIMIT 10`. Postgres instead will use `UPDATE xxx SET xxx WHERE key IN (SELECT xxx FROM xxx LIMIT 10)`.
 - (2018-06-28) Fix `Paginate` bug, invalid cursor signature due to `qson` package didn't sort the filter fields
 - (2018-07-02) Fix `panic: reflect: Field index out of range` on embeded struct, code paths is invalid
 - (2018-07-02) Fix entity doesn't execute `Save` func even it implement `Saver` interface when it's not a pointer struct (eg: []Struct)
-- (2018-07-05) Fix `Postgres` `GetColumns` bug, it return empty array even database have records
+- (2018-07-05) Fix `postgres` `GetColumns` bug, it return empty array even database have records
 - (2018-07-11) Fix `Update` func bug. It doesn't marshal the map[string]interface nor []interface{} to string after normalization
 - (2018-07-13) Fix func `Unmarshal` of data type `Date`. It suppose using `YYYY-MM-DD` format.
 - (2018-07-17) Fix panic when value of `WhereIn` or `WhereNotIn` contains `nil` value.
@@ -31,6 +31,8 @@
 - (2018-08-17) Fix invalid sql statement on `Paginate()` when using next `Cursor` from `NextCursor()`.
 - (2018-08-23) Fix unicode string cannot save to `mysql`.
 - (2018-09-06) Fix incorrect mysql schema for signed and unsigned integer data type.
+- (2018-09-10) Fix `Upsert` bug. Primary key should omitted.
+- (2018-09-10) Fix `postgres` schema bug. Schema for unsigned integer should be greater and equal to zero instead of greater than zero. `CHECK (value >= 0)`.
 
 # Breaking Changes / Changes
 
@@ -61,6 +63,8 @@
 - (2018-08-24) Change `Truncate` api to support multiple entity.
 - (2018-08-24) Increase maximum limit of `Pagination` to `10000`.
 - (2018-09-02) Change api `WhereIn` and `WhereNotIn` value param from `[]interface{}` to `interface{}`.
+- (2018-09-10) `Date` no longer convert to UTC before format.
+- (2018-09-10) `Date` will have default value `"0001-01-01"` if it's not pointer.
 
 # New Features
 
@@ -74,7 +78,7 @@
 - Replace statement debug using `LogHandler`.
 - Support unsigned integer, uint, uint8, uint16, uint32, uint64
 - Support any pointer of base data type and struct
-- (2018-06-14) Support **Postgres**.
+- (2018-06-14) Support **Postgres** driver.
 - (2018-06-18) Introduce `Scan` api.
 - (2018-06-22) Introduce hard delete api `Destroy`.
 - (2018-06-24) Introduce `Unscoped` api.
@@ -85,4 +89,6 @@
 - (2018-07-17) Enhance data type `Date`, add func `MarshalText` and `UnmarshalText`.
 - (2018-07-18) Introduce JSON filtering api `WhereJSON`, `WhereJSONNotEqual`, `WhereJSONIn`, `WhereNotIn`, `WhereJSONContainAny`, `WhereJSONType`, `WhereJSONIsObject`, `WhereJSONIsArray`
 - (2018-08-16) Introduce new api `AnyOfAncestor` and `WhereAnyLike`.
-- (2018-08-24) Introduce new api `ReplaceInto`.
+- (2018-08-24) Introduce new api `ReplaceInto` for `mysql` driver.
+- (2018-09-10) Support `json.RawMessage` for `mysql` driver.
+- (2018-09-10) Enable `ReplaceInto` api for `postgres` driver.

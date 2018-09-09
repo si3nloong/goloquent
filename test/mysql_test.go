@@ -1,29 +1,21 @@
 package test
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"testing"
 	"time"
 
-	"cloud.google.com/go/datastore"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/si3nloong/goloquent"
 	"github.com/si3nloong/goloquent/db"
 )
 
-var (
-	my      *goloquent.DB
-	nameKey = datastore.NameKey("Name", "hIL0O7zfZP", nil)
-	idKey   = datastore.IDKey("ID", int64(5116745034367558422), nil)
-)
-
 func TestMySQLConn(t *testing.T) {
-	// log.Println("CONNECT TO MYSQL " + strings.Repeat("-", 80))
 	conn, err := db.Open("mysql", db.Config{
 		Username: "root",
-		Password: "av2018#RM",
 		Database: "goloquent",
 		Logger: func(stmt *goloquent.Stmt) {
 			log.Println(fmt.Sprintf("[%.3fms] %s", stmt.TimeElapse().Seconds()*1000, stmt.String()))
@@ -33,6 +25,12 @@ func TestMySQLConn(t *testing.T) {
 		panic(err)
 	}
 	my = conn
+}
+
+func TestMySQLDropTableIfExists(t *testing.T) {
+	if err := my.Table("User").DropIfExists(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestMySQLMigration(t *testing.T) {
@@ -53,33 +51,6 @@ func TestMySQLTruncate(t *testing.T) {
 	}
 }
 
-func TestMySQLEmptyInsertOrUpsert(t *testing.T) {
-	var users []User
-	if err := my.Create(&users); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := my.Upsert(&users); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestMySQLSave(t *testing.T) {
-	var u User
-	if err := my.Save(u); err == nil {
-		t.Fatal(errors.New("`Save` func must addressable"))
-	}
-	if err := my.Save(nil); err == nil {
-		t.Fatal(errors.New("nil entity suppose not allow in `Save` func"))
-	}
-
-	u.Key = nameKey
-	u.Name = "Something"
-	if err := my.Save(&u); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestMySQLAddIndex(t *testing.T) {
 	if err := my.Table("User").
 		AddUniqueIndex("Username"); err != nil {
@@ -87,6 +58,17 @@ func TestMySQLAddIndex(t *testing.T) {
 	}
 	if err := my.Table("User").
 		AddIndex("Age"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMySQLEmptyInsertOrUpsert(t *testing.T) {
+	var users []User
+	if err := my.Create(&users); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := my.Upsert(&users); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -137,6 +119,24 @@ func TestMySQLReplaceInto(t *testing.T) {
 	}
 }
 
+func TestMySQLSave(t *testing.T) {
+	var u User
+	if err := my.Save(u); err == nil {
+		t.Fatal(errors.New("`Save` func must addressable"))
+	}
+	if err := my.Save(nil); err == nil {
+		t.Fatal(errors.New("nil entity suppose not allow in `Save` func"))
+	}
+
+	if err := my.Create(&u); err != nil {
+		t.Fatal(err)
+	}
+	u.Name = "Something"
+	if err := my.Save(&u); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestMySQLSelect(t *testing.T) {
 	u := new(User)
 	if err := my.Select("*", "Name").First(u); err != nil {
@@ -159,26 +159,6 @@ func TestMySQLDistinctOn(t *testing.T) {
 	if err := my.NewQuery().
 		DistinctOn("Name", "Password").First(u); err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestMySQLEmptySliceInJSON(t *testing.T) {
-	u := new(User)
-	if err := my.First(u); err != nil {
-		t.Fatal(err)
-	}
-	if u.Email == nil {
-		t.Fatal(fmt.Errorf("empty slice should init on any `Get` func"))
-	}
-
-	u2 := getFakeUser()
-	u2.Email = nil
-	u2.PrimaryEmail = "sianloong@hotmail.com"
-	if err := my.Create(u2); err != nil {
-		t.Fatal(err)
-	}
-	if u2.Email == nil {
-		t.Fatal(fmt.Errorf("empty slice should init on any `Create` func"))
 	}
 }
 
@@ -224,14 +204,22 @@ func TestMySQLAncestor(t *testing.T) {
 		Get(users); err != nil {
 		t.Fatal(err)
 	}
-	if len(*users) <= 0 {
-		t.Fatal(`Unexpected result from filter "AnyOfAncestor"`)
-	}
 }
 
 func TestMySQLWhereFilter(t *testing.T) {
-	users := new([]User)
 	age := uint8(85)
+	creditLimit := float64(100.015)
+	dob, _ := time.Parse("2006-01-02", "1900-10-01")
+
+	u := getFakeUser()
+	u.Age = age
+	u.Nickname = nil
+	u.CreditLimit = creditLimit
+	u.Birthdate = goloquent.Date(dob)
+
+	my.Create(u)
+
+	users := new([]User)
 	if err := my.Where("Age", "=", &age).
 		Get(users); err != nil {
 		t.Fatal(err)
@@ -240,7 +228,7 @@ func TestMySQLWhereFilter(t *testing.T) {
 		t.Fatal(`Unexpected result from filter using "Where"`)
 	}
 
-	if err := my.Where("Birthdate", "=", goloquent.Date(time.Now())).
+	if err := my.Where("Birthdate", "=", goloquent.Date(dob)).
 		Get(users); err != nil {
 		t.Fatal(err)
 	}
@@ -248,17 +236,16 @@ func TestMySQLWhereFilter(t *testing.T) {
 		t.Fatal(`Unexpected result from filter using "Where"`)
 	}
 
-	var nilAge *int16
-	if err := my.Where("Age", "=", nilAge).
+	var nilNickname *string
+	if err := my.Where("Nickname", "=", nilNickname).
 		Get(users); err != nil {
 		t.Fatal(err)
 	}
-	if len(*users) > 0 {
+	if len(*users) <= 0 {
 		t.Fatal(`Unexpected result from filter using "Where"`)
 	}
 
-	limit := float32(0.1036772)
-	if err := my.Where("CreditLimit", ">", &limit).
+	if err := my.Where("CreditLimit", "=", &creditLimit).
 		Get(users); err != nil {
 		t.Fatal(err)
 	}
@@ -269,6 +256,13 @@ func TestMySQLWhereFilter(t *testing.T) {
 
 func TestMySQLWhereAnyLike(t *testing.T) {
 	users := new([]User)
+
+	u := getFakeUser()
+	u.PrimaryEmail = "sianloong@hotmail.com"
+	if err := my.Create(u); err != nil {
+		t.Fatal(err)
+	}
+
 	if err := my.NewQuery().
 		WhereAnyLike("PrimaryEmail", []string{
 			"lzPskFb@OOxzA.net",
@@ -279,6 +273,53 @@ func TestMySQLWhereAnyLike(t *testing.T) {
 
 	if len(*users) <= 0 {
 		t.Fatal(`Unexpected result from filter using "WhereAnyLike"`)
+	}
+}
+
+func TestMySQLJSONRawMessage(t *testing.T) {
+	u := getFakeUser()
+	if err := my.Upsert(u); err != nil {
+		t.Fatal(err)
+	}
+	u.Information = nil
+	if err := my.Upsert(u); err != nil {
+		t.Fatal(err)
+	}
+	u.Information = json.RawMessage(`[]`)
+	if err := my.Upsert(u); err != nil {
+		t.Fatal(err)
+	}
+	u.Information = json.RawMessage(`{}`)
+	if err := my.Upsert(u); err != nil {
+		t.Fatal(err)
+	}
+	u.Information = json.RawMessage(`null`)
+	if err := my.Upsert(u); err != nil {
+		t.Fatal(err)
+	}
+	u.Information = json.RawMessage(`notvalid`)
+	if err := my.Upsert(u); err == nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMySQLEmptySliceInJSON(t *testing.T) {
+	u := new(User)
+	if err := my.First(u); err != nil {
+		t.Fatal(err)
+	}
+	if u.Emails == nil {
+		t.Fatal(fmt.Errorf("empty slice should init on any `Get` func"))
+	}
+
+	u2 := getFakeUser()
+	u2.Emails = nil
+	u2.PrimaryEmail = "sianloong@hotmail.com"
+	if err := my.Create(u2); err != nil {
+		t.Fatal(err)
+	}
+	if u2.Emails == nil {
+		t.Fatal(fmt.Errorf("empty slice should init on any `Create` func"))
 	}
 }
 
@@ -382,7 +423,7 @@ func TestMySQLJSONNotIn(t *testing.T) {
 func TestMySQLJSONContainAny(t *testing.T) {
 	users := new([]User)
 	if err := my.NewQuery().
-		WhereJSONContainAny("Email", []string{
+		WhereJSONContainAny("Emails", []Email{
 			"support@hotmail.com",
 			"invalid@gmail.com",
 		}).Get(users); err != nil {
@@ -393,7 +434,7 @@ func TestMySQLJSONContainAny(t *testing.T) {
 	}
 
 	if err := my.NewQuery().
-		WhereJSONContainAny("Email", []string{
+		WhereJSONContainAny("Emails", []Email{
 			"invalid@gmail.com",
 			"invalid@hotmail.com",
 		}).Get(users); err != nil {
@@ -441,9 +482,6 @@ func TestMySQLJSONIsArray(t *testing.T) {
 }
 
 func TestMySQLPaginate(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL PAGINATION")
-	// log.Println(strings.Repeat("-", 100))
 	users := new([]User)
 	p := &goloquent.Pagination{
 		Limit: 1,
@@ -484,65 +522,43 @@ func TestMySQLPaginate(t *testing.T) {
 }
 
 func TestMySQLUpsert(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL SINGLE UPSERT")
-	// log.Println(strings.Repeat("-", 100))
 	u := getFakeUser()
 	if err := my.Upsert(u); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL SINGLE UPSERT WITH PARENT KEY (ID KEY)")
-	// log.Println(strings.Repeat("-", 100))
+	u = getFakeUser()
 	if err := my.Upsert(u, idKey); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL SINGLE UPSERT WITH PARENT KEY (NAME KEY)")
-	// log.Println(strings.Repeat("-", 100))
+	u = getFakeUser()
 	if err := my.Upsert(u, nameKey); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL MULTI UPSERT WITH SLICE POINTER STRUCT")
-	// log.Println(strings.Repeat("-", 100))
 	users := []*User{getFakeUser(), getFakeUser()}
 	if err := my.Upsert(&users); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL MULTI UPSERT WITH SLICE STRUCT")
-	// log.Println(strings.Repeat("-", 100))
 	uu := []User{*getFakeUser(), *getFakeUser()}
 	if err := my.Upsert(&uu); err != nil {
 		t.Fatal(err)
 	}
 
 	uuu := []User{*getFakeUser(), *getFakeUser()}
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL MULTI UPSERT WITH SLICE STRUCT AND PARENT KEY (ID KEY)")
-	// log.Println(strings.Repeat("-", 100))
 	if err := my.Upsert(&uuu, idKey); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL MULTI UPSERT WITH SLICE STRUCT AND PARENT KEY (NAME KEY)")
-	// log.Println(strings.Repeat("-", 100))
+	uuu = []User{*getFakeUser(), *getFakeUser()}
 	if err := my.Upsert(&uuu, nameKey); err != nil {
 		t.Fatal(err)
 	}
-
 }
 
 func TestMySQLUpdate(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL UPDATE")
-	// log.Println(strings.Repeat("-", 100))
 	if err := my.Table("User").Limit(1).
 		Where("Name", "=", "Dr. Antoinette Zboncak").
 		Update(map[string]interface{}{
@@ -553,7 +569,7 @@ func TestMySQLUpdate(t *testing.T) {
 
 	if err := my.Table("User").Limit(1).
 		Update(map[string]interface{}{
-			"Email": []string{"abc@gmail.com", "abc@hotmail.com", "abc@yahoo.com"},
+			"Emails": []string{"abc@gmail.com", "abc@hotmail.com", "abc@yahoo.com"},
 		}); err != nil {
 		t.Fatal(err)
 	}
@@ -567,9 +583,6 @@ func TestMySQLUpdate(t *testing.T) {
 	// }
 }
 func TestMySQLSoftDelete(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL SOFT DELETE")
-	// log.Println(strings.Repeat("-", 100))
 	u := getFakeUser()
 	if err := my.Create(u); err != nil {
 		t.Fatal(err)
@@ -580,9 +593,6 @@ func TestMySQLSoftDelete(t *testing.T) {
 }
 
 func TestMySQLHardDelete(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL HARD DELETE")
-	// log.Println(strings.Repeat("-", 100))
 	u := new(User)
 	if err := my.First(u); err != nil {
 		t.Fatal(err)
@@ -614,9 +624,6 @@ func TestMySQLTable(t *testing.T) {
 }
 
 func TestMySQLRunInTransaction(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("MYSQL RUN IN TRANSACTION")
-	// log.Println(strings.Repeat("-", 100))
 	if err := my.RunInTransaction(func(txn *goloquent.DB) error {
 		u := new(User)
 		if err := txn.NewQuery().
@@ -640,12 +647,6 @@ func TestMySQLScan(t *testing.T) {
 		t.Fatal(err)
 	}
 	log.Println("Count :", count, ", Sum :", sum)
-}
-
-func TestMySQLDropTableIfExists(t *testing.T) {
-	// if err := my.Table("User").DropIfExists(); err != nil {
-	// 	t.Fatal(err)
-	// }
 }
 
 func TestMySQLClose(t *testing.T) {

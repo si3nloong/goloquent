@@ -153,10 +153,10 @@ func (s *mysql) AlterTable(table string, columns []Column) error {
 	}
 
 	for _, col := range cols.keys() {
-		buf.WriteString(fmt.Sprintf(" DROP COLUMN %s,", s.Quote(col)))
+		buf.WriteString(fmt.Sprintf("DROP COLUMN %s,", s.Quote(col)))
 	}
 	for _, idx := range idxs.keys() {
-		buf.WriteString(fmt.Sprintf(" DROP INDEX %s,", s.Quote(idx)))
+		buf.WriteString(fmt.Sprintf("DROP INDEX %s,", s.Quote(idx)))
 	}
 
 	buf.WriteString(fmt.Sprintf("CHARACTER SET %s ", s.Quote(s.db.CharSet.Encoding)))
@@ -169,7 +169,7 @@ func (s mysql) ToString(it interface{}) string {
 	var v string
 	switch vi := it.(type) {
 	case string:
-		v = fmt.Sprintf("%q", "")
+		v = fmt.Sprintf("%q", vi)
 	case bool:
 		v = fmt.Sprintf("%t", vi)
 	case uint, uint8, uint16, uint32, uint64:

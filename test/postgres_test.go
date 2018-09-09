@@ -1,9 +1,9 @@
 package test
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 	"testing"
 	"time"
 
@@ -17,9 +17,8 @@ var (
 )
 
 func TestPostgresConn(t *testing.T) {
-	// log.Println("CONNECT TO POSTGRES " + strings.Repeat("-", 80))
 	conn, err := db.Open("postgres", db.Config{
-		Username: "SianLoong",
+		Username: "sianloong",
 		Database: "goloquent",
 		Logger: func(stmt *goloquent.Stmt) {
 			log.Println(fmt.Sprintf("[%.3fms] %s", stmt.TimeElapse().Seconds()*1000, stmt.String()))
@@ -31,11 +30,14 @@ func TestPostgresConn(t *testing.T) {
 	pg = conn
 }
 
+func TestPostgresDropTableIfExists(t *testing.T) {
+	if err := pg.Table("User").DropIfExists(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestPostgresMigration(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES MIGRATION")
-	// log.Println(strings.Repeat("-", 100))
-	if err := pg.Migrate(new(User)); err != nil {
+	if err := pg.Migrate(new(User), new(TempUser)); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -47,10 +49,7 @@ func TestPostgresTableExists(t *testing.T) {
 }
 
 func TestPostgresTruncate(t *testing.T) {
-	log.Println(strings.Repeat("-", 100))
-	log.Println("POSTGRES TRUNCATE")
-	log.Println(strings.Repeat("-", 100))
-	if err := pg.Truncate(new(User)); err != nil {
+	if err := pg.Truncate(new(User), TempUser{}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -66,34 +65,32 @@ func TestPostgresAddIndex(t *testing.T) {
 	}
 }
 
+func TestPostgresEmptyInsertOrUpsert(t *testing.T) {
+	var users []User
+	if err := pg.Create(&users); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := pg.Upsert(&users); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestPostgresCreate(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES SINGLE CREATE")
-	// log.Println(strings.Repeat("-", 100))
 	u := getFakeUser()
 	if err := pg.Create(u); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES SINGLE CREATE WITH PARENT KEY (NAME KEY)")
-	// log.Println(strings.Repeat("-", 100))
 	u = getFakeUser()
 	if err := pg.Create(u, nameKey); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES SINGLE CREATE WITH PARENT KEY (ID KEY)")
-	// log.Println(strings.Repeat("-", 100))
 	u = getFakeUser()
 	if err := pg.Create(u, idKey); err != nil {
 		t.Fatal(err)
 	}
-
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES MULTI CREATE")
-	// log.Println(strings.Repeat("-", 100))
 
 	users := []*User{getFakeUser(), getFakeUser()}
 	if err := pg.Create(&users); err != nil {
@@ -101,10 +98,15 @@ func TestPostgresCreate(t *testing.T) {
 	}
 }
 
+// func TestPostgresReplaceInto(t *testing.T) {
+// 	if err := pg.Table("User").
+// 		AnyOfAncestor(nameKey, idKey).
+// 		ReplaceInto("TempUser"); err != nil {
+// 		t.Fatal(err)
+// 	}
+// }
+
 func TestPostgresSelect(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES FIRST WITH SELECT QUERY")
-	// log.Println(strings.Repeat("-", 100))
 	u := new(User)
 	if err := pg.
 		Select("*", "Name").First(u); err != nil {
@@ -113,26 +115,17 @@ func TestPostgresSelect(t *testing.T) {
 }
 
 func TestPostgresDistinctOn(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES DISTINCT ON WITH *")
-	// log.Println(strings.Repeat("-", 100))
 	u := new(User)
 	if err := pg.NewQuery().
 		DistinctOn("*").First(u); err == nil {
 		t.Fatal("Expected `DistinctOn` cannot allow *")
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES DISTINCT ON WITH EMPTY INPUT")
-	// log.Println(strings.Repeat("-", 100))
 	if err := pg.NewQuery().
 		DistinctOn("").First(u); err == nil {
 		t.Fatal("Expected `DistinctOn` cannot have empty")
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES DISTINCT ON WITH COLUMN")
-	// log.Println(strings.Repeat("-", 100))
 	if err := pg.NewQuery().
 		DistinctOn("Name", "Password").First(u); err != nil {
 		t.Fatal(err)
@@ -142,31 +135,37 @@ func TestPostgresDistinctOn(t *testing.T) {
 func TestPostgresGet(t *testing.T) {
 	u := new(User)
 	users := new([]User)
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES FIRST")
-	// log.Println(strings.Repeat("-", 100))
 	if err := pg.First(u); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES FIND")
-	// log.Println(strings.Repeat("-", 100))
 	if err := pg.Find(u.Key, u); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := pg.Get(users); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := pg.NewQuery().Unscoped().Get(users); err != nil {
 		t.Fatal(err)
 	}
-
 }
 
 func TestPostgresWhereFilter(t *testing.T) {
-	users := new([]User)
 	age := uint8(85)
+	creditLimit := float64(100.015)
+	dob, _ := time.Parse("2006-01-02", "1900-10-01")
+
+	u := getFakeUser()
+	u.Age = age
+	u.Nickname = nil
+	u.CreditLimit = creditLimit
+	u.Birthdate = goloquent.Date(dob)
+
+	pg.Create(u)
+
+	users := new([]User)
 	if err := pg.Where("Age", "=", &age).
 		Get(users); err != nil {
 		t.Fatal(err)
@@ -175,7 +174,7 @@ func TestPostgresWhereFilter(t *testing.T) {
 		t.Fatal(`Unexpected result from filter using "Where"`)
 	}
 
-	if err := pg.Where("Birthdate", "=", goloquent.Date(time.Now())).
+	if err := pg.Where("Birthdate", "=", goloquent.Date(dob)).
 		Get(users); err != nil {
 		t.Fatal(err)
 	}
@@ -183,22 +182,89 @@ func TestPostgresWhereFilter(t *testing.T) {
 		t.Fatal(`Unexpected result from filter using "Where"`)
 	}
 
-	var nilAge *int16
-	if err := pg.Where("Age", "=", nilAge).
-		Get(users); err != nil {
-		t.Fatal(err)
-	}
-	if len(*users) > 0 {
-		t.Fatal(`Unexpected result from filter using "Where"`)
-	}
-
-	limit := float32(0.1036772)
-	if err := pg.Where("CreditLimit", ">", &limit).
+	var nilNickname *string
+	if err := pg.Where("Nickname", "=", nilNickname).
 		Get(users); err != nil {
 		t.Fatal(err)
 	}
 	if len(*users) <= 0 {
 		t.Fatal(`Unexpected result from filter using "Where"`)
+	}
+
+	if err := pg.Where("CreditLimit", "=", &creditLimit).
+		Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal(`Unexpected result from filter using "Where"`)
+	}
+}
+
+func TestPostgresWhereAnyLike(t *testing.T) {
+	users := new([]User)
+
+	u := getFakeUser()
+	u.PrimaryEmail = "sianloong@hotmail.com"
+	if err := pg.Create(u); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := pg.NewQuery().
+		WhereAnyLike("PrimaryEmail", []string{
+			"lzPskFb@OOxzA.net",
+			"sianloong%",
+		}).Get(users); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(*users) <= 0 {
+		t.Fatal(`Unexpected result from filter using "WhereAnyLike"`)
+	}
+}
+func TestPostgresJSONRawMessage(t *testing.T) {
+	u := getFakeUser()
+	if err := pg.Upsert(u); err != nil {
+		t.Fatal(err)
+	}
+	u.Information = nil
+	if err := pg.Upsert(u); err != nil {
+		t.Fatal(err)
+	}
+	u.Information = json.RawMessage(`[]`)
+	if err := pg.Upsert(u); err != nil {
+		t.Fatal(err)
+	}
+	u.Information = json.RawMessage(`{}`)
+	if err := pg.Upsert(u); err != nil {
+		t.Fatal(err)
+	}
+	u.Information = json.RawMessage(`null`)
+	if err := pg.Upsert(u); err != nil {
+		t.Fatal(err)
+	}
+	u.Information = json.RawMessage(`notvalid`)
+	if err := pg.Upsert(u); err == nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPostgresEmptySliceInJSON(t *testing.T) {
+	u := new(User)
+	if err := pg.First(u); err != nil {
+		t.Fatal(err)
+	}
+	if u.Emails == nil {
+		t.Fatal(fmt.Errorf("empty slice should init on any `Get` func"))
+	}
+
+	u2 := getFakeUser()
+	u2.Emails = nil
+	u2.PrimaryEmail = "sianloong@hotmail.com"
+	if err := pg.Create(u2); err != nil {
+		t.Fatal(err)
+	}
+	if u2.Emails == nil {
+		t.Fatal(fmt.Errorf("empty slice should init on any `Create` func"))
 	}
 }
 
@@ -303,7 +369,7 @@ func TestPostgresJSONNotIn(t *testing.T) {
 func TestPostgresJSONContainAny(t *testing.T) {
 	users := new([]User)
 	if err := pg.NewQuery().
-		WhereJSONContainAny("Email", []string{
+		WhereJSONContainAny("Emails", []Email{
 			"support@hotmail.com",
 			"invalid@gmail.com",
 		}).Get(users); err != nil {
@@ -314,7 +380,7 @@ func TestPostgresJSONContainAny(t *testing.T) {
 	}
 
 	if err := pg.NewQuery().
-		WhereJSONContainAny("Email", []string{
+		WhereJSONContainAny("Emails", []Email{
 			"invalid@gmail.com",
 			"invalid@hotmail.com",
 		}).Get(users); err != nil {
@@ -362,42 +428,71 @@ func TestPostgresJSONIsArray(t *testing.T) {
 }
 
 func TestPostgresPaginate(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES PAGINATION")
-	// log.Println(strings.Repeat("-", 100))
 	users := new([]User)
-	p := &goloquent.Pagination{
-		Limit: 10,
-	}
-	if err := pg.Paginate(p, users); err != nil {
+
+	uu := []*User{getFakeUser(), getFakeUser(), getFakeUser()}
+	if err := pg.Create(&uu, nameKey); err != nil {
 		t.Fatal(err)
 	}
-	// log.Println("Records :", p.Count())
-	// log.Println("Cursor :", p.NextCursor())
+	p := &goloquent.Pagination{
+		Limit: 1,
+	}
+	if err := pg.Ancestor(nameKey).
+		Paginate(p, users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*(users)) <= 0 {
+		t.Fatal(fmt.Errorf("paginate record set shouldn't empty"))
+	}
+
+	// p.Cursor = p.NextCursor()
+	// if err := pg.Ancestor(nameKey).
+	// 	Paginate(p, users); err != nil {
+	// 	t.Fatal(err)
+	// }
+	// if len(*(users)) <= 0 {
+	// 	t.Fatal(fmt.Errorf("paginate record set shouldn't empty"))
+	// }
 }
 
 func TestPostgresUpsert(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES SINGLE UPSERT")
-	// log.Println(strings.Repeat("-", 100))
 	u := getFakeUser()
 	if err := pg.Upsert(u); err != nil {
 		t.Fatal(err)
 	}
 
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES MULTI UPSERT")
-	// log.Println(strings.Repeat("-", 100))
+	u = getFakeUser()
+	if err := pg.Upsert(u, idKey); err != nil {
+		t.Fatal(err)
+	}
+
+	u = getFakeUser()
+	if err := pg.Upsert(u, nameKey); err != nil {
+		t.Fatal(err)
+	}
+
 	users := []*User{getFakeUser(), getFakeUser()}
 	if err := pg.Upsert(&users); err != nil {
+		t.Fatal(err)
+	}
+
+	uu := []User{*getFakeUser(), *getFakeUser()}
+	if err := pg.Upsert(&uu); err != nil {
+		t.Fatal(err)
+	}
+
+	uuu := []User{*getFakeUser(), *getFakeUser()}
+	if err := pg.Upsert(&uuu, idKey); err != nil {
+		t.Fatal(err)
+	}
+
+	uuu = []User{*getFakeUser(), *getFakeUser()}
+	if err := pg.Upsert(&uuu, nameKey); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestPostgresUpdate(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES UPDATE")
-	// log.Println(strings.Repeat("-", 100))
 	if err := pg.Table("User").Limit(1).
 		Where("Name", "=", "Dr. Antoinette Zboncak").
 		Update(map[string]interface{}{
@@ -408,9 +503,6 @@ func TestPostgresUpdate(t *testing.T) {
 }
 
 func TestPostgresSoftDelete(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES SOFT DELETE")
-	// log.Println(strings.Repeat("-", 100))
 	u := getFakeUser()
 	if err := pg.Create(u); err != nil {
 		t.Fatal(err)
@@ -421,9 +513,6 @@ func TestPostgresSoftDelete(t *testing.T) {
 }
 
 func TestPostgresHardDelete(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES HARD DELETE")
-	// log.Println(strings.Repeat("-", 100))
 	u := new(User)
 	if err := pg.First(u); err != nil {
 		t.Fatal(err)
@@ -433,31 +522,28 @@ func TestPostgresHardDelete(t *testing.T) {
 	}
 }
 
-func TestPostgresTable(t *testing.T) {
-	users := new([]User)
-	if err := pg.Table("User").
-		WhereLike("Name", "nick%").
-		Get(users); err != nil {
-		t.Fatal(err)
-	}
+// func TestPostgresTable(t *testing.T) {
+// 	users := new([]User)
+// 	if err := pg.Table("User").
+// 		WhereLike("Name", "nick%").
+// 		Get(users); err != nil {
+// 		t.Fatal(err)
+// 	}
 
-	if err := pg.Table("User").
-		Where("Age", ">", 0).
-		Get(users); err != nil {
-		t.Fatal(err)
-	}
+// 	if err := pg.Table("User").
+// 		Where("Age", ">", 0).
+// 		Get(users); err != nil {
+// 		t.Fatal(err)
+// 	}
 
-	user := new(User)
-	if err := pg.Table("User").
-		First(user); err != nil {
-		t.Fatal(err)
-	}
-}
+// 	user := new(User)
+// 	if err := pg.Table("User").
+// 		First(user); err != nil {
+// 		t.Fatal(err)
+// 	}
+// }
 
 func TestPostgresRunInTransaction(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES RUN IN TRANSACTION")
-	// log.Println(strings.Repeat("-", 100))
 	if err := pg.RunInTransaction(func(txn *goloquent.DB) error {
 		u := new(User)
 		if err := txn.NewQuery().
@@ -474,20 +560,15 @@ func TestPostgresRunInTransaction(t *testing.T) {
 }
 
 func TestPostgresScan(t *testing.T) {
-	// log.Println(strings.Repeat("-", 100))
-	// log.Println("POSTGRES SCAN")
-	// log.Println(strings.Repeat("-", 100))
 	var count, sum uint
 	if err := pg.Table("User").
-		Select("COALESCE(COUNT(*),0)", fmt.Sprintf("COALESCE(SUM(%q),0)", "Age")).
+		Select("COALESCE(COUNT(*),0)", `COALESCE(SUM("Age"),0)`).
 		Scan(&count, &sum); err != nil {
 		t.Fatal(err)
 	}
-	// log.Println("Count :", count, ", Sum :", sum)
+	log.Println("Count :", count, ", Sum :", sum)
 }
 
-func TestPostgresDropTableIfExists(t *testing.T) {
-	// if err := pg.Table("User").DropIfExists(); err != nil {
-	// 	t.Fatal(err)
-	// }
+func TestPostgresClose(t *testing.T) {
+	defer pg.Close()
 }

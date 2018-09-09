@@ -382,12 +382,24 @@ func (q *Query) WhereNotNull(field string) *Query {
 }
 
 // WhereIn :
-func (q *Query) WhereIn(field string, v []interface{}) *Query {
+func (q *Query) WhereIn(field string, v interface{}) *Query {
+	vv := reflect.Indirect(reflect.ValueOf(v))
+	t := vv.Type()
+	if !vv.IsValid() || (t.Kind() != reflect.Slice && t.Kind() != reflect.Array) {
+		q.errs = append(q.errs, fmt.Errorf(`goloquent: value must be either slice or array for "WhereIn"`))
+		return q
+	}
 	return q.Where(field, "in", v)
 }
 
 // WhereNotIn :
-func (q *Query) WhereNotIn(field string, v []interface{}) *Query {
+func (q *Query) WhereNotIn(field string, v interface{}) *Query {
+	vv := reflect.Indirect(reflect.ValueOf(v))
+	t := vv.Type()
+	if !vv.IsValid() || (t.Kind() != reflect.Slice && t.Kind() != reflect.Array) {
+		q.errs = append(q.errs, fmt.Errorf(`goloquent: value must be either slice or array for "WhereNotIn"`))
+		return q
+	}
 	return q.Where(field, "nin", v)
 }
 
@@ -405,7 +417,7 @@ func (q *Query) WhereNotLike(field, v string) *Query {
 func (q *Query) WhereAnyLike(field string, v interface{}) *Query {
 	vv := reflect.Indirect(reflect.ValueOf(v))
 	t := vv.Type()
-	if t.Kind() != reflect.Slice && t.Kind() != reflect.Array {
+	if !vv.IsValid() || (t.Kind() != reflect.Slice && t.Kind() != reflect.Array) {
 		q.errs = append(q.errs, fmt.Errorf(`goloquent: value must be either slice or array for "WhereAnyLike"`))
 		return q
 	}

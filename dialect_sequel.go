@@ -296,11 +296,14 @@ func (s *sequel) GetSchema(c Column) []Schema {
 	}
 
 	switch t {
+	case typeOfJSONRawMessage:
+		sc.DefaultValue = OmitDefault(nil)
+		sc.DataType = "json"
 	case typeOfByte:
 		sc.DefaultValue = OmitDefault(nil)
 		sc.DataType = "mediumblob"
 	case typeOfDate:
-		// sc.DefaultValue = time.Time{}
+		sc.DefaultValue = "0001-01-01"
 		sc.DataType = "date"
 	case typeOfTime:
 		sc.DefaultValue = time.Time{}
@@ -442,4 +445,8 @@ func (s *sequel) AlterTable(string, []Column) error {
 
 func (s sequel) UpdateWithLimit() bool {
 	return false
+}
+
+func (s sequel) ReplaceInto(src, dst string) error {
+	return nil
 }

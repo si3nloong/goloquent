@@ -164,6 +164,8 @@ func interfaceToValue(it interface{}) (interface{}, error) {
 		value = vi
 	case float32, float64:
 		value = vi
+	case json.RawMessage:
+		value = vi
 	case []byte:
 		value = base64.StdEncoding.EncodeToString(vi)
 	case *datastore.Key:
@@ -180,7 +182,7 @@ func interfaceToValue(it interface{}) (interface{}, error) {
 		}
 		value = (*SoftDelete(vi)).UTC().Format("2006-01-02 15:04:05")
 	case Date:
-		value = time.Time(vi).UTC().Format("2006-01-02")
+		value = time.Time(vi).Format("2006-01-02")
 	case time.Time:
 		value = vi.UTC().Format("2006-01-02 15:04:05")
 	case geoLocation:
@@ -263,6 +265,11 @@ func saveField(f field, v reflect.Value) (interface{}, error) {
 
 	switch vi := v.Interface().(type) {
 	case *datastore.Key, time.Time:
+		it = vi
+	case json.RawMessage:
+		if vi == nil {
+			return json.RawMessage("null"), nil
+		}
 		it = vi
 	case Date:
 		it = vi

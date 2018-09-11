@@ -28,6 +28,7 @@ type Dialect interface {
 	AlterTable(tb string, cols []Column) error
 	OnConflictUpdate(tb string, cols []string) string
 	UpdateWithLimit() bool
+	ReplaceInto(src, dst string) error
 }
 
 var (

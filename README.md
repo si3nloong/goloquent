@@ -77,8 +77,10 @@ type User struct {
     CountryCode     string
     PhoneNumber     string
     Email           string
+    BirthDate       goloquent.Date
     Address         Address
-    Age             int64          `goloquent:",unsigned"`
+    Age             uint8
+    ExtraInfo       json.RawMessage
     CreatedDateTime time.Time
     UpdatedDateTime time.Time
 }
@@ -262,7 +264,7 @@ func (x *User) Save() (error) {
 
     // Example 2
     users := new([]*User)
-    if err := db.Where("Name", "=", "Hello World").
+    if err := db.WhereEqual("Name", "Hello World").
         Get(users); err != nil {
         log.Println(err) // error while retrieving record
     }
@@ -358,7 +360,7 @@ func (x *User) Save() (error) {
 ```go
     // Delete user table record which account type not equal to "PREMIUM" or "MONTLY"
     if err := db.Table("User").
-        WhereNotIn("AccountType", []interface{}{
+        WhereNotIn("AccountType", []string{
             "PREMIUM", "MONTLY",
         }).Flush(); err != nil {
         log.Println(err) // fail to delete record
@@ -538,11 +540,12 @@ The supported data type are :
 - uint, uint8, uint16, uint32 and uint64
 - float32 and float64
 - []byte
-- *datastore.Key
 - datastore.GeoPoint
 - goloquent.Date
+- json.RawMessage
 - time.Time
 - pointers to any one of the above
+- *datastore.Key
 - slices of any of the above
 ```
 
@@ -556,7 +559,7 @@ Available shorthand:
 - flatten (only applicable for struct or []struct)
 
 ```go
-type datetime struct {
+type model struct {
     CreatedDateTime time.Time // `CreatedDateTime`
     UpdatedDateTime time.Time // `UpdatedDateTime`
 }
@@ -578,7 +581,8 @@ type User struct {
         Country      string
     } `goloquent:",flatten"` // Flatten the struct field
     Birthdate *goloquent.Date
-    datetime // Embedded struct
+    ExtraInfo json.RawMessage
+    model                    // Embedded struct
     Deleted goloquent.SoftDelete
 }
 ```
@@ -593,36 +597,42 @@ The supported data type are :
 - float32 and float64
 - []byte
 - any type whose underlying type is one of the above predeclared types
-- *datastore.Key
 - datastore.GeoPoint
 - goloquent.Date
 - goloquent.SoftDelete
 - time.Time
+- json.RawMessage
 - structs whose fields are all valid value types
 - pointers to any one of the above
+- *datastore.Key
 - slices of any of the above
 ```
 
-| Data Type            | Schema               | Default Value       | CharSet |
-| :------------------- | :------------------- | :------------------ | :------ |
-| \*datastore.Key      | varchar(512)         |                     | latin1  |
-| datastore.GeoPoint   | varchar(50)          | {Lat: 0, Lng: 0}    |         |
-| string               | varchar(191)         | ""                  | utf8mb4 |
-| []byte               | mediumblob           |                     |         |
-| bool                 | boolean              | false               |         |
-| float32              | double               | 0                   |         |
-| float64              | double               | 0                   |         |
-| int8                 | smallint             | 0                   |         |
-| int16, int32, int    | int                  | 0                   |         |
-| int64                | big integer          | 0                   |         |
-| uint8                | unsigned smallint    | 0                   |         |
-| uint16, uint32, uint | unsigned int         | 0                   |         |
-| uint64               | unsigned big integer | 0                   |         |
-| slice or array       | json                 |                     |         |
-| struct               | json                 |                     |         |
-| time.Time            | datetime             | 0001-01-01 00:00:00 |         |
-| Date                 | date                 | 0001-01-01          |         |
-| SoftDelete           | datetime (nullable)  | NULL                |         |
+| Data Type          | Mysql               | Postgres            | Default Value       | CharSet |
+| :----------------- | :------------------ | ------------------- | :------------------ | :------ |
+| \*datastore.Key    | varchar(512)        | varchar(512)        |                     | latin1  |
+| datastore.GeoPoint | varchar(50)         | varchar(50)         | {Lat: 0, Lng: 0}    |         |
+| string             | varchar(191)        | varchar(191)        | ""                  | utf8mb4 |
+| []byte             | mediumblob          | bytea               |                     |         |
+| bool               | boolean             | bool                | false               |         |
+| float32            | double              | real                | 0                   |         |
+| float64            | double              | real                | 0                   |         |
+| int                | int                 | integer             | 0                   |         |
+| int8               | tinyint             | smallint            | 0                   |         |
+| int16              | smallint            | smallint            | 0                   |         |
+| int32              | mediumint           | integer             | 0                   |         |
+| int64              | bigint              | bigint              | 0                   |         |
+| uint               | int (unsigned)      | integer (unsigned)  | 0                   |         |
+| uint8              | smallint (unsigned) | smallint (unsigned) | 0                   |         |
+| uint16             | smallint (unsigned) | smallint (unsigned) | 0                   |         |
+| uint32             | smallint (unsigned) | integer (unsigned)  | 0                   |         |
+| uint64             | bigint (unsigned)   | bigint (unsigned)   | 0                   |         |
+| slice or array     | json                | jsonb               |                     |         |
+| struct             | json                | jsonb               |                     |         |
+| json.RawMessage    | json                | jsonb               |                     |         |
+| Date               | date                | date                | 0001-01-01          |         |
+| time.Time          | datetime            | timestamp           | 0001-01-01 00:00:00 |         |
+| SoftDelete         | datetime (nullable) | timestamp           | NULL                |         |
 
 **$Key**, **$Deleted** are reserved words, please avoid to use these words as your column name
 

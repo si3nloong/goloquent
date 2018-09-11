@@ -153,10 +153,10 @@ func (s *mysql) AlterTable(table string, columns []Column) error {
 	}
 
 	for _, col := range cols.keys() {
-		buf.WriteString(fmt.Sprintf(" DROP COLUMN %s,", s.Quote(col)))
+		buf.WriteString(fmt.Sprintf("DROP COLUMN %s,", s.Quote(col)))
 	}
 	for _, idx := range idxs.keys() {
-		buf.WriteString(fmt.Sprintf(" DROP INDEX %s,", s.Quote(idx)))
+		buf.WriteString(fmt.Sprintf("DROP INDEX %s,", s.Quote(idx)))
 	}
 
 	buf.WriteString(fmt.Sprintf("CHARACTER SET %s ", s.Quote(s.db.CharSet.Encoding)))
@@ -169,7 +169,7 @@ func (s mysql) ToString(it interface{}) string {
 	var v string
 	switch vi := it.(type) {
 	case string:
-		v = fmt.Sprintf("%q", "")
+		v = fmt.Sprintf("%q", vi)
 	case bool:
 		v = fmt.Sprintf("%t", vi)
 	case uint, uint8, uint16, uint32, uint64:
@@ -182,6 +182,7 @@ func (s mysql) ToString(it interface{}) string {
 		v = strconv.FormatFloat(vi, 'f', -1, 64)
 	case time.Time:
 		v = fmt.Sprintf(`"%s"`, vi.Format("2006-01-02 15:04:05"))
+	// case json.RawMessage:
 	case []interface{}:
 		v = fmt.Sprintf(`"%s"`, "[]")
 	case map[string]interface{}:
@@ -196,4 +197,17 @@ func (s mysql) ToString(it interface{}) string {
 
 func (s mysql) UpdateWithLimit() bool {
 	return true
+}
+
+func (s mysql) ReplaceInto(src, dst string) error {
+	src, dst = s.GetTable(src), s.GetTable(dst)
+	buf := new(bytes.Buffer)
+	buf.WriteString("REPLACE INTO ")
+	buf.WriteString(dst + " ")
+	buf.WriteString("SELECT * FROM ")
+	buf.WriteString(src)
+	buf.WriteString(";")
+	return s.db.execStmt(&stmt{
+		statement: buf,
+	})
 }

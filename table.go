@@ -177,8 +177,8 @@ func (t *Table) Offset(offset int) *Query {
 }
 
 // ReplaceInto :
-func (t *Table) ReplaceInto(table string, columns ...string) error {
-	return t.newQuery().ReplaceInto(table, columns...)
+func (t *Table) ReplaceInto(table string) error {
+	return t.newQuery().ReplaceInto(table)
 }
 
 // Update :

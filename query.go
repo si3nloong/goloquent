@@ -523,8 +523,8 @@ func (q *Query) Offset(offset int) *Query {
 }
 
 // ReplaceInto :
-func (q *Query) ReplaceInto(table string, columns ...string) error {
-	return newBuilder(q).replaceInto(table, columns)
+func (q *Query) ReplaceInto(table string) error {
+	return newBuilder(q).replaceInto(table)
 }
 
 // Update :

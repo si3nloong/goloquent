@@ -31,7 +31,7 @@
 - (2018-08-17) Fix invalid sql statement on `Paginate()` when using next `Cursor` from `NextCursor()`.
 - (2018-08-23) Fix unicode string cannot save to `mysql`.
 - (2018-09-06) Fix incorrect mysql schema for signed and unsigned integer data type.
-- (2018-09-10) Fix `Upsert` bug. Primary key should omitted.
+  <!-- - (2018-09-10) Fix `Upsert` bug. Primary key should omitted. -->
 - (2018-09-10) Fix `postgres` schema bug. Schema for unsigned integer should be greater and equal to zero instead of greater than zero. `CHECK (value >= 0)`.
 
 # Breaking Changes / Changes
@@ -91,4 +91,4 @@
 - (2018-08-16) Introduce new api `AnyOfAncestor` and `WhereAnyLike`.
 - (2018-08-24) Introduce new api `ReplaceInto` for `mysql` driver.
 - (2018-09-10) Support `json.RawMessage` for `mysql` driver.
-- (2018-09-10) Enable `ReplaceInto` api for `postgres` driver.
+  <!-- - (2018-09-10) Enable `ReplaceInto` api for `postgres` driver. -->

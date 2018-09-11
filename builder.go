@@ -595,7 +595,7 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 	return nil
 }
 
-func (b *builder) replaceInto(table string, columns []string) error {
+func (b *builder) replaceInto(table string) error {
 	buf, args := new(bytes.Buffer), make([]interface{}, 0)
 	buf.WriteString("REPLACE INTO ")
 	buf.WriteString(b.db.dialect.GetTable(table))

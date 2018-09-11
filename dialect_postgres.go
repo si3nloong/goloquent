@@ -515,3 +515,31 @@ func (p *postgres) AlterTable(table string, columns []Column) error {
 	// 	}
 	// }
 }
+
+func (p *postgres) ReplaceInto(src, dst string) error {
+	cols := p.GetColumns(src)
+	pk := p.Quote(pkColumn)
+	src, dst = p.GetTable(src), p.GetTable(dst)
+	buf := new(bytes.Buffer)
+	buf.WriteString("WITH patch AS (")
+	buf.WriteString("UPDATE " + dst + " SET ")
+	for _, c := range cols {
+		if c == pkColumn {
+			continue
+		}
+		cc := p.Quote(c)
+		buf.WriteString(cc + " = " + src + "." + cc + ",")
+	}
+	buf.Truncate(buf.Len() - 1)
+	buf.WriteString(" FROM " + src + " ")
+	buf.WriteString("WHERE " + src + "." + pk + " = " + dst + "." + pk + " ")
+	buf.WriteString("RETURNING " + src + "." + pk + ") ")
+	buf.WriteString("INSERT INTO " + dst + " ")
+	buf.WriteString("SELECT * FROM " + src + " ")
+	buf.WriteString("WHERE NOT EXISTS ")
+	buf.WriteString("(SELECT 1 FROM patch WHERE " + pk + " = " + src + "." + pk + ")")
+	buf.WriteString(";")
+	return p.db.execStmt(&stmt{
+		statement: buf,
+	})
+}

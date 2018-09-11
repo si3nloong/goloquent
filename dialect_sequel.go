@@ -446,3 +446,7 @@ func (s *sequel) AlterTable(string, []Column) error {
 func (s sequel) UpdateWithLimit() bool {
 	return false
 }
+
+func (s sequel) ReplaceInto(src, dst string) error {
+	return nil
+}

@@ -198,3 +198,16 @@ func (s mysql) ToString(it interface{}) string {
 func (s mysql) UpdateWithLimit() bool {
 	return true
 }
+
+func (s mysql) ReplaceInto(src, dst string) error {
+	src, dst = s.GetTable(src), s.GetTable(dst)
+	buf := new(bytes.Buffer)
+	buf.WriteString("REPLACE INTO ")
+	buf.WriteString(dst + " ")
+	buf.WriteString("SELECT * FROM ")
+	buf.WriteString(src)
+	buf.WriteString(";")
+	return s.db.execStmt(&stmt{
+		statement: buf,
+	})
+}

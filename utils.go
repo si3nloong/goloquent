@@ -3,6 +3,7 @@ package goloquent
 import (
 	"fmt"
 	"math/rand"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -77,6 +78,11 @@ func newPrimaryKey(table string, parentKey *datastore.Key) *datastore.Key {
 
 	rand.Seed(time.Now().UnixNano())
 	id := rand.Int63n(maxSeed-minSeed) + minSeed
+	if parentKey != nil && parentKey.Kind == table {
+		parentKey.ID = id
+		return parentKey
+	}
+
 	key := new(datastore.Key)
 	key.Kind = table
 	key.ID = id
@@ -165,7 +171,8 @@ func stringifyKey(key *datastore.Key) string {
 	for parentKey != nil {
 		var k string
 		if parentKey.Name != "" {
-			k = fmt.Sprintf(`%s,'%s'`, parentKey.Kind, parentKey.Name)
+			name := url.PathEscape(parentKey.Name)
+			k = fmt.Sprintf(`%s,'%s'`, parentKey.Kind, name)
 		} else {
 			k = fmt.Sprintf("%s,%d", parentKey.Kind, parentKey.ID)
 		}
@@ -187,7 +194,8 @@ func splitKey(k *datastore.Key) (key string, parent string) {
 	if k.ID > 0 {
 		return fmt.Sprintf("%d", k.ID), stringifyKey(k.Parent)
 	}
-	return fmt.Sprintf(`'%s'`, k.Name), stringifyKey(k.Parent)
+	name := url.PathEscape(k.Name)
+	return fmt.Sprintf(`'%s'`, name), stringifyKey(k.Parent)
 }
 
 func stringPk(k *datastore.Key) string {

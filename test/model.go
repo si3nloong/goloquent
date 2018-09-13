@@ -11,9 +11,10 @@ import (
 )
 
 var (
-	my      *goloquent.DB
-	nameKey = datastore.NameKey("Name", "hIL0O7zfZP", nil)
-	idKey   = datastore.IDKey("ID", int64(5116745034367558422), nil)
+	my        *goloquent.DB
+	nameKey   = datastore.NameKey("Name", "hIL0O7zfZP", nil)
+	symbolKey = datastore.NameKey("Name", "VEknB=YnisrgS0w'9Hg,TWpSQtg7w/b0recIBLkjp+lf", nil)
+	idKey     = datastore.IDKey("ID", int64(5116745034367558422), nil)
 )
 
 // Address :

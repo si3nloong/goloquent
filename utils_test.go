@@ -32,6 +32,11 @@ func TestUtils(t *testing.T) {
 	if StringKey(nameKey) != "test@hotmail.com" {
 		t.Errorf(errUnexpectedResult, "StringKey")
 	}
+
+	symbolKey := datastore.NameKey("Kind", `VEknBYnisrgS0w3pjiibNBmOhU9HgTWpSDQtg7w/b0recIBLkjp+lf5RRw97zeHH`, nil)
+	if stringifyKey(symbolKey) != "Kind,'VEknBYnisrgS0w3pjiibNBmOhU9HgTWpSDQtg7w%2Fb0recIBLkjp+lf5RRw97zeHH'" {
+		t.Errorf(errUnexpectedResult, "StringKey")
+	}
 }
 
 func TestEscapeSingleQuote(t *testing.T) {

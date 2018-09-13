@@ -33,18 +33,19 @@
 - (2018-09-06) Fix incorrect mysql schema for signed and unsigned integer data type.
   <!-- - (2018-09-10) Fix `Upsert` bug. Primary key should omitted. -->
 - (2018-09-10) Fix `postgres` schema bug. Schema for unsigned integer should be greater and equal to zero instead of greater than zero. `CHECK (value >= 0)`.
+- (2018-09-13) Fix `newPrimaryKey` logic error. ID key with 0 shouldn't nested again.
 
-# Breaking Changes / Changes
+# Breaking Changes
 
-- Drop function `Count`
-- Drop function `Union`
-- Drop function single `Update`
-- Drop function `SetDebug(boolean)`
-- Drop datastore support
-- `Delete` function using entity model instead of `*datastore.Key`
+- Drop `Count` api.
+- Drop `Union` api.
+- Drop single `Update` api.
+- Drop `SetDebug(boolean)` api.
+- Drop `datastore` support.
+- `Delete` function using entity model instead of `*datastore.Key`.
 - Rename params in function `RunInTransaction` from `*goloquent.Connection` to `*goloquent.DB`
-- Rename function `LockForUpdate` to `WLock`
-- Rename function `LockForShared` to `RLock`
+- Rename api `LockForUpdate` to `WLock`.
+- Rename api `LockForShared` to `RLock`.
 - Change function single entity `Update` to `Save`
 - Change `Loader` interface `Load([]datastore.Property) error` to `Load() error`
 - Change `Saver` interface `Save() ([]datastore.Property,error)` to `Save() error`
@@ -55,8 +56,8 @@
 - (2018-06-21) Support extra option `datatype`, `charset`, `collate` on struct property, but it only limited to datatype of `string`
 - (2018-06-21) Allow `*` on func `Select`
 - (2018-06-24) Replace offset pagination with cursor pagination
-- (2018-07-05) Rename `WhereNe` with `WhereNotEqual`.
-- (2018-07-08) Rename `WhereEq` with `WhereEqual`.
+- (2018-07-05) Rename api `WhereNe` to `WhereNotEqual`.
+- (2018-07-08) Rename api `WhereEq` to `WhereEqual`.
 - (2018-07-08) Replace return parameter `Query` to `Table` on func `Table` of `goloquent.DB`
 - (2018-07-17) Expose operator to public.
 - (2018-08-24) Change api `AnyOfAncestor` params data type from `[]*datastore.Key` to `...*datastore.Key`.
@@ -65,6 +66,7 @@
 - (2018-09-02) Change api `WhereIn` and `WhereNotIn` value param from `[]interface{}` to `interface{}`.
 - (2018-09-10) `Date` no longer convert to UTC before format.
 - (2018-09-10) `Date` will have default value `"0001-01-01"` if it's not pointer.
+- (2018-09-13) Name key will escape using `url.PathEscape` to avoid misinterpret when it contains symbol characters.
 
 # New Features
 

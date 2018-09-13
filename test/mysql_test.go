@@ -109,6 +109,10 @@ func TestMySQLCreate(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	users = []*User{getFakeUser(), getFakeUser()}
+	if err := my.Create(&users, symbolKey); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestMySQLReplaceInto(t *testing.T) {
@@ -164,7 +168,6 @@ func TestMySQLDistinctOn(t *testing.T) {
 
 func TestMySQLGet(t *testing.T) {
 	u := new(User)
-	users := new([]User)
 	if err := my.First(u); err != nil {
 		t.Fatal(err)
 	}
@@ -173,12 +176,30 @@ func TestMySQLGet(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	users := new([]User)
 	if err := my.Get(users); err != nil {
 		t.Fatal(err)
 	}
 
 	if err := my.NewQuery().Unscoped().Get(users); err != nil {
 		t.Fatal(err)
+	}
+
+	u2 := getFakeUser()
+	u2.Key = symbolKey
+	if err := my.Create(u2); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := my.Find(u2.Key, u2); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := my.Where("$Key", "=", u2.Key).First(u); err != nil {
+		t.Fatal(err)
+	}
+	if u.Key == nil {
+		t.Fatal("unexpected result")
 	}
 }
 
@@ -200,9 +221,15 @@ func TestMySQLAncestor(t *testing.T) {
 		t.Fatal(`Unexpected result from filter "Ancestor" using name key`)
 	}
 
-	if err := my.AnyOfAncestor(idKey, nameKey).
-		Get(users); err != nil {
+	if err := my.AnyOfAncestor(idKey, nameKey).Get(users); err != nil {
 		t.Fatal(err)
+	}
+
+	if err := my.Ancestor(symbolKey).Get(users); err != nil {
+		t.Fatal(err)
+	}
+	if len(*users) <= 0 {
+		t.Fatal(`Unexpected result from filter "Ancestor" using name key with symbol`)
 	}
 }
 

@@ -140,7 +140,11 @@ func parseKey(str string) (*datastore.Key, error) {
 		key := new(datastore.Key)
 		key.Kind = kind
 		if isNameKey(value) {
-			key.Name = strings.Trim(value, `'`)
+			name, err := url.PathUnescape(strings.Trim(value, `'`))
+			if err != nil {
+				return nil, err
+			}
+			key.Name = name
 		} else {
 			n, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {

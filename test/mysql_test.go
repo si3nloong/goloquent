@@ -123,6 +123,18 @@ func TestMySQLReplaceInto(t *testing.T) {
 	}
 }
 
+func TestMySQLInsertInto(t *testing.T) {
+	if err := my.Table("ArchiveUser").
+		Migrate(new(User)); err != nil {
+		t.Fatal(err)
+	}
+	if err := my.Table("User").
+		AnyOfAncestor(nameKey, idKey).
+		InsertInto("ArchiveUser"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestMySQLSave(t *testing.T) {
 	var u User
 	if err := my.Save(u); err == nil {
@@ -630,6 +642,11 @@ func TestMySQLHardDelete(t *testing.T) {
 }
 
 func TestMySQLTable(t *testing.T) {
+	uuu := []*User{getFakeUser(), getFakeUser()}
+	if err := my.Table("TempUser").Create(&uuu); err != nil {
+		t.Fatal(err)
+	}
+
 	users := new([]User)
 	if err := my.Table("User").
 		WhereLike("Name", "nick%").

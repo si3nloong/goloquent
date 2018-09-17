@@ -93,4 +93,6 @@
 - (2018-08-16) Introduce new api `AnyOfAncestor` and `WhereAnyLike`.
 - (2018-08-24) Introduce new api `ReplaceInto` for `mysql` driver.
 - (2018-09-10) Support `json.RawMessage` for `mysql` driver.
+- (2018-09-18) Introduce new api `InsertInto`.
+- (2018-09-18) Enable api `Migrate` and `Create` to `Table`.
   <!-- - (2018-09-10) Enable `ReplaceInto` api for `postgres` driver. -->

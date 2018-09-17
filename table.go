@@ -16,6 +16,16 @@ func (t *Table) newQuery() *Query {
 	return q
 }
 
+// Create :
+func (t *Table) Create(model interface{}, parentKey ...*datastore.Key) error {
+	return newBuilder(t.newQuery()).put(model, parentKey)
+}
+
+// Migrate :
+func (t *Table) Migrate(model interface{}) error {
+	return newBuilder(t.newQuery()).migrate(model)
+}
+
 // Exists :
 func (t *Table) Exists() bool {
 	return t.db.dialect.HasTable(t.name)

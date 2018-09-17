@@ -527,6 +527,11 @@ func (q *Query) ReplaceInto(table string) error {
 	return newBuilder(q).replaceInto(table)
 }
 
+// InsertInto :
+func (q *Query) InsertInto(table string) error {
+	return newBuilder(q).insertInto(table)
+}
+
 // Update :
 func (q *Query) Update(v interface{}) error {
 	if err := q.getError(); err != nil {

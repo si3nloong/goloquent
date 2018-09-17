@@ -308,19 +308,21 @@ func (b *builder) alterTable(e *entity) error {
 	return b.db.dialect.AlterTable(e.Name(), e.columns)
 }
 
-func (b *builder) migrate(models []interface{}) error {
+func (b *builder) migrate(model interface{}) error {
+	e, err := newEntity(model)
+	if err != nil {
+		return err
+	}
+	e.setName(b.query.table)
+	if b.db.dialect.HasTable(e.Name()) {
+		return b.alterTable(e)
+	}
+	return b.createTable(e)
+}
+
+func (b *builder) migrateMultiple(models []interface{}) error {
 	for _, mm := range models {
-		e, err := newEntity(mm)
-		if err != nil {
-			return err
-		}
-		if b.db.dialect.HasTable(e.Name()) {
-			if err := b.alterTable(e); err != nil {
-				return err
-			}
-			continue
-		}
-		if err := b.createTable(e); err != nil {
+		if err := b.migrate(mm); err != nil {
 			return err
 		}
 	}
@@ -598,6 +600,29 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 func (b *builder) replaceInto(table string) error {
 	buf, args := new(bytes.Buffer), make([]interface{}, 0)
 	buf.WriteString("REPLACE INTO ")
+	buf.WriteString(b.db.dialect.GetTable(table))
+	buf.WriteString(" ")
+	cmd := b.buildSelect(b.query)
+	buf.WriteString(cmd.string())
+	buf.WriteString(" FROM " + b.db.dialect.GetTable(b.query.table))
+	cmd, err := b.buildWhere(b.query)
+	if err != nil {
+		return err
+	}
+	if !cmd.isZero() {
+		buf.WriteString(cmd.string())
+		args = append(args, cmd.arguments...)
+	}
+	buf.WriteString(";")
+	return b.db.client.execStmt(&stmt{
+		statement: buf,
+		arguments: args,
+	})
+}
+
+func (b *builder) insertInto(table string) error {
+	buf, args := new(bytes.Buffer), make([]interface{}, 0)
+	buf.WriteString("INSERT INTO ")
 	buf.WriteString(b.db.dialect.GetTable(table))
 	buf.WriteString(" ")
 	cmd := b.buildSelect(b.query)

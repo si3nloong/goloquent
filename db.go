@@ -68,6 +68,7 @@ type Replacer interface {
 
 // Client :
 type Client struct {
+	driver string
 	sqlCommon
 	CharSet
 	dialect Dialect
@@ -191,7 +192,13 @@ type DB struct {
 
 // NewDB :
 func NewDB(driver string, charset CharSet, conn sqlCommon, dialect Dialect, logHandler LogHandler) *DB {
-	client := Client{conn, charset, dialect, logHandler}
+	client := Client{
+		driver:    driver,
+		sqlCommon: conn,
+		CharSet:   charset,
+		dialect:   dialect,
+		logger:    logHandler,
+	}
 	dialect.SetDB(client)
 	return &DB{
 		id:      fmt.Sprintf("%s:%d", driver, time.Now().UnixNano()),
@@ -246,7 +253,7 @@ func (db *DB) Table(name string) *Table {
 
 // Migrate :
 func (db *DB) Migrate(model ...interface{}) error {
-	return newBuilder(db.NewQuery()).migrate(model)
+	return newBuilder(db.NewQuery()).migrateMultiple(model)
 }
 
 // Omit :

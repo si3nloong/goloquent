@@ -191,6 +191,11 @@ func (t *Table) ReplaceInto(table string) error {
 	return t.newQuery().ReplaceInto(table)
 }
 
+// InsertInto :
+func (t *Table) InsertInto(table string) error {
+	return t.newQuery().InsertInto(table)
+}
+
 // Update :
 func (t *Table) Update(v interface{}) error {
 	return t.newQuery().Update(v)

@@ -506,6 +506,13 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		buf, args := new(bytes.Buffer), make([]interface{}, 0)
 		buf.WriteString(b.buildSelect(query).string())
 		buf.WriteString(fmt.Sprintf(" FROM %s", b.db.dialect.GetTable(e.Name())))
+		if !query.noScope && e.hasSoftDelete() {
+			query.filters = append(query.filters, Filter{
+				field:    softDeleteColumn,
+				operator: Equal,
+				value:    nil,
+			})
+		}
 		cmd, err := b.buildWhere(query)
 		if err != nil {
 			return err

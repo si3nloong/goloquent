@@ -34,6 +34,7 @@
   <!-- - (2018-09-10) Fix `Upsert` bug. Primary key should omitted. -->
 - (2018-09-10) Fix `postgres` schema bug. Schema for unsigned integer should be greater and equal to zero instead of greater than zero. `CHECK (value >= 0)`.
 - (2018-09-13) Fix `newPrimaryKey` logic error. ID key with 0 shouldn't nested again.
+- (2018-09-21) Fix `Paginate` soft delete bugs. Soft deleted records shouldn't get from api `Paginate`.
 
 # Breaking Changes
 

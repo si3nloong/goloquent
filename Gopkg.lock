@@ -52,6 +52,20 @@
   version = "v2.0.0"
 
 [[projects]]
+  name = "github.com/jackc/pgx"
+  packages = [
+    ".",
+    "chunkreader",
+    "internal/sanitize",
+    "pgio",
+    "pgproto3",
+    "pgtype",
+    "stdlib"
+  ]
+  revision = "89f1e6ac7276b61d885db5e5aed6fcbedd1c7e31"
+  version = "v3.2.0"
+
+[[projects]]
   name = "github.com/lib/pq"
   packages = [
     ".",
@@ -59,6 +73,12 @@
   ]
   revision = "4ded0e9383f75c197b3a2aaa6d590ac52df6fd79"
   version = "v1.0.0"
+
+[[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
 
 [[projects]]
   branch = "master"
@@ -224,6 +244,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "983eae65247add8b55e895d5411cd4ecf84381ae2c211e942ce6cac9032e358e"
+  inputs-digest = "855ca331b771c25c9b15e47b0845797b27f05d1d420112b95894c2964c74c673"
   solver-name = "gps-cdcl"
   solver-version = 1

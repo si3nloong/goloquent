@@ -10,9 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/jackc/pgx"
-	stdlib "github.com/jackc/pgx/stdlib"
 )
 
 type postgres struct {
@@ -31,14 +28,6 @@ func (p postgres) escapeSingleQuote(n string) string {
 
 // Open :
 func (p *postgres) Open(conf Config) (*sql.DB, error) {
-	driverConfig := stdlib.DriverConfig{
-		ConnConfig: pgx.ConnConfig{
-			PreferSimpleProtocol: false,
-		},
-	}
-
-	stdlib.RegisterDriverConfig(&driverConfig)
-
 	var buf strings.Builder
 	buf.WriteString(fmt.Sprintf("user='%s' ", p.escapeSingleQuote(conf.Username)))
 	buf.WriteString(fmt.Sprintf("password='%s' ", p.escapeSingleQuote(conf.Password)))
@@ -58,7 +47,7 @@ func (p *postgres) Open(conf Config) (*sql.DB, error) {
 	buf.WriteString("sslmode=disable")
 
 	log.Println("Connection String :", buf.String()) // should be DSN string
-	client, err := sql.Open("pgx", driverConfig.ConnectionString(buf.String()))
+	client, err := sql.Open("postgres", buf.String())
 	if err != nil {
 		return nil, err
 	}

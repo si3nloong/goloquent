@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -27,7 +28,7 @@ func (p postgres) escapeSingleQuote(n string) string {
 
 // Open :
 func (p *postgres) Open(conf Config) (*sql.DB, error) {
-	buf := new(bytes.Buffer)
+	var buf strings.Builder
 	buf.WriteString(fmt.Sprintf("user='%s' ", p.escapeSingleQuote(conf.Username)))
 	buf.WriteString(fmt.Sprintf("password='%s' ", p.escapeSingleQuote(conf.Password)))
 	if conf.UnixSocket != "" {
@@ -44,7 +45,8 @@ func (p *postgres) Open(conf Config) (*sql.DB, error) {
 	}
 	buf.WriteString(fmt.Sprintf("dbname='%s' ", p.escapeSingleQuote(conf.Database)))
 	buf.WriteString("sslmode=disable")
-	log.Println("Connection String :", buf.String())
+
+	log.Println("Connection String :", buf.String()) // should be DSN string
 	client, err := sql.Open("postgres", buf.String())
 	if err != nil {
 		return nil, err
@@ -70,11 +72,11 @@ func (p *postgres) CurrentDB() (name string) {
 }
 
 func (p postgres) Quote(n string) string {
-	return fmt.Sprintf(`"%s"`, n)
+	return strconv.Quote(n)
 }
 
 func (p postgres) Bind(i uint) string {
-	return fmt.Sprintf("$%d", i)
+	return `$` + strconv.FormatUint(uint64(i), 64)
 }
 
 func (p postgres) SplitJSON(name string) string {

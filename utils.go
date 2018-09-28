@@ -59,7 +59,7 @@ func StringKey(key *datastore.Key) string {
 	if key.Name != "" {
 		return key.Name
 	}
-	return fmt.Sprintf("%d", key.ID)
+	return strconv.FormatInt(key.ID, 10)
 }
 
 // minimum and maximum value for random seed
@@ -204,7 +204,7 @@ func splitKey(k *datastore.Key) (key string, parent string) {
 
 func stringPk(k *datastore.Key) string {
 	kk, pp := splitKey(k)
-	return strings.Trim(fmt.Sprintf("%s%s%s", pp, keyDelimeter, kk), keyDelimeter)
+	return strings.Trim(pp+keyDelimeter+kk, keyDelimeter)
 }
 
 // compareVersion: is compare using semantic versioning

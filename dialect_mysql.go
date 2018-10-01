@@ -17,11 +17,11 @@ type mysql struct {
 
 const minVersion = "5.7"
 
-var _ Dialect = new(mysql)
+// var _ Dialect = new(mysql)
 
-func init() {
-	RegisterDialect("mysql", new(mysql))
-}
+// func init() {
+// 	RegisterDialect("mysql", new(mysql))
+// }
 
 // Open :
 func (s *mysql) Open(conf Config) (*sql.DB, error) {

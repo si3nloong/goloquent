@@ -3,7 +3,12 @@ package goloquent
 import (
 	"database/sql"
 	"encoding/json"
-	"reflect"
+)
+
+// Supported storage operator
+const (
+	MYSQL      = "Mysql"
+	POSTGRESQL = "Postgres"
 )
 
 // Dialect :
@@ -31,21 +36,15 @@ type Dialect interface {
 	ReplaceInto(src, dst string) error
 }
 
-var (
-	dialects = make(map[string]Dialect)
-)
-
-// RegisterDialect :
-func RegisterDialect(driver string, d Dialect) {
-	dialects[driver] = d
-}
-
-// GetDialect :
-func GetDialect(driver string) (d Dialect, isValid bool) {
-	d, isValid = dialects[driver]
-	if isValid {
-		// Clone a new dialect
-		d = reflect.New(reflect.TypeOf(d).Elem()).Interface().(Dialect)
+// MatchStorageOperator : Will match your user defined storage and create
+// a corresponding storage operator. If not found, return false result.
+func MatchStorageOperator(driver string) (Dialect, bool) {
+	switch driver {
+	case MYSQL:
+		return new(mysql), true
+	case POSTGRESQL:
+		return new(postgres), true
+	default:
+		return nil, false
 	}
-	return
 }

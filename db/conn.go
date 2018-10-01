@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/si3nloong/goloquent"
+	"github.com/zypeh/goloquent"
 )
 
 var (
@@ -28,9 +28,9 @@ type Config struct {
 // Open :
 func Open(driver string, conf Config) (*goloquent.DB, error) {
 	driver = strings.TrimSpace(strings.ToLower(driver))
-	dialect, isValid := goloquent.GetDialect(driver)
-	if !isValid {
-		panic(fmt.Errorf("goloquent: unsupported database driver %q", driver))
+	dialect, matched := goloquent.MatchStorageOperator(driver)
+	if !matched {
+		panic("goloquent: unsupported storage operator")
 	}
 	pool := make(map[string]*goloquent.DB)
 	if p, isOk := connPool.Load(driver); isOk {

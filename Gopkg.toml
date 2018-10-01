@@ -43,7 +43,7 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/si3nloong/goloquent"
+  name = "github.com/zypeh/goloquent"
 
 [prune]
   go-tests = true

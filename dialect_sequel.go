@@ -38,11 +38,11 @@ type sequel struct {
 	db     Client
 }
 
-var _ Dialect = new(sequel)
+// var _ Dialect = new(sequel)
 
-func init() {
-	RegisterDialect("common", new(sequel))
-}
+// func init() {
+// 	RegisterDialect("common", new(sequel))
+// }
 
 // SetDB :
 func (s *sequel) SetDB(db Client) {

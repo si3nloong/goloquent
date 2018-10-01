@@ -16,11 +16,11 @@ type postgres struct {
 	sequel
 }
 
-var _ Dialect = new(postgres)
+// var _ Dialect = new(postgres)
 
-func init() {
-	RegisterDialect("postgres", new(postgres))
-}
+// func init() {
+// 	RegisterDialect("postgres", new(postgres))
+// }
 
 func (p postgres) escapeSingleQuote(n string) string {
 	return strings.Replace(n, `'`, `\'`, -1)

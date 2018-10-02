@@ -74,7 +74,7 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 		}
 		it = k
 	case typeOfJSONRawMessage:
-		if v == nil {
+		if v == nil || fmt.Sprintf("%v", v) == "null" {
 			return json.RawMessage(nil), nil
 		}
 		it = json.RawMessage(v)
@@ -116,7 +116,7 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 		}
 		it = b
 	case typeOfGeoPoint:
-		if v == nil {
+		if v == nil || fmt.Sprintf("%v", v) == "null" {
 			return datastore.GeoPoint{}, nil
 		}
 		var g geoLocation
@@ -168,7 +168,7 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 			}
 			it = f
 		case reflect.Slice, reflect.Array:
-			if v == nil {
+			if v == nil || fmt.Sprintf("%v", v) == "null" {
 				var arr []interface{}
 				return arr, nil
 			}
@@ -201,13 +201,13 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 				return nil, fmt.Errorf("goloquent: unsupported struct field data type %q", t.String())
 			}
 
-			if v == nil {
+			if v == nil || fmt.Sprintf("%v", v) == "null" {
 				return reflect.Zero(t).Interface(), nil
 			}
 			t = t.Elem()
 			fallthrough
 		case reflect.Struct:
-			if v == nil {
+			if v == nil || fmt.Sprintf("%v", v) == "null" {
 				var l map[string]interface{}
 				return l, nil
 			}

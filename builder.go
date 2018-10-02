@@ -761,17 +761,18 @@ func (b *builder) upsert(model interface{}, parentKey []*datastore.Key) error {
 	}
 	cols := e.Columns()
 	omits := newDictionary(b.query.omits)
-	for i, c := range cols {
-		if !omits.has(c) || c == pkColumn || c == keyFieldName {
+	columns := make([]string, 0, len(cols))
+	for _, c := range cols {
+		if omits.has(c) || c == pkColumn || c == keyFieldName {
 			continue
 		}
-		cols = append(cols[:i], cols[i+1:]...)
+		columns = append(columns, c)
 	}
 	cmd.statement.Truncate(cmd.statement.Len() - 1)
 	buf := new(bytes.Buffer)
 	buf.WriteString(cmd.string())
-	if len(cols) > 0 {
-		buf.WriteString(" " + b.db.dialect.OnConflictUpdate(e.Name(), cols))
+	if len(columns) > 0 {
+		buf.WriteString(" " + b.db.dialect.OnConflictUpdate(e.Name(), columns))
 	}
 	buf.WriteString(";")
 	cmd.statement = buf

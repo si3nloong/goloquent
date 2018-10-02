@@ -91,10 +91,11 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 		if v == nil {
 			return Date(time.Time{}), nil
 		}
-		var dt, err = time.Parse("2006-01-02", escape(v))
-		if err != nil {
-			return nil, fmt.Errorf("goloquent: unable to parse %q to date", string(v))
-		}
+		var dt, _ = time.Parse("2006-01-02 15:04:05", escape(v))
+		// var dt, err = time.Parse("2006-01-02 15:04:05", escape(v))
+		// if err != nil {
+		// 	return nil, fmt.Errorf("goloquent: unable to parse %q to date", string(v))
+		// }
 		it = Date(dt)
 	case typeOfSoftDelete:
 		if v == nil {

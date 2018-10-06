@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -52,7 +53,7 @@ func getByte(v *json.RawMessage) []byte {
 }
 
 func escape(b []byte) string {
-	return strings.Trim(strings.TrimSpace(string(b)), `"`)
+	return strings.Trim(strings.TrimSpace(b2s(b)), `"`)
 }
 
 // covert byte to standard data type
@@ -68,13 +69,13 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 			var key *datastore.Key
 			return key, nil
 		}
-		var k, err = parseKey(string(v))
+		var k, err = parseKey(b2s(v))
 		if err != nil {
 			return nil, err
 		}
 		it = k
 	case typeOfJSONRawMessage:
-		if v == nil || fmt.Sprintf("%v", v) == "null" {
+		if v == nil || b2s(v) == "null" {
 			return json.RawMessage(nil), nil
 		}
 		it = json.RawMessage(v)
@@ -84,26 +85,39 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 		}
 		var dt, err = time.Parse("2006-01-02 15:04:05", escape(v))
 		if err != nil {
-			return nil, fmt.Errorf("goloquent: unable to parse %q to date time", string(v))
+			return nil, fmt.Errorf("goloquent: unable to parse %q to date time", b2s(v))
 		}
 		it = dt
 	case typeOfDate:
 		if v == nil {
 			return Date(time.Time{}), nil
 		}
-		var dt, _ = time.Parse("2006-01-02 15:04:05", escape(v))
-		// var dt, err = time.Parse("2006-01-02 15:04:05", escape(v))
-		// if err != nil {
-		// 	return nil, fmt.Errorf("goloquent: unable to parse %q to date", string(v))
-		// }
-		it = Date(dt)
+
+		vv := escape(v)
+		switch {
+		case regexp.MustCompile(`^\d{4}\-\d{2}\-\d{2} \d{2}\:\d{2}\:\d{2}$`).MatchString(vv):
+			var dt, err = time.Parse("2006-01-02 15:04:05", vv)
+			if err != nil {
+				return nil, fmt.Errorf("goloquent: unable to parse %q to date", vv)
+			}
+			it = Date(dt)
+		case regexp.MustCompile(`^\d{4}\-\d{2}\-\d{2}$`).MatchString(vv):
+			var dt, err = time.Parse("2006-01-02", vv)
+			if err != nil {
+				return nil, fmt.Errorf("goloquent: unable to parse %q to date", vv)
+			}
+			it = Date(dt)
+		default:
+			return nil, fmt.Errorf("goloquent: invalid date value %q", v)
+		}
+
 	case typeOfSoftDelete:
 		if v == nil {
 			return SoftDelete(nil), nil
 		}
 		var dt, err = time.Parse("2006-01-02 15:04:05", escape(v))
 		if err != nil {
-			return nil, fmt.Errorf("goloquent: unable to parse %q to soft delete date time", string(v))
+			return nil, fmt.Errorf("goloquent: unable to parse %q to soft delete date time", b2s(v))
 		}
 		it = SoftDelete(&dt)
 	case typeOfByte:
@@ -113,16 +127,16 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 		}
 		var b, err = base64.StdEncoding.DecodeString(escape(v))
 		if err != nil {
-			return nil, fmt.Errorf("goloquent: corrupted bytes, %q", string(v))
+			return nil, fmt.Errorf("goloquent: corrupted bytes, %q", b2s(v))
 		}
 		it = b
 	case typeOfGeoPoint:
-		if v == nil || fmt.Sprintf("%v", v) == "null" {
+		if v == nil || b2s(v) == "null" {
 			return datastore.GeoPoint{}, nil
 		}
 		var g geoLocation
 		if err := json.Unmarshal(bytes.Trim(v, `"`), &g); err != nil {
-			return nil, fmt.Errorf("goloquent: corrupted geolocation value, %s", string(v))
+			return nil, fmt.Errorf("goloquent: corrupted geolocation value, %s", b2s(v))
 		}
 		it = datastore.GeoPoint{Lat: g.Latitude, Lng: g.Longitude}
 	default:
@@ -138,7 +152,7 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 			}
 			var b, err = strconv.ParseBool(escape(v))
 			if err != nil {
-				return nil, fmt.Errorf("goloquent: unable to parse %q to boolean", string(v))
+				return nil, fmt.Errorf("goloquent: unable to parse %q to boolean", b2s(v))
 			}
 			it = b
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -147,7 +161,7 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 			}
 			var n, err = strconv.ParseFloat(escape(v), 64)
 			if err != nil {
-				return nil, fmt.Errorf("goloquent: unable to parse %q to int64", string(v))
+				return nil, fmt.Errorf("goloquent: unable to parse %q to int64", b2s(v))
 			}
 			it = int64(n)
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
@@ -156,7 +170,7 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 			}
 			var n, err = strconv.ParseFloat(escape(v), 64)
 			if err != nil {
-				return nil, fmt.Errorf("goloquent: unable to parse %q to uint64", string(v))
+				return nil, fmt.Errorf("goloquent: unable to parse %q to uint64", b2s(v))
 			}
 			it = uint64(n)
 		case reflect.Float32, reflect.Float64:
@@ -169,7 +183,7 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 			}
 			it = f
 		case reflect.Slice, reflect.Array:
-			if v == nil || fmt.Sprintf("%v", v) == "null" {
+			if v == nil || b2s(v) == "null" {
 				var arr []interface{}
 				return arr, nil
 			}
@@ -202,13 +216,13 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 				return nil, fmt.Errorf("goloquent: unsupported struct field data type %q", t.String())
 			}
 
-			if v == nil || fmt.Sprintf("%v", v) == "null" {
+			if v == nil || b2s(v) == "null" {
 				return reflect.Zero(t).Interface(), nil
 			}
 			t = t.Elem()
 			fallthrough
 		case reflect.Struct:
-			if v == nil || fmt.Sprintf("%v", v) == "null" {
+			if v == nil || b2s(v) == "null" {
 				var l map[string]interface{}
 				return l, nil
 			}

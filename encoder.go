@@ -65,7 +65,7 @@ func marshal(it interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, fmt.Errorf("goloquent: unable to marshal the value %v", v)
 		}
-		return string(b), nil
+		return b2s(b), nil
 	}
 	return it, nil
 }

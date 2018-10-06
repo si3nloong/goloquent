@@ -24,10 +24,11 @@ type Address struct {
 	Country  string
 	PostCode uint
 	Region   struct {
-		TimeZone    time.Time
-		Keys        []*datastore.Key   `goloquent:"keys"`
-		CountryCode string             `goloquent:"regionCode"`
-		Geolocation datastore.GeoPoint `goloquent:"geo"`
+		TimeZone        time.Time
+		Keys            []*datastore.Key `goloquent:"keys"`
+		IndependantDate goloquent.Date
+		CountryCode     string             `goloquent:"regionCode"`
+		Geolocation     datastore.GeoPoint `goloquent:"geo"`
 	} `goloquent:"region"`
 }
 
@@ -63,10 +64,12 @@ type TempUser struct {
 func getFakeUser() *User {
 	u := new(User)
 	faker.FakeData(u)
+	date, _ := time.Parse("2006-01-02", "1957-08-31")
 	u.Username = fmt.Sprintf("%d", time.Now().UnixNano())
 	u.Birthdate = goloquent.Date(time.Now())
 	u.Information = json.RawMessage(`{"nickname":"John Doe"}`)
 	u.Address.Line1 = "7812, Jalan Section 22"
+	u.Address.Region.IndependantDate = goloquent.Date(date)
 	u.Emails = []string{"support@hotmail.com", "support@gmail.com"}
 	u.Status = "ACTIVE"
 	return u

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/datastore"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/si3nloong/goloquent"
 	"github.com/si3nloong/goloquent/db"
@@ -179,7 +180,36 @@ func TestMySQLDistinctOn(t *testing.T) {
 }
 
 func TestMySQLGet(t *testing.T) {
+	type NewUser struct {
+		User
+		Arr    []string
+		Struct struct {
+			Name string
+		}
+		Data json.RawMessage
+		Geo  datastore.GeoPoint
+	}
+
+	nu := new(NewUser)
+	if err := my.Table("User").Migrate(nu); err != nil {
+		t.Fatal(err)
+	}
+
+	// json null shouldn't run panic when retrieve out
+	o := new(NewUser)
+	if err := db.Table("User").First(o); err != nil {
+		t.Fatal(err)
+	}
+
+	if o.Key == nil || len(o.Arr) != 0 {
+		t.Fatal(errors.New("unexpected result"))
+	}
+
 	u := new(User)
+	// restore back to original structure
+	if err := my.Migrate(u); err != nil {
+		t.Fatal(err)
+	}
 	if err := my.First(u); err != nil {
 		t.Fatal(err)
 	}

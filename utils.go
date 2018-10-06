@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
 
 	"cloud.google.com/go/datastore"
 )
@@ -51,6 +52,10 @@ func (d dictionary) keys() []string {
 	return arr
 }
 
+func b2s(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}
+
 // StringKey :
 func StringKey(key *datastore.Key) string {
 	if key == nil {
@@ -59,7 +64,7 @@ func StringKey(key *datastore.Key) string {
 	if key.Name != "" {
 		return key.Name
 	}
-	return fmt.Sprintf("%d", key.ID)
+	return strconv.FormatInt(key.ID, 10)
 }
 
 // minimum and maximum value for random seed
@@ -176,9 +181,9 @@ func stringifyKey(key *datastore.Key) string {
 		var k string
 		if parentKey.Name != "" {
 			name := url.PathEscape(parentKey.Name)
-			k = fmt.Sprintf(`%s,'%s'`, parentKey.Kind, name)
+			k = parentKey.Kind + ",'" + name + "'"
 		} else {
-			k = fmt.Sprintf("%s,%d", parentKey.Kind, parentKey.ID)
+			k = parentKey.Kind + "," + strconv.FormatInt(parentKey.ID, 10)
 		}
 		paths = append([]string{k}, paths...)
 		parentKey = parentKey.Parent
@@ -196,15 +201,15 @@ func splitKey(k *datastore.Key) (key string, parent string) {
 		return "", ""
 	}
 	if k.ID > 0 {
-		return fmt.Sprintf("%d", k.ID), stringifyKey(k.Parent)
+		return strconv.FormatInt(k.ID, 10), stringifyKey(k.Parent)
 	}
 	name := url.PathEscape(k.Name)
-	return fmt.Sprintf(`'%s'`, name), stringifyKey(k.Parent)
+	return "'" + name + "'", stringifyKey(k.Parent)
 }
 
 func stringPk(k *datastore.Key) string {
 	kk, pp := splitKey(k)
-	return strings.Trim(fmt.Sprintf("%s%s%s", pp, keyDelimeter, kk), keyDelimeter)
+	return strings.Trim(pp+keyDelimeter+kk, keyDelimeter)
 }
 
 // compareVersion: is compare using semantic versioning

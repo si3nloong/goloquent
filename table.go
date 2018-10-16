@@ -201,6 +201,11 @@ func (t *Table) Update(v interface{}) error {
 	return t.newQuery().Update(v)
 }
 
+// Save :
+func (t *Table) Save(model interface{}) error {
+	return newBuilder(t.newQuery()).save(model)
+}
+
 // Scan :
 func (t *Table) Scan(dest ...interface{}) error {
 	return t.newQuery().Scan(dest...)

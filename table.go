@@ -21,6 +21,11 @@ func (t *Table) Create(model interface{}, parentKey ...*datastore.Key) error {
 	return newBuilder(t.newQuery()).put(model, parentKey)
 }
 
+// Upsert :
+func (t *Table) Upsert(model interface{}, parentKey ...*datastore.Key) error {
+	return newBuilder(t.newQuery()).upsert(model, parentKey)
+}
+
 // Migrate :
 func (t *Table) Migrate(model interface{}) error {
 	return newBuilder(t.newQuery()).migrate(model)

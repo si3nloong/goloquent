@@ -161,6 +161,20 @@ func TestMySQLSelect(t *testing.T) {
 	}
 }
 
+func TestMySQLSubQuery(t *testing.T) {
+	users := new([]User)
+	if err := my.Where("PrimaryEmail", "in",
+		db.Table("TestUser").
+			Select("Email").
+			WhereNotNull("Email").
+			WhereIn("Email", []string{
+				"DgHlUKz@pYEXo.ru",
+				"sianloong@hotmail.com",
+			})).Get(users); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestMySQLDistinctOn(t *testing.T) {
 	u := new(User)
 	if err := my.NewQuery().

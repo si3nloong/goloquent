@@ -108,30 +108,52 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 	buf := new(bytes.Buffer)
 	wheres := make([]string, 0)
 	args := make([]interface{}, 0)
+
 	for _, f := range query.filters {
 		name := b.db.dialect.Quote(f.Field())
-		v, err := f.Interface()
-		if err != nil {
-			return nil, err
-		}
 
-		if f.IsJSON() {
-			str, vv, err := b.db.dialect.FilterJSON(f)
+		var v interface{}
+		switch vi := f.value.(type) {
+		case *Query:
+			var subQuery strings.Builder
+			subQuery.WriteString("(")
+			subQuery.WriteString(b.buildSelect(vi.scope).string())
+			subQuery.WriteString(" FROM ")
+			subQuery.WriteString(b.db.dialect.GetTable(vi.scope.table))
+			stmt, err := b.buildStmt(vi.scope)
 			if err != nil {
 				return nil, fmt.Errorf("goloquent: %v", err)
 			}
-			wheres = append(wheres, str)
-			args = append(args, vv...)
-			continue
-		}
+			subQuery.WriteString(stmt.string())
+			subQuery.WriteString(")")
+			v = subQuery.String()
+			args = append(args, stmt.arguments...)
 
-		switch f.Field() {
-		case keyFieldName, pkColumn:
-			name = b.db.dialect.Quote(pkColumn)
-			v, err = interfaceToKeyString(f.value)
+		default:
+			vi, err := f.Interface()
 			if err != nil {
 				return nil, err
 			}
+
+			if f.IsJSON() {
+				str, vv, err := b.db.dialect.FilterJSON(f)
+				if err != nil {
+					return nil, fmt.Errorf("goloquent: %v", err)
+				}
+				wheres = append(wheres, str)
+				args = append(args, vv...)
+				continue
+			}
+
+			switch f.Field() {
+			case keyFieldName, pkColumn:
+				name = b.db.dialect.Quote(pkColumn)
+				vi, err = interfaceToKeyString(f.value)
+				if err != nil {
+					return nil, err
+				}
+			}
+			v = vi
 		}
 
 		op, vv := "=", variable
@@ -182,18 +204,25 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 			op = "NOT LIKE"
 		case In:
 			op = "IN"
-			x, isOk := v.([]interface{})
-			if !isOk {
-				x = append(x, v)
+			switch vi := v.(type) {
+			case []interface{}:
+				x, isOk := v.([]interface{})
+				if !isOk {
+					x = append(x, v)
+				}
+				if len(x) <= 0 {
+					return nil, fmt.Errorf(`goloquent: value for "In" operator cannot be empty`)
+				}
+				vv = fmt.Sprintf("(%s)", strings.TrimRight(
+					strings.Repeat(variable+",", len(x)), ","))
+				wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vv))
+				args = append(args, x...)
+				continue
+			case string:
+				wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vi))
+				continue
 			}
-			if len(x) <= 0 {
-				return nil, fmt.Errorf(`goloquent: value for "In" operator cannot be empty`)
-			}
-			vv = fmt.Sprintf("(%s)", strings.TrimRight(
-				strings.Repeat(variable+",", len(x)), ","))
-			wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vv))
-			args = append(args, x...)
-			continue
+
 		case NotIn:
 			op = "NOT IN"
 			x, isOk := v.([]interface{})

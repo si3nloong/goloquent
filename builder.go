@@ -649,6 +649,8 @@ func (b *builder) replaceInto(table string) error {
 		buf.WriteString(cmd.string())
 		args = append(args, cmd.arguments...)
 	}
+	buf.WriteString(b.buildOrder(b.query).string())
+	buf.WriteString(b.buildLimitOffset(b.query).string())
 	buf.WriteString(";")
 	return b.db.client.execStmt(&stmt{
 		statement: buf,

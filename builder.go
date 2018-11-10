@@ -225,18 +225,24 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 
 		case NotIn:
 			op = "NOT IN"
-			x, isOk := v.([]interface{})
-			if !isOk {
-				x = append(x, v)
+			switch vi := v.(type) {
+			case []interface{}:
+				x, isOk := v.([]interface{})
+				if !isOk {
+					x = append(x, v)
+				}
+				if len(x) <= 0 {
+					return nil, fmt.Errorf(`goloquent: value for "NotIn" operator cannot be empty`)
+				}
+				vv = fmt.Sprintf("(%s)", strings.TrimRight(
+					strings.Repeat(variable+",", len(x)), ","))
+				wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vv))
+				args = append(args, x...)
+				continue
+			case string:
+				wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vi))
+				continue
 			}
-			if len(x) <= 0 {
-				return nil, fmt.Errorf(`goloquent: value for "NotIn" operator cannot be empty`)
-			}
-			vv = fmt.Sprintf("(%s)", strings.TrimRight(
-				strings.Repeat(variable+",", len(x)), ","))
-			wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vv))
-			args = append(args, x...)
-			continue
 		}
 		wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vv))
 		args = append(args, v)

@@ -69,8 +69,8 @@ func StringKey(key *datastore.Key) string {
 
 // minimum and maximum value for random seed
 const (
-	minSeed = int64(1000000)
-	maxSeed = int64(9223372036854775807)
+	minSeed = int64(100000000)
+	maxSeed = int64(999999999)
 )
 
 // newPrimaryKey will generate a new key if the key provided was incomplete
@@ -82,7 +82,8 @@ func newPrimaryKey(table string, parentKey *datastore.Key) *datastore.Key {
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	id := rand.Int63n(maxSeed-minSeed) + minSeed
+	strID := strconv.FormatInt(time.Now().Unix(), 10) + strconv.FormatInt(rand.Int63n(maxSeed-minSeed)+minSeed, 10)
+	id, _ := strconv.ParseInt(strID, 10, 64)
 	if parentKey != nil && parentKey.Kind == table {
 		parentKey.ID = id
 		return parentKey

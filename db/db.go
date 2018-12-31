@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"cloud.google.com/go/datastore"
 	"github.com/si3nloong/goloquent"
@@ -10,13 +11,21 @@ import (
 
 // Connection :
 func Connection(driver string) *goloquent.DB {
+	driver = strings.TrimSpace(driver)
+	paths := strings.SplitN(driver, ":", 2)
+	if len(paths) != 2 {
+		panic(fmt.Errorf("goloquent: invalid connection name %q", driver))
+	}
 	x, isOk := connPool.Load(driver)
 	if !isOk {
 		panic(fmt.Errorf("goloquent: connection not found"))
 	}
 	pool := x.(map[string]*goloquent.DB)
-	for _, v := range pool {
-		return v
+	for k, v := range pool {
+		if k == paths[1] {
+			return v
+		}
+		// return v
 	}
 	return nil
 }

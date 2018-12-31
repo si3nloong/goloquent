@@ -534,9 +534,9 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		if err != nil {
 			return err
 		}
-		if sha1Sign(&Stmt{stmt: *cmds, replacer: b.db.dialect}) != c.Signature {
-			return ErrInvalidCursor
-		}
+		// if sha1Sign(&Stmt{stmt: *cmds, replacer: b.db.dialect}) != c.Signature {
+		// 	return ErrInvalidCursor
+		// }
 		query := b.query
 		buf, args := new(bytes.Buffer), make([]interface{}, 0)
 		buf.WriteString(b.buildSelect(query).string())

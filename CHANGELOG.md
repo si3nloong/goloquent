@@ -36,6 +36,8 @@
 - (2018-09-13) Fix `newPrimaryKey` logic error. ID key with 0 shouldn't nested again.
 - (2018-09-21) Fix `Paginate` soft delete bugs. Soft deleted records shouldn't get from api `Paginate`.
 - (2018-10-06) Fix `Date` not able to decode when it's nested inside struct, fix json `null` not able to decode back to value (Array, Slice, Struct, GeoPoint, etc) and improve string concatenate performance.
+- (2018-12-31) Change id key random algorithms.
+- (2018-12-31) Remove signature checking on pagination
 
 # Breaking Changes
 

@@ -155,9 +155,9 @@ func (s *mysql) AlterTable(table string, columns []Column) error {
 	for _, col := range cols.keys() {
 		buf.WriteString(fmt.Sprintf("DROP COLUMN %s,", s.Quote(col)))
 	}
-	for _, idx := range idxs.keys() {
-		buf.WriteString(fmt.Sprintf("DROP INDEX %s,", s.Quote(idx)))
-	}
+	// for _, idx := range idxs.keys() {
+	// 	buf.WriteString(fmt.Sprintf("DROP INDEX %s,", s.Quote(idx)))
+	// }
 
 	buf.WriteString(fmt.Sprintf("CHARACTER SET %s ", s.Quote(s.db.CharSet.Encoding)))
 	buf.WriteString(fmt.Sprintf("COLLATE %s", s.Quote(s.db.CharSet.Collation)))

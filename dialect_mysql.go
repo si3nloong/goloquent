@@ -48,6 +48,7 @@ func (s *mysql) Open(conf Config) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	client.SetMaxOpenConns(300)
 	return client, nil
 }
 

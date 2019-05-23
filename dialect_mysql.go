@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/si3nloong/goloquent/types"
 )
 
 type mysql struct {
@@ -65,7 +67,7 @@ func (s mysql) Version() (version string) {
 
 // Quote :
 func (s mysql) Quote(n string) string {
-	return fmt.Sprintf("`%s`", n)
+	return "`" + n + "`"
 }
 
 // Bind :
@@ -112,7 +114,7 @@ func (s mysql) CreateTable(table string, columns []Column) error {
 		for _, ss := range s.GetSchema(c) {
 			buf.WriteString(fmt.Sprintf("%s %s,", s.Quote(ss.Name), s.DataType(ss)))
 			if ss.IsIndexed {
-				idx := fmt.Sprintf("%s_%s_%s", table, ss.Name, "Idx")
+				idx := fmt.Sprintf("%s_%s_%s", table, ss.Name, "idx")
 				buf.WriteString(fmt.Sprintf("INDEX %s (%s),", s.Quote(idx), s.Quote(ss.Name)))
 			}
 		}
@@ -123,47 +125,49 @@ func (s mysql) CreateTable(table string, columns []Column) error {
 	return s.db.execStmt(&stmt{statement: buf})
 }
 
-func (s *mysql) AlterTable(table string, columns []Column) error {
-	cols := newDictionary(s.GetColumns(table))
-	idxs := newDictionary(s.GetIndexes(table))
+func (s *mysql) AlterTable(table string, columns []Column, unsafe bool) error {
+	cols := types.StringSlice(s.GetColumns(table))
+	idxs := types.StringSlice(s.GetIndexes(table))
 
-	buf := new(bytes.Buffer)
-	buf.WriteString(fmt.Sprintf("ALTER TABLE %s ", s.GetTable(table)))
+	var idx string
+	blr := new(bytes.Buffer)
+	blr.WriteString(`ALTER TABLE ` + s.GetTable(table) + ` `)
 	suffix := "FIRST"
 	for _, c := range columns {
 		for _, ss := range s.GetSchema(c) {
-			action := "ADD"
-			if cols.has(ss.Name) {
-				action = "MODIFY"
+			if cols.IndexOf(ss.Name) > -1 {
+				blr.WriteString(`MODIFY`)
+			} else {
+				blr.WriteString(`ADD`)
 			}
-			buf.WriteString(fmt.Sprintf("%s %s %s %s,",
-				action, s.Quote(ss.Name), s.DataType(ss), suffix))
-			suffix = fmt.Sprintf("AFTER %s", s.Quote(ss.Name))
+
+			blr.WriteString(` ` + s.Quote(ss.Name) + ` `)
+			blr.WriteString(s.DataType(ss) + ` ` + suffix)
+			suffix = `AFTER ` + s.Quote(ss.Name)
 
 			if ss.IsIndexed {
-				idx := fmt.Sprintf("%s_%s_%s", table, ss.Name, "idx")
-				if idxs.has(idx) {
-					idxs.delete(idx)
-				} else {
-					buf.WriteString(fmt.Sprintf(" ADD INDEX %s (%s),",
-						s.Quote(idx), s.Quote(ss.Name)))
+				idx = table + `_` + ss.Name + `_idx`
+				if idxs.IndexOf(idx) < 0 {
+					blr.WriteRune(',')
+					blr.WriteString(`ADD INDEX ` + s.Quote(idx))
+					blr.WriteString(` (` + s.Quote(ss.Name) + `)`)
 				}
 			}
-			cols.delete(ss.Name)
+			blr.WriteRune(',')
 		}
 	}
 
-	for _, col := range cols.keys() {
-		buf.WriteString(fmt.Sprintf("DROP COLUMN %s,", s.Quote(col)))
-	}
+	// for _, col := range cols.keys() {
+	// 	blr.WriteString(fmt.Sprintf("DROP COLUMN %s,", s.Quote(col)))
+	// }
 	// for _, idx := range idxs.keys() {
 	// 	buf.WriteString(fmt.Sprintf("DROP INDEX %s,", s.Quote(idx)))
 	// }
 
-	buf.WriteString(fmt.Sprintf("CHARACTER SET %s ", s.Quote(s.db.CharSet.Encoding)))
-	buf.WriteString(fmt.Sprintf("COLLATE %s", s.Quote(s.db.CharSet.Collation)))
-	buf.WriteString(";")
-	return s.db.execStmt(&stmt{statement: buf})
+	blr.WriteString(` CHARACTER SET ` + s.Quote(s.db.CharSet.Encoding))
+	blr.WriteString(` COLLATE ` + s.Quote(s.db.CharSet.Collation))
+	blr.WriteRune(';')
+	return s.db.execStmt(&stmt{statement: blr})
 }
 
 func (s mysql) ToString(it interface{}) string {

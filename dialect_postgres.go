@@ -440,7 +440,7 @@ func (p *postgres) CreateTable(table string, columns []Column) error {
 	return tx.Commit()
 }
 
-func (p *postgres) AlterTable(table string, columns []Column) error {
+func (p *postgres) AlterTable(table string, columns []Column, unsafe bool) error {
 	cols := newDictionary(p.GetColumns(table))
 	idxs := newDictionary(p.GetIndexes(table))
 	idxs.delete(fmt.Sprintf("%s_pkey", table))

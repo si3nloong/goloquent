@@ -340,7 +340,7 @@ func (b *builder) createTable(e *entity) error {
 }
 
 func (b *builder) alterTable(e *entity) error {
-	return b.db.dialect.AlterTable(e.Name(), e.columns)
+	return b.db.dialect.AlterTable(e.Name(), e.columns, false)
 }
 
 func (b *builder) migrate(model interface{}) error {

@@ -439,7 +439,7 @@ func (s *sequel) CreateTable(string, []Column) error {
 	return nil
 }
 
-func (s *sequel) AlterTable(string, []Column) error {
+func (s *sequel) AlterTable(string, []Column, bool) error {
 	return nil
 }
 

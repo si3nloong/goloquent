@@ -25,7 +25,7 @@ type Dialect interface {
 	GetColumns(tb string) (cols []string)
 	GetIndexes(tb string) (idxs []string)
 	CreateTable(tb string, cols []Column) error
-	AlterTable(tb string, cols []Column) error
+	AlterTable(tb string, cols []Column, unsafe bool) error
 	OnConflictUpdate(tb string, cols []string) string
 	UpdateWithLimit() bool
 	ReplaceInto(src, dst string) error

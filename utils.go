@@ -202,10 +202,16 @@ func splitKey(k *datastore.Key) (key string, parent string) {
 		return "", ""
 	}
 	if k.ID > 0 {
-		return strconv.FormatInt(k.ID, 10), stringifyKey(k.Parent)
+		if isPkSimple {
+			return strconv.FormatInt(k.ID, 10), stringifyKey(k.Parent)
+		}
+		return k.Kind + "," + strconv.FormatInt(k.ID, 10), stringifyKey(k.Parent)
 	}
 	name := url.PathEscape(k.Name)
-	return "'" + name + "'", stringifyKey(k.Parent)
+	if isPkSimple {
+		return "'" + name + "'", stringifyKey(k.Parent)
+	}
+	return k.Kind + ",'" + name + "'", stringifyKey(k.Parent)
 }
 
 func stringPk(k *datastore.Key) string {

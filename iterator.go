@@ -44,8 +44,12 @@ func (it *Iterator) patchKey() {
 	buf := new(bytes.Buffer)
 	buf.Write(bytes.Join(paths, []byte(keyDelimeter)))
 	buf.WriteString(keyDelimeter)
-	buf.WriteString(it.table + ",")
-	buf.Write(kk)
+	if bytes.Contains(kk, []byte(",")) {
+		buf.Write(kk)
+	} else {
+		buf.WriteString(it.table + ",")
+		buf.Write(kk)
+	}
 	l[keyFieldName] = buf.Bytes()
 	it.results[pos] = l
 }

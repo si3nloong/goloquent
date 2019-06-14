@@ -12,6 +12,13 @@ import (
 	"cloud.google.com/go/datastore"
 )
 
+var isPkSimple = true
+
+// SetPKSimple :
+func SetPKSimple(flag bool) {
+	isPkSimple = flag
+}
+
 // TransactionHandler :
 type TransactionHandler func(*DB) error
 

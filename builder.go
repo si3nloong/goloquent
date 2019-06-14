@@ -864,7 +864,7 @@ func (b *builder) saveMutation(model interface{}) (*stmt, error) {
 		j++
 	}
 	buf.Truncate(buf.Len() - 1)
-	buf.WriteString(fmt.Sprintf(" WHERE %s = %s;", b.db.dialect.Quote(pkColumn), variable))
+	buf.WriteString(fmt.Sprintf(" WHERE %s = %s LIMIT 1;", b.db.dialect.Quote(pkColumn), variable))
 	args = append(args, stringPk(pk))
 
 	return &stmt{

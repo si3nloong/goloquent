@@ -160,7 +160,7 @@ func (it *Iterator) scan(src interface{}) (map[string]interface{}, error) {
 		for i, p := range props {
 			k := p.Name()
 			b := it.Get(k)
-			var vv, err = valueToInterface(p.typeOf, b)
+			var vv, err = valueToInterface(p.typeOf, b, false)
 			if err != nil {
 				return nil, err
 			}

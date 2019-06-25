@@ -22,7 +22,7 @@ type geoLocation struct {
 	Longitude float64 `json:"longitude"`
 }
 
-func unmarshalStruct(t reflect.Type, l map[string]*json.RawMessage) (map[string]interface{}, error) {
+func unmarshalStruct(t reflect.Type, l map[string]*json.RawMessage, esc bool) (map[string]interface{}, error) {
 	codec, err := getStructCodec(reflect.New(t).Interface())
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func unmarshalStruct(t reflect.Type, l map[string]*json.RawMessage) (map[string]
 		if !isOk {
 			continue
 		}
-		var it, err = valueToInterface(f.typeOf, getByte(b))
+		var it, err = valueToInterface(f.typeOf, getByte(b), esc)
 		if err != nil {
 			return nil, err
 		}
@@ -60,7 +60,7 @@ func escape(b []byte) string {
 // string, bool, int64, float64, []byte
 // *datastore.Key, time.Time, datastore.GeoPoint
 // []interface{}, *struct
-func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
+func valueToInterface(t reflect.Type, v []byte, esc bool) (interface{}, error) {
 	var it interface{}
 
 	switch t {
@@ -145,7 +145,15 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 			if v == nil {
 				return "", nil
 			}
-			it = escape(v)
+			if esc {
+				var str string
+				if err := json.Unmarshal(v, &str); err != nil {
+					return nil, err
+				}
+				it = str
+			} else {
+				it = escape(v)
+			}
 		case reflect.Bool:
 			if v == nil {
 				return false, nil
@@ -194,7 +202,7 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 
 			arr := make([]interface{}, 0, len(b))
 			for i := 0; i < len(b); i++ {
-				var vv, err = valueToInterface(t.Elem(), getByte(b[i]))
+				var vv, err = valueToInterface(t.Elem(), getByte(b[i]), true)
 				if err != nil {
 					return nil, err
 				}
@@ -206,7 +214,7 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 				if v == nil {
 					return reflect.Zero(t).Interface(), nil
 				}
-				var it, err = valueToInterface(t.Elem(), v)
+				var it, err = valueToInterface(t.Elem(), v, esc)
 				if err != nil {
 					return nil, err
 				}
@@ -235,7 +243,7 @@ func valueToInterface(t reflect.Type, v []byte) (interface{}, error) {
 			}
 
 			var err error
-			it, err = unmarshalStruct(t, l)
+			it, err = unmarshalStruct(t, l, true)
 			if err != nil {
 				return nil, err
 			}

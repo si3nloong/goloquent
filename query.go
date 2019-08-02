@@ -243,8 +243,13 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 	}
 	q = q.Limit(int(p.Limit) + 1)
 	if len(q.orders) > 0 {
-		if q.orders[len(q.orders)-1].field != pkColumn {
-			q = q.Order(pkColumn)
+		lastField := q.orders[len(q.orders)-1]
+		if lastField.field != pkColumn {
+			k := pkColumn
+			if lastField.direction == descending {
+				k = "-" + k
+			}
+			q = q.Order(k)
 		}
 	} else {
 		q = q.Order(pkColumn)

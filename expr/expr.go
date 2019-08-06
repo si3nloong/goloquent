@@ -8,6 +8,18 @@ type F struct {
 	Values []reflect.Value
 }
 
+const (
+	Ascending Direction = iota
+	Descending
+)
+
+type Direction int
+
+type Sort struct {
+	Name      string
+	Direction Direction
+}
+
 func Field(name string, vals interface{}) (f F) {
 	v := reflect.ValueOf(vals)
 	k := v.Kind()

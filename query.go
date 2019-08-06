@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/datastore"
+	"github.com/si3nloong/goloquent/expr"
 )
 
 type operator int
@@ -499,7 +500,22 @@ func (q *Query) OrderBy(values ...interface{}) *Query {
 	if len(values) <= 0 {
 		return q
 	}
-	q.orders = values
+	for _, v := range values {
+		var it interface{}
+		switch vi := v.(type) {
+		case string:
+			sort := expr.Sort{Direction: expr.Ascending}
+			if vi[0] == '-' {
+				vi = vi[1:]
+				sort.Direction = expr.Descending
+			}
+			sort.Name = vi
+			it = sort
+		default:
+			it = vi
+		}
+		q.orders = append(q.orders, it)
+	}
 	// for _, ff := range fields {
 	// 	q = q.clone()
 	// 	name, dir := strings.TrimSpace(ff), ascending

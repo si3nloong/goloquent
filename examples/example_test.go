@@ -52,7 +52,7 @@ func TestExamples(t *testing.T) {
 		expr.Field("Status", []string{
 			"A", "B", "C",
 		}),
-		"CreatedAt",
+		"-CreatedAt",
 	).Get(&usrs)
 
 	log.Println(usrs)

@@ -41,6 +41,7 @@ func NewStmtRegistry() *StmtRegistry {
 func (r *StmtRegistry) SetDefaultEncoders() {
 	enc := DefaultStmtEncoder{registry: defaultRegistry}
 	r.SetTypeEncoder(reflect.TypeOf(expr.F{}), enc.encodeField)
+	r.SetTypeEncoder(reflect.TypeOf(expr.Sort{}), enc.encodeSort)
 	r.SetKindEncoder(reflect.String, enc.encodeString)
 }
 
@@ -72,6 +73,15 @@ type DefaultStmtEncoder struct {
 
 func (enc DefaultStmtEncoder) encodeString(w Writer, v reflect.Value) ([]interface{}, error) {
 	w.WriteString("`" + v.String() + "`")
+	return nil, nil
+}
+
+func (enc DefaultStmtEncoder) encodeSort(w Writer, v reflect.Value) ([]interface{}, error) {
+	x := v.Interface().(expr.Sort)
+	w.WriteString("`" + x.Name + "`")
+	if x.Direction == expr.Descending {
+		w.WriteString(" DESC")
+	}
 	return nil, nil
 }
 

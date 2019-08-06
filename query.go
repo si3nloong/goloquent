@@ -82,7 +82,7 @@ type scope struct {
 	omits      []string
 	ancestors  []group
 	filters    []Filter
-	orders     []order
+	orders     []interface{}
 	limit      int32
 	offset     int32
 	errs       []error
@@ -244,15 +244,16 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 	q = q.Limit(int(p.Limit) + 1)
 	if len(q.orders) > 0 {
 		lastField := q.orders[len(q.orders)-1]
-		if lastField.field != pkColumn {
+		x, isOk := lastField.(string)
+		if isOk && x != pkColumn {
 			k := pkColumn
-			if lastField.direction == descending {
+			if x[0] == '-' {
 				k = "-" + k
 			}
-			q = q.Order(k)
+			q = q.OrderBy(k)
 		}
 	} else {
-		q = q.Order(pkColumn)
+		q = q.OrderBy(pkColumn)
 	}
 	return newBuilder(q).paginate(p, model)
 }
@@ -492,26 +493,27 @@ func (q *Query) WLock() *Query {
 	return q
 }
 
-// Order :
-func (q *Query) Order(fields ...string) *Query {
-	if len(fields) <= 0 {
+// OrderBy :
+// OrderBy(expr.Field("Status", []string{}))
+func (q *Query) OrderBy(values ...interface{}) *Query {
+	if len(values) <= 0 {
 		return q
 	}
+	q.orders = values
+	// for _, ff := range fields {
+	// 	q = q.clone()
+	// 	name, dir := strings.TrimSpace(ff), ascending
+	// 	if strings.HasPrefix(name, "+") {
+	// 		name, dir = strings.TrimSpace(name[1:]), ascending
+	// 	} else if strings.HasPrefix(name, "-") {
+	// 		name, dir = strings.TrimSpace(name[1:]), descending
+	// 	}
 
-	for _, ff := range fields {
-		q = q.clone()
-		name, dir := strings.TrimSpace(ff), ascending
-		if strings.HasPrefix(name, "+") {
-			name, dir = strings.TrimSpace(name[1:]), ascending
-		} else if strings.HasPrefix(name, "-") {
-			name, dir = strings.TrimSpace(name[1:]), descending
-		}
-
-		q.orders = append(q.orders, order{
-			field:     name,
-			direction: dir,
-		})
-	}
+	// 	q.orders = append(q.orders, order{
+	// 		field:     name,
+	// 		direction: dir,
+	// 	})
+	// }
 	return q
 }
 
@@ -542,7 +544,7 @@ func (q *Query) Update(v interface{}) error {
 	if err := q.getError(); err != nil {
 		return err
 	}
-	q = q.Order(pkColumn)
+	q = q.OrderBy(pkColumn)
 	return newBuilder(q).updateMulti(v)
 }
 

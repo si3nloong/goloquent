@@ -279,29 +279,30 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 	}, nil
 }
 
-func (b *builder) buildOrder(query scope) *stmt {
+func (b *builder) buildOrderBy(query scope) (*stmt, error) {
 	buf := new(bytes.Buffer)
 
 	// __key__ sorting, filter
+	args := make([]interface{}, 0)
 	if len(query.orders) > 0 {
-		arr := make([]string, 0, len(query.orders))
-		for _, o := range query.orders {
-			name := b.db.dialect.Quote(o.field)
-			if o.field == keyFieldName {
-				name = b.db.dialect.Quote(pkColumn)
+		// arr := make([]string, 0, len(query.orders))
+		buf.WriteString(" ORDER BY ")
+		for i, o := range query.orders {
+			if i > 0 {
+				buf.WriteByte(',')
 			}
-			suffix := " ASC"
-			if o.direction != ascending {
-				suffix = " DESC"
+			vals, err := stmtRegistry.BuildStatement(buf, reflect.ValueOf(o))
+			if err != nil {
+				return nil, err
 			}
-			arr = append(arr, name+suffix)
+			args = append(args, vals...)
 		}
-		buf.WriteString(" ORDER BY " + strings.Join(arr, ","))
 	}
 
 	return &stmt{
 		statement: buf,
-	}
+		arguments: args,
+	}, nil
 }
 
 func (b *builder) buildLimitOffset(query scope) *stmt {
@@ -327,7 +328,12 @@ func (b *builder) buildStmt(query scope, args ...interface{}) (*stmt, error) {
 		args = append(args, cmd.arguments...)
 		buf.WriteString(cmd.string())
 	}
-	buf.WriteString(b.buildOrder(query).string())
+	ss, err := b.buildOrderBy(query)
+	if err != nil {
+		return nil, err
+	}
+	buf.WriteString(ss.string())
+	args = append(args, ss.arguments...)
 	buf.WriteString(b.buildLimitOffset(query).string())
 	return &stmt{
 		statement: buf,
@@ -556,7 +562,11 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		orders := query.orders
 		projection := make([]string, 0, len(orders))
 		for _, o := range orders {
-			projection = append(projection, o.field)
+			x, isOk := o.(string)
+			if !isOk {
+				return errors.New("paginate only support string order")
+			}
+			projection = append(projection, x)
 		}
 		values, or := make([]interface{}, len(orders)), make([]string, 0)
 		for i := 0; i < len(values); i++ {
@@ -578,24 +588,34 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		}
 		arg := make([]interface{}, 0, len(orders))
 		for i, o := range orders {
+			x, isOk := o.(string)
+			if !isOk {
+				return errors.New("paginate only support string order")
+			}
 			vv := baseToInterface(values[i])
 			op := ">="
-			if o.direction == descending {
+			if x[0] == '-' {
+				x = x[1:]
 				op = "<="
 			}
 			if i < len(orders)-1 {
 				buf.WriteString(fmt.Sprintf("%s %s %s AND ",
-					b.db.dialect.Quote(o.field), op, variable))
+					b.db.dialect.Quote(x), op, variable))
 				args = append(args, vv)
 				op = strings.Trim(op, "=")
 			}
 			or = append(or, fmt.Sprintf("%s %s %s",
-				b.db.dialect.Quote(o.field), op, variable))
+				b.db.dialect.Quote(x), op, variable))
 			arg = append(arg, vv)
 		}
 		buf.WriteString("(" + strings.Join(or, " OR ") + ")")
 		args = append(args, arg...)
-		buf.WriteString(b.buildOrder(query).string())
+		ss, err := b.buildOrderBy(query)
+		if err != nil {
+			return err
+		}
+		buf.WriteString(ss.string())
+		args = append(args, ss.arguments...)
 		buf.WriteString(b.buildLimitOffset(query).string())
 		buf.WriteString(";")
 		cmds = &stmt{statement: buf, arguments: args}
@@ -655,7 +675,9 @@ func (b *builder) replaceInto(table string) error {
 		buf.WriteString(cmd.string())
 		args = append(args, cmd.arguments...)
 	}
-	buf.WriteString(b.buildOrder(b.query).string())
+	ss, err := b.buildOrderBy(b.query)
+	buf.WriteString(ss.string())
+	args = append(args, ss.arguments...)
 	buf.WriteString(b.buildLimitOffset(b.query).string())
 	buf.WriteString(";")
 	return b.db.client.execStmt(&stmt{

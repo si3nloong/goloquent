@@ -2,6 +2,7 @@ module github.com/si3nloong/goloquent
 
 require (
 	cloud.google.com/go v0.38.0
+	github.com/brianvoe/gofakeit v3.18.0+incompatible
 	github.com/bxcodec/faker v2.0.1+incompatible
 	github.com/go-sql-driver/mysql v1.4.1-0.20190510102335-877a9775f068
 	github.com/golang/mock v1.3.1 // indirect
@@ -9,6 +10,7 @@ require (
 	github.com/google/pprof v0.0.0-20190515194954-54271f7e092f // indirect
 	github.com/googleapis/gax-go/v2 v2.0.5 // indirect
 	github.com/lib/pq v1.2.0
+	github.com/stretchr/testify v1.3.0
 	go.opencensus.io v0.22.0 // indirect
 	golang.org/x/exp v0.0.0-20190510132918-efd6b22b2522 // indirect
 	golang.org/x/net v0.0.0-20190620200207-3b0461eec859 // indirect

@@ -246,7 +246,7 @@ func (x *User) Save() (error) {
     user := new(User)
     if err := db.Ancestor(parentKey).
         WhereEqual("Age", &age).
-        Order("-CreatedDateTime").
+        OrderBy("-CreatedDateTime").
         First(user); err != nil {
         log.Println(err) // error while retrieving record
     }
@@ -279,20 +279,20 @@ func (x *User) Save() (error) {
     }
 ```
 
-- **Get Record with Ordering**
+- **Get Record with OrderBying**
 
 ```go
     import "github.com/si3nloong/goloquent/db"
-    // Ascending order
+    // Ascending OrderBy
     users := new([]*User)
-    if err := db.Order("CreatedDateTime").
+    if err := db.OrderBy("CreatedDateTime").
         Get(users); err != nil {
         log.Println(err) // error while retrieving record
     }
 
-    // Descending order
+    // Descending OrderBy
     if err := db.Table("User").
-        Order("-CreatedDateTime").
+        OrderBy("-CreatedDateTime").
         Get(users); err != nil {
         log.Println(err) // error while retrieving record
     }
@@ -311,7 +311,7 @@ func (x *User) Save() (error) {
     // Example
     users := new([]*User)
     if err := db.Ancestor(parentKey).
-        Order("-CreatedDateTime").
+        OrderBy("-CreatedDateTime").
         Paginate(&p, users); err != nil {
         log.Println(err) // error while retrieving record
     }
@@ -324,7 +324,7 @@ func (x *User) Save() (error) {
 
     users := new([]*User)
     if err := db.Ancestor(parentKey).
-        Order("-CreatedDateTime").
+        OrderBy("-CreatedDateTime").
         Paginate(p, users); err != nil {
         log.Println(err) // error while retrieving record
     }

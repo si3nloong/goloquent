@@ -176,9 +176,9 @@ func (t *Table) RLock() *Query {
 	return t.newQuery().RLock()
 }
 
-// Order :
-func (t *Table) Order(fields ...string) *Query {
-	return t.newQuery().Order(fields...)
+// OrderBy :
+func (t *Table) OrderBy(fields ...interface{}) *Query {
+	return t.newQuery().OrderBy(fields...)
 }
 
 // Limit :

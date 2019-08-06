@@ -166,9 +166,9 @@ func WhereJSON(field string, operator string, value interface{}) *goloquent.Quer
 	return defaultDB.NewQuery().WhereJSON(field, operator, value)
 }
 
-// Order :
-func Order(fields ...string) *goloquent.Query {
-	return defaultDB.NewQuery().Order(fields...)
+// OrderBy :
+func OrderBy(fields ...interface{}) *goloquent.Query {
+	return defaultDB.NewQuery().OrderBy(fields...)
 }
 
 // Limit :

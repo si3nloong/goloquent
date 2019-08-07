@@ -55,6 +55,19 @@ func TestExamples(t *testing.T) {
 		"-CreatedAt",
 	).Get(&usrs)
 
+	query := db.NewQuery().OrderBy(
+		"-CreatedAt",
+	)
+	pg := &goloquent.Pagination{Limit: 1}
+	err = query.Paginate(pg, &usrs)
+
+	pg.Cursor = pg.NextCursor()
+	err = query.Paginate(pg, &usrs)
+
+	pg.Cursor = pg.NextCursor()
+	err = query.Paginate(pg, &usrs)
+
+	log.Println(err)
 	log.Println(usrs)
 	// db.Create()
 	log.Println(conn)

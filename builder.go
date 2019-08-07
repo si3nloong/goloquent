@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/datastore"
+	"github.com/si3nloong/goloquent/expr"
 )
 
 const (
@@ -562,11 +563,11 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		orders := query.orders
 		projection := make([]string, 0, len(orders))
 		for _, o := range orders {
-			x, isOk := o.(string)
+			x, isOk := o.(expr.Sort)
 			if !isOk {
 				return errors.New("paginate only support string order")
 			}
-			projection = append(projection, x)
+			projection = append(projection, x.Name)
 		}
 		values, or := make([]interface{}, len(orders)), make([]string, 0)
 		for i := 0; i < len(values); i++ {
@@ -588,24 +589,23 @@ func (b *builder) paginate(p *Pagination, model interface{}) error {
 		}
 		arg := make([]interface{}, 0, len(orders))
 		for i, o := range orders {
-			x, isOk := o.(string)
+			x, isOk := o.(expr.Sort)
 			if !isOk {
 				return errors.New("paginate only support string order")
 			}
 			vv := baseToInterface(values[i])
 			op := ">="
-			if x[0] == '-' {
-				x = x[1:]
+			if x.Direction == expr.Descending {
 				op = "<="
 			}
 			if i < len(orders)-1 {
 				buf.WriteString(fmt.Sprintf("%s %s %s AND ",
-					b.db.dialect.Quote(x), op, variable))
+					b.db.dialect.Quote(x.Name), op, variable))
 				args = append(args, vv)
 				op = strings.Trim(op, "=")
 			}
 			or = append(or, fmt.Sprintf("%s %s %s",
-				b.db.dialect.Quote(x), op, variable))
+				b.db.dialect.Quote(x.Name), op, variable))
 			arg = append(arg, vv)
 		}
 		buf.WriteString("(" + strings.Join(or, " OR ") + ")")

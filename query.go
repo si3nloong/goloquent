@@ -245,10 +245,10 @@ func (q *Query) Paginate(p *Pagination, model interface{}) error {
 	q = q.Limit(int(p.Limit) + 1)
 	if len(q.orders) > 0 {
 		lastField := q.orders[len(q.orders)-1]
-		x, isOk := lastField.(string)
-		if isOk && x != pkColumn {
+		x, isOk := lastField.(expr.Sort)
+		if isOk && x.Name != pkColumn {
 			k := pkColumn
-			if x[0] == '-' {
+			if x.Direction == expr.Descending {
 				k = "-" + k
 			}
 			q = q.OrderBy(k)

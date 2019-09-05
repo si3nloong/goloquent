@@ -560,7 +560,7 @@ func (q *Query) Update(v interface{}) error {
 	if err := q.getError(); err != nil {
 		return err
 	}
-	q = q.OrderBy(pkColumn)
+	// q = q.OrderBy(pkColumn)
 	return newBuilder(q).updateMulti(v)
 }
 

@@ -1,3 +1,6 @@
+
+This package is not compactible with native package `database/sql`, if you want the support of it, you may go for [sqlike](https://github.com/si3nloong/sqlike)
+
 # Sequel Datastore ORM
 
 Inspired by Laravel Eloquent and Google Cloud Datastore

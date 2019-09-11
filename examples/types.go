@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/datastore"
+	"github.com/si3nloong/goloquent"
 )
 
 // User :
@@ -12,4 +13,5 @@ type User struct {
 	Name      string
 	Status    string
 	CreatedAt time.Time
+	Deleted   goloquent.SoftDelete
 }

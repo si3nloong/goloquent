@@ -113,7 +113,7 @@ func (s mysql) CreateTable(table string, columns []Column) error {
 	for _, c := range columns {
 		for _, ss := range s.GetSchema(c) {
 			buf.WriteString(fmt.Sprintf("%s %s,", s.Quote(ss.Name), s.DataType(ss)))
-			if ss.IsIndexed {
+			if ss.IsIndexed || c.field.typeOf == typeOfSoftDelete {
 				idx := fmt.Sprintf("%s_%s_%s", table, ss.Name, "idx")
 				buf.WriteString(fmt.Sprintf("INDEX %s (%s),", s.Quote(idx), s.Quote(ss.Name)))
 			}
@@ -145,7 +145,7 @@ func (s *mysql) AlterTable(table string, columns []Column, unsafe bool) error {
 			blr.WriteString(s.DataType(ss) + ` ` + suffix)
 			suffix = `AFTER ` + s.Quote(ss.Name)
 
-			if ss.IsIndexed {
+			if ss.IsIndexed || c.field.typeOf == typeOfSoftDelete {
 				idx = table + `_` + ss.Name + `_idx`
 				if idxs.IndexOf(idx) < 0 {
 					blr.WriteRune(',')

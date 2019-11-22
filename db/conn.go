@@ -5,12 +5,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/si3nloong/goloquent"
+	"github.com/zypeh/goloquent"
 )
 
 var (
 	defaultDB *goloquent.DB
 	connPool  sync.Map // database connection pools
+	once      sync.Once
 )
 
 // Config :
@@ -28,10 +29,19 @@ type Config struct {
 // Open :
 func Open(driver string, conf Config) (*goloquent.DB, error) {
 	driver = strings.TrimSpace(strings.ToLower(driver))
-	dialect, isValid := goloquent.GetDialect(driver)
-	if !isValid {
-		panic(fmt.Errorf("goloquent: unsupported database driver %q", driver))
+	var dialect goloquent.Dialect
+	var matched bool
+
+	// This is to make sure thread-safe and will only execute once at runtime.
+	once.Do(func() {
+		dialect, matched = goloquent.MatchStorageOperator(driver)
+	})
+
+	// Storage operator not found, is not supported
+	if !matched {
+		panic("goloquent: unsupported storage operator")
 	}
+
 	pool := make(map[string]*goloquent.DB)
 	if p, isOk := connPool.Load(driver); isOk {
 		pool = p.(map[string]*goloquent.DB)

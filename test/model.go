@@ -7,7 +7,7 @@ import (
 
 	"cloud.google.com/go/datastore"
 	"github.com/bxcodec/faker"
-	"github.com/si3nloong/goloquent"
+	"github.com/zypeh/goloquent"
 )
 
 var (

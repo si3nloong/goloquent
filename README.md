@@ -1,3 +1,8 @@
+# Goloquent
+
+> The only sequel ORM that respect google datastore.
+
+
 
 This package is not compactible with native package `database/sql`, if you want the support of it, you may go for [sqlike](https://github.com/si3nloong/sqlike)
 

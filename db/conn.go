@@ -10,8 +10,12 @@ import (
 
 var (
 	defaultDB *goloquent.DB
-	connPool  sync.Map // database connection pools
+	connPool  *sync.Map // database connection pools
 )
+
+func init() {
+	connPool = new(sync.Map)
+}
 
 // Config :
 type Config struct {
@@ -28,14 +32,16 @@ type Config struct {
 // Open :
 func Open(driver string, conf Config) (*goloquent.DB, error) {
 	driver = strings.TrimSpace(strings.ToLower(driver))
-	dialect, isValid := goloquent.GetDialect(driver)
-	if !isValid {
+	dialect, ok := goloquent.GetDialect(driver)
+	if !ok {
 		panic(fmt.Errorf("goloquent: unsupported database driver %q", driver))
 	}
+
 	pool := make(map[string]*goloquent.DB)
-	if p, isOk := connPool.Load(driver); isOk {
+	if p, ok := connPool.Load(driver); ok {
 		pool = p.(map[string]*goloquent.DB)
 	}
+
 	config := goloquent.Config{
 		Username:   conf.Username,
 		Password:   conf.Password,
@@ -51,13 +57,15 @@ func Open(driver string, conf Config) (*goloquent.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if err := conn.Ping(); err != nil {
 		return nil, fmt.Errorf("goloquent: %s server has not response", driver)
 	}
+
 	db := goloquent.NewDB(driver, *config.CharSet, conn, dialect, conf.Logger)
 	pool[conf.Database] = db
 	connPool.Store(driver, pool)
-	// Override defaultDB wheneve initialise a new connection
+	// Override defaultDB whenever we initialise a new connection
 	defaultDB = db
 	return db, nil
 }

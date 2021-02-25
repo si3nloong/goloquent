@@ -363,8 +363,8 @@ func (b *builder) migrate(model interface{}) error {
 }
 
 func (b *builder) migrateMultiple(models []interface{}) error {
-	for _, mm := range models {
-		if err := b.migrate(mm); err != nil {
+	for _, m := range models {
+		if err := b.migrate(m); err != nil {
 			return err
 		}
 	}

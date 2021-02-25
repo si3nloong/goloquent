@@ -112,8 +112,8 @@ func getCodec(tagName []string, t reflect.Type) (*structDefinition, error) {
 			sf.t = f.Type
 			sf.tag = tag
 
-			f = elem(f.Type)
-			if f.Type.Kind() == reflect.Struct {
+			ft := elem(f.Type)
+			if ft.Kind() == reflect.Struct {
 
 			}
 

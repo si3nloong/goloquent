@@ -322,17 +322,18 @@ func (s *sequel) GetSchema(c Column) []Schema {
 				sc.DefaultValue = nil
 				sc.DataType = "text"
 			}
-			if f.Get("datatype") != "" {
-				sc.DataType = f.Get("datatype")
+			v, ok := f.Lookup("datatype")
+			if ok {
+				sc.DataType = v
 			}
 			sc.CharSet = utf8mb4CharSet
-			charset := f.Get("charset")
-			if charset != "" {
-				sc.CharSet.Encoding = charset
-				sc.CharSet.Collation = fmt.Sprintf("%s_general_ci", charset)
-				if f.Get("collate") != "" {
-					sc.CharSet.Collation = f.Get("collate")
-				}
+			v, ok = f.Lookup("charset")
+			if ok {
+				sc.CharSet.Encoding = v
+			}
+			sc.CharSet.Collation = fmt.Sprintf("%s_general_ci", v)
+			if v, ok := f.Lookup("collate"); ok {
+				sc.CharSet.Collation = v
 			}
 		case reflect.Bool:
 			sc.DefaultValue = false

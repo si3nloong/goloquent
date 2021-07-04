@@ -223,7 +223,7 @@ func interfaceToValue(it interface{}) (interface{}, error) {
 }
 
 func saveSliceField(f field, v reflect.Value) ([]interface{}, error) {
-	// if it's struct, f.StructCodec is not nil
+	// if it's struct, f.structCodec is not nil
 	if v.Len() <= 0 {
 		return make([]interface{}, 0), nil
 	}
@@ -240,7 +240,7 @@ func saveSliceField(f field, v reflect.Value) ([]interface{}, error) {
 	return slice, nil
 }
 
-func saveStructField(sc *StructCodec, v reflect.Value) (map[string]interface{}, error) {
+func saveStructField(sc *structCodec, v reflect.Value) (map[string]interface{}, error) {
 	data := make(map[string]interface{})
 	for _, f := range sc.fields {
 		fv := getFieldByIndex(v, f.paths)
@@ -316,7 +316,7 @@ func saveField(f field, v reflect.Value) (interface{}, error) {
 			v = v.Elem()
 			fallthrough
 		case reflect.Struct:
-			data, err := saveStructField(f.StructCodec, v)
+			data, err := saveStructField(f.structCodec, v)
 			if err != nil {
 				return nil, err
 			}

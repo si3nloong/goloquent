@@ -22,8 +22,8 @@ func AcquireString() *strings.Builder {
 // ReleaseString :
 func ReleaseString(x *strings.Builder) {
 	if x != nil {
-		defer strBldrPool.Put(x)
 		x.Reset()
+		strBldrPool.Put(x)
 	}
 }
 

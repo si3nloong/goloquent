@@ -238,8 +238,8 @@ func (p Property) Interface() (interface{}, error) {
 
 func getTypes(ns []string, f field, isFlatten bool) []Property {
 	props := make([]Property, 0)
-	if isFlatten && f.StructCodec != nil {
-		codec := f.StructCodec
+	if isFlatten && f.structCodec != nil {
+		codec := f.structCodec
 		for _, sf := range codec.fields {
 			dd := getTypes(append(ns, f.name), sf, isFlatten)
 			props = append(props, dd...)

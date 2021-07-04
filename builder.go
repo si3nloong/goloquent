@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log"
 	"reflect"
 	"regexp"
 	"strings"
@@ -713,20 +714,28 @@ func (b *builder) putStmt(parentKey []*datastore.Key, e *entity) (*stmt, error) 
 	v := e.slice.Elem()
 
 	isInline := (parentKey == nil && len(parentKey) == 0)
-	buf, args := new(bytes.Buffer), make([]interface{}, 0)
-	keys := make([]*datastore.Key, v.Len(), v.Len())
+	w, args := new(bytes.Buffer), make([]interface{}, 0)
+	keys := make([]*datastore.Key, v.Len())
 	if !isInline {
 		for i := 0; i < len(keys); i++ {
 			keys[i] = newPrimaryKey(e.Name(), parentKey[0])
 		}
 	}
 
-	cols := e.Columns()
-	buf.WriteString(fmt.Sprintf("INSERT INTO %s (%s) VALUES ",
-		b.db.dialect.GetTable(e.Name()),
-		b.db.dialect.Quote(strings.Join(e.Columns(), b.db.dialect.Quote(",")))))
+	columns := e.Columns()
+	noOfColumns := len(columns)
+	w.WriteString("INSERT INTO " + b.db.dialect.GetTable(e.Name()) + " (")
+	for i, col := range columns {
+		if i > 0 {
+			w.WriteByte(',')
+		}
+		w.WriteString(b.db.dialect.Quote(col))
+	}
+	w.WriteString(") VALUES ")
 
-	for i := 0; i < v.Len(); i++ {
+	query := "(" + strings.Repeat(","+variable, noOfColumns)[1:] + ")"
+	numOfRecord := v.Len()
+	for i := 0; i < numOfRecord; i++ {
 		f := reflect.Indirect(v.Index(i))
 		if !f.IsValid() {
 			return nil, fmt.Errorf("goloquent: invalid value entity value %v", f)
@@ -741,15 +750,15 @@ func (b *builder) putStmt(parentKey []*datastore.Key, e *entity) (*stmt, error) 
 		}
 		pk := newPrimaryKey(e.Name(), keys[i])
 		if isInline {
-			kk, isOk := fv.Interface().(*datastore.Key)
-			if !isOk {
+			kk, ok := fv.Interface().(*datastore.Key)
+			if !ok {
 				return nil, fmt.Errorf("goloquent: entity %q has no primary key property", f.Type().Name())
 			}
 			pk = newPrimaryKey(e.Name(), kk)
 		}
 		fv.Set(reflect.ValueOf(pk))
 
-		if x, isOk := vi.Interface().(Saver); isOk {
+		if x, ok := vi.Interface().(Saver); ok {
 			if err := x.Save(); err != nil {
 				return nil, err
 			}
@@ -761,30 +770,27 @@ func (b *builder) putStmt(parentKey []*datastore.Key, e *entity) (*stmt, error) 
 
 		props[pkColumn] = Property{[]string{pkColumn}, typeOfPtrKey, stringPk(pk)}
 		f.Set(vi.Elem())
-		if i != 0 {
-			buf.WriteString(",")
-		}
-		vals := make([]interface{}, len(cols), len(cols))
-		for j, c := range cols {
-			vv, err := props[c].Interface()
+		vals := make([]interface{}, noOfColumns)
+		for j, col := range columns {
+			vv, err := props[col].Interface()
 			if err != nil {
 				return nil, err
 			}
 			vals[j] = vv
 		}
 
-		buf.WriteString("(")
-		for j := 1; j <= len(cols); j++ {
-			buf.WriteString(variable + ",")
+		if i != 0 {
+			w.WriteByte(',')
 		}
-		buf.Truncate(buf.Len() - 1)
-		buf.WriteString(")")
+		w.WriteString(query)
 		args = append(args, vals...)
 	}
-	buf.WriteString(";")
+	w.WriteByte(';')
+
+	log.Println(w.String())
 
 	return &stmt{
-		statement: buf,
+		statement: w,
 		arguments: args,
 	}, nil
 }

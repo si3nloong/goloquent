@@ -22,14 +22,14 @@ type TestModel struct {
 type TestString string
 
 type testUser struct {
+	priv        *bool
 	ID          string         `goloquent:"-"`
 	Key         *datastore.Key `goloquent:"__key__"`
 	Name        TestString     `goloquent:",charset=latin1"`
 	Username    string         `goloquent:",index"`
 	Password    []byte         `goloquent:"Secret"`
 	Biography   TestString     `goloquent:",longtext"`
-	priv        *bool
-	Nickname    []string ``
+	Nickname    []string       ``
 	Age         uint8
 	CreditLimit float64 `goloquent:",unsigned"`
 	Addresses   []struct {
@@ -71,20 +71,20 @@ func TestStructCodec(t *testing.T) {
 	}
 
 	list := []testCodec{
-		testCodec{"__key__", []int{1}, false, false, false},
-		testCodec{"Name", []int{2}, false, false, false},
-		testCodec{"Username", []int{3}, false, true, false},
-		testCodec{"Secret", []int{4}, false, false, false},
-		testCodec{"Biography", []int{5}, false, false, false},
-		testCodec{"Nickname", []int{7}, false, false, true},
-		testCodec{"Age", []int{8}, false, false, false},
-		testCodec{"CreditLimit", []int{9}, false, false, false},
-		testCodec{"Addresses", []int{10}, false, false, true},
-		testCodec{"IsSingle", []int{11}, false, false, false},
-		testCodec{"LastLoginAt", []int{12}, false, false, false},
-		testCodec{"CreatedAt", []int{13, 0}, false, false, false},
-		testCodec{"UpdatedAt", []int{13, 1}, false, false, false},
-		testCodec{"$Deleted", []int{14}, false, false, false},
+		{"__key__", []int{1}, false, false, false},
+		{"Name", []int{2}, false, false, false},
+		{"Username", []int{3}, false, true, false},
+		{"Secret", []int{4}, false, false, false},
+		{"Biography", []int{5}, false, false, false},
+		{"Nickname", []int{7}, false, false, true},
+		{"Age", []int{8}, false, false, false},
+		{"CreditLimit", []int{9}, false, false, false},
+		{"Addresses", []int{10}, false, false, true},
+		{"IsSingle", []int{11}, false, false, false},
+		{"LastLoginAt", []int{12}, false, false, false},
+		{"CreatedAt", []int{13, 0}, false, false, false},
+		{"UpdatedAt", []int{13, 1}, false, false, false},
+		{"$Deleted", []int{14}, false, false, false},
 	}
 
 	if len(list) != len(cc.fields) {

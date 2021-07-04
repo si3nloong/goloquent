@@ -1,6 +1,7 @@
 package goloquent
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -17,12 +18,12 @@ func (c Column) Name() string {
 	return strings.Join(c.names, ".")
 }
 
-func getColumns(prefix []string, codec *StructCodec) []Column {
+func getColumns(prefix []string, codec *structCodec) []Column {
 	columns := make([]Column, 0)
 	for _, f := range codec.fields {
 		c := make([]Column, 0)
-		if f.getRoot().isFlatten() && f.StructCodec != nil {
-			c = getColumns(append(prefix, f.name), f.StructCodec)
+		if f.getRoot().isFlatten() && f.structCodec != nil {
+			c = getColumns(append(prefix, f.name), f.structCodec)
 		} else {
 			c = append(c, Column{
 				names: append(prefix, f.name),
@@ -49,16 +50,15 @@ type entity struct {
 	typeOf     reflect.Type
 	isMultiPtr bool
 	slice      reflect.Value
-	codec      *StructCodec
+	codec      *structCodec
 	fields     map[string]Column
 	columns    []Column
 }
 
-// TODO: check primary key must present
 func newEntity(it interface{}) (*entity, error) {
 	v := reflect.ValueOf(it)
 	if v.Kind() != reflect.Ptr {
-		return nil, fmt.Errorf("goloquent: model is not addressable")
+		return nil, errors.New("goloquent: model is not addressable")
 	}
 
 	isMultiPtr := false

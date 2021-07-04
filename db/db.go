@@ -16,8 +16,8 @@ func Connection(driver string) *goloquent.DB {
 	if len(paths) != 2 {
 		panic(fmt.Errorf("goloquent: invalid connection name %q", driver))
 	}
-	x, isOk := connPool.Load(driver)
-	if !isOk {
+	x, exists := connPool.Load(driver)
+	if !exists {
 		panic(fmt.Errorf("goloquent: connection not found"))
 	}
 	pool := x.(map[string]*goloquent.DB)

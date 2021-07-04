@@ -29,10 +29,10 @@ type field struct {
 	sequence   []int
 	typeOf     reflect.Type
 	isPtrChild bool
-	*StructCodec
+	*structCodec
 }
 
-func newField(st tag, parent *field, path []int, sequence []int, t reflect.Type, isPtr bool, s *StructCodec) field {
+func newField(st tag, parent *field, path []int, sequence []int, t reflect.Type, isPtr bool, s *structCodec) field {
 	return field{
 		tag:         st,
 		parent:      parent,
@@ -40,7 +40,7 @@ func newField(st tag, parent *field, path []int, sequence []int, t reflect.Type,
 		sequence:    sequence,
 		typeOf:      t,
 		isPtrChild:  isPtr,
-		StructCodec: s,
+		structCodec: s,
 	}
 }
 
@@ -75,7 +75,7 @@ func (f field) getRoot() *field {
 
 func (f field) isFlatten() bool {
 	root := f.getRoot()
-	return root.StructCodec != nil && f.tag.isFlatten()
+	return root.structCodec != nil && f.tag.IsFlatten()
 }
 
 func (f field) isSlice() bool {
@@ -83,20 +83,20 @@ func (f field) isSlice() bool {
 	return f.typeOf != typeOfByte && (k == reflect.Slice || k == reflect.Array)
 }
 
-// StructCodec :
-type StructCodec struct {
+// structCodec :
+type structCodec struct {
 	parentField *field
 	value       reflect.Value
 	fields      []field
 }
 
-func newStructCodec(v reflect.Value) *StructCodec {
-	return &StructCodec{
+func newStructCodec(v reflect.Value) *structCodec {
+	return &structCodec{
 		value: v,
 	}
 }
 
-func (sc *StructCodec) findField(name string) (*field, error) {
+func (sc *structCodec) findField(name string) (*field, error) {
 	for _, f := range sc.fields {
 		if f.name == name {
 			return &f, nil
@@ -171,10 +171,10 @@ type structScan struct {
 	typeOf      reflect.Type
 	field       *field
 	isPtrChild  bool
-	StructCodec *StructCodec
+	structCodec *structCodec
 }
 
-func getStructCodec(it interface{}) (*StructCodec, error) {
+func getStructCodec(it interface{}) (*structCodec, error) {
 	v := reflect.Indirect(reflect.ValueOf(it))
 	rt := v.Type()
 	if rt.Kind() != reflect.Struct {
@@ -187,7 +187,7 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 		first := structScans[0]
 		st := first.typeOf
 
-		fields := first.StructCodec.fields
+		fields := first.structCodec.fields
 		for i := 0; i < st.NumField(); i++ {
 			sf := st.Field(i)
 
@@ -198,10 +198,10 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 			}
 
 			ft := sf.Type
-			st := newTag(sf)
+			st := parseTag(sf)
 
 			switch {
-			case st.isSkip():
+			case st.IsSkip():
 				continue
 			case st.isPrimaryKey():
 				if sf.Type != typeOfPtrKey {
@@ -273,7 +273,7 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 					if !isExported {
 						continue
 					}
-					structScans = append(structScans, structScan{append(first.path, i), seq, ft, first.field, isPtr, first.StructCodec})
+					structScans = append(structScans, structScan{append(first.path, i), seq, ft, first.field, isPtr, first.structCodec})
 					continue
 				}
 
@@ -296,7 +296,7 @@ func getStructCodec(it interface{}) (*StructCodec, error) {
 			// return fields[i].sequence[0] < fields[j].sequence[0]
 		})
 
-		first.StructCodec.fields = fields
+		first.structCodec.fields = fields
 		structScans = structScans[1:] // unshift item
 	}
 

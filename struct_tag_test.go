@@ -4,31 +4,31 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestStructTagWithSkip(t *testing.T) {
 	var i testUser
 	vt := reflect.ValueOf(i).Type()
-	tag := newTag(vt.Field(0))
-	if !tag.isSkip() {
+	tag := parseTag(vt.Field(0))
+	if !tag.IsSkip() {
 		t.Fatal(fmt.Sprintf("Expected tag have skip, but end up with %v", tag.name))
 	}
-
 }
 
 func TestStructTagWithCharSet(t *testing.T) {
 	var i testUser
 	vt := reflect.ValueOf(i).Type()
-	tag := newTag(vt.Field(2))
-	if tag.Get("charset") != "latin1" {
-		t.Fatal(fmt.Sprintf("Expected tag have %q charset, but end up with %v", "latin1", tag.Get("charset")))
-	}
+	tag := parseTag(vt.Field(2))
+	v, _ := tag.Lookup("charset")
+	require.True(t, v == "latin1")
 }
 
 func TestStructTagWithLongText(t *testing.T) {
 	var i testUser
 	vt := reflect.ValueOf(i).Type()
-	tag := newTag(vt.Field(5))
+	tag := parseTag(vt.Field(5))
 	if !tag.IsLongText() {
 		t.Fatal("Expected tag have longtext, but end up with no longtext")
 	}
@@ -37,7 +37,7 @@ func TestStructTagWithLongText(t *testing.T) {
 func TestStructTagWithIndex(t *testing.T) {
 	var i testUser
 	vt := reflect.ValueOf(i).Type()
-	tag := newTag(vt.Field(3))
+	tag := parseTag(vt.Field(3))
 	if !tag.IsIndex() {
 		t.Fatal("Expected tag have index, but end up with noindex")
 	}

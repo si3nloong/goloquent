@@ -1,3 +1,17 @@
+# Goloquent
+
+> The only sequel ORM that respect google datastore.
+
+
+## Why Goloquent?
+
+Few years back, we required to migrate our database to local due to compliance issue, and there have no way to map back the data to SQL database. For sake, we introduce goloquent for whoever want to migrate their google datastore to SQL database.
+
+## Database Support
+
+- [x] MySQL (version 5.7 and above)
+- [x] Postgres (version 9.4 and above)
+
 
 This package is not compactible with native package `database/sql`, if you want the support of it, you may go for [sqlike](https://github.com/si3nloong/sqlike)
 
@@ -7,10 +21,7 @@ Inspired by Laravel Eloquent and Google Cloud Datastore
 
 This repo still under development. We accept any pull request. ^\_^
 
-## Database Support
 
-- [x] MySQL (version 5.7 and above)
-- [x] Postgres (version 9.4 and above)
 
 ## Installation
 

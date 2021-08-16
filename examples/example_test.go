@@ -12,16 +12,19 @@ import (
 	"github.com/si3nloong/goloquent/expr"
 
 	//  "database/sql"
+
 	_ "github.com/go-sql-driver/mysql"
 )
 
 func TestExamples(t *testing.T) {
 
+	// mysql.RegisterTLSConfig("custom", &tls.Config{})
 	conn, err := db.Open("mysql", db.Config{
 		Username: "root",
 		Password: "abcd1234",
 		Host:     "localhost",
 		Port:     "3306",
+		// TLSConfig: "",
 		Database: "goloquent",
 		Logger: func(stmt *goloquent.Stmt) {
 			log.Println(stmt.TimeElapse()) // elapse time in time.Duration

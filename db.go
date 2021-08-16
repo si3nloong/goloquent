@@ -47,6 +47,7 @@ type Config struct {
 	Port       string
 	Database   string
 	UnixSocket string
+	TLSConfig  string
 	CharSet    *CharSet
 	Logger     LogHandler
 }
@@ -58,6 +59,7 @@ func (c *Config) Normalize() {
 	c.Port = strings.TrimSpace(c.Port)
 	c.Database = strings.TrimSpace(c.Database)
 	c.UnixSocket = strings.TrimSpace(c.UnixSocket)
+	c.TLSConfig = strings.TrimSpace(c.TLSConfig)
 	if c.CharSet != nil && c.CharSet.Encoding != "" && c.CharSet.Collation != "" {
 		c.CharSet.Collation = strings.TrimSpace(c.CharSet.Collation)
 		c.CharSet.Encoding = strings.TrimSpace(c.CharSet.Encoding)

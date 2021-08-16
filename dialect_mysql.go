@@ -41,10 +41,12 @@ func (s *mysql) Open(conf Config) (*sql.DB, error) {
 		}
 		addr += fmt.Sprintf("tcp(%s:%s)", host, port)
 	}
-	buf.WriteString(addr)
-	buf.WriteString(fmt.Sprintf("/%s", conf.Database))
+	buf.WriteString(addr + "/" + conf.Database)
 	buf.WriteString("?parseTime=true")
 	buf.WriteString("&charset=utf8mb4&collation=utf8mb4_unicode_ci")
+	if conf.TLSConfig != "" {
+		buf.WriteString("&tls=" + conf.TLSConfig)
+	}
 	log.Println("Connection String :", buf.String())
 	client, err := sql.Open("mysql", buf.String())
 	if err != nil {

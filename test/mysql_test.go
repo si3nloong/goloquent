@@ -17,6 +17,7 @@ import (
 func TestMySQLConn(t *testing.T) {
 	conn, err := db.Open("mysql", db.Config{
 		Username: "root",
+		Password: "abcd1234",
 		Database: "goloquent",
 		Logger: func(stmt *goloquent.Stmt) {
 			log.Println(fmt.Sprintf("[%.3fms] %s", stmt.TimeElapse().Seconds()*1000, stmt.String()))

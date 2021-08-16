@@ -41,14 +41,14 @@ type User struct {
 	Key              *datastore.Key `goloquent:"__key__" faker:"-"`
 	Username         string         `faker:"username"`
 	Name             string         `goloquent:",charset=utf8,collate=utf8_bin" faker:"name"`
-	Password         []byte         `goloquent:",datatype=varchar(100)" faker:"password"`
+	Password         string         `goloquent:",datatype=varchar(100)" faker:"password"`
 	Nickname         *string
 	Age              uint8            ``
 	CreditLimit      float64          `goloquent:",unsigned"`
 	Address          Address          `faker:"-"`
 	Birthdate        goloquent.Date   `faker:"-"`
 	PrimaryEmail     Email            `faker:"email"`
-	Emails           []string         `goloquent:"" faker:"email"`
+	Emails           []string         `goloquent:""`
 	Information      json.RawMessage  `faker:"-"`
 	ExtraInformation *json.RawMessage `faker:"-"`
 	Status           string           `goloquent:",charset=latin1" faker:""`

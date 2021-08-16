@@ -60,13 +60,17 @@ var ec = &entityCache{
 }
 
 func codecByType(t reflect.Type) *structDefinition {
-	ec.mu.Lock()
-	defer ec.mu.Unlock()
 	sd, ok := ec.cache[t]
 	if ok {
 		return sd
 	}
-	ec.cache[t] = getCodec(ec.tag, t)
+	ec.mu.Lock()
+	defer ec.mu.Unlock()
+	sd, err := getCodec(ec.tag, t)
+	if err != nil {
+		panic(err)
+	}
+	ec.cache[t] = sd
 	return ec.cache[t]
 }
 

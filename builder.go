@@ -244,6 +244,14 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 				wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vi))
 				continue
 			}
+		case Match:
+			op = ""
+			vv = fmt.Sprintf("AGAINST(%s)", variable)
+			name := strings.Split(name, ",")
+			column := fmt.Sprintf("%s", strings.Join(name, "`,`"))
+			wheres = append(wheres, fmt.Sprintf("MATCH(%s) %s %s", column, op, vv))
+			args = append(args, v)
+			continue
 		}
 		wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vv))
 		args = append(args, v)

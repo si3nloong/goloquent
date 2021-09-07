@@ -32,7 +32,7 @@ const (
 	IsObject
 	IsArray
 	IsType
-	Match
+	MatchAgainst
 )
 
 type sortDirection int
@@ -334,7 +334,7 @@ func (q *Query) where(field, op string, value interface{}, isJSON bool) *Query {
 		}
 		optr = NotLike
 	case "match":
-		optr = Match
+		optr = MatchAgainst
 	default:
 		if !isJSON {
 			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q", op))
@@ -482,11 +482,12 @@ func (q *Query) WhereJSONIsArray(field string) *Query {
 // MatchAgainst :
 func (q *Query) MatchAgainst(fields []string, v string) *Query {
 	f := Filter{}
+	f.operator = MatchAgainst
 	f.raw = "MATCH("
 	for _, field := range fields {
 		f.raw += "`" + field + "`"
 	}
-	f.raw += " AGAINST(??)"
+	f.raw += ") AGAINST(" + variable + ")"
 	f.value = v
 	q.filters = append(q.filters, f)
 	return q

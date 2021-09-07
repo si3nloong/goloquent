@@ -375,7 +375,7 @@ func (db *DB) Where(field string, operator string, value interface{}) *Query {
 
 // Where :
 func (db *DB) MatchAgainst(fields []string, value string) *Query {
-	return db.MatchAgainst(fields, value)
+	return db.NewQuery().MatchAgainst(fields, value)
 }
 
 // RunInTransaction :

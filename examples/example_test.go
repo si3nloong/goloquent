@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/datastore"
 	"github.com/brianvoe/gofakeit"
 	"github.com/si3nloong/goloquent"
 	"github.com/si3nloong/goloquent/db"
@@ -41,7 +42,8 @@ func TestExamples(t *testing.T) {
 
 	db.Migrate(new(User))
 	db.Truncate("User")
-	db.MatchAgainst([]string{}, "")
+	u := new(User)
+	db.MatchAgainst([]string{"Name"}, "value").Find(datastore.IDKey("test", 100, nil), u)
 
 	users := [...]User{
 		newUser(),

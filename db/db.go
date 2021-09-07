@@ -166,6 +166,11 @@ func WhereJSON(field string, operator string, value interface{}) *goloquent.Quer
 	return defaultDB.NewQuery().WhereJSON(field, operator, value)
 }
 
+// MatchAgainst :
+func MatchAgainst(fields []string, value string) *goloquent.Query {
+	return defaultDB.NewQuery().MatchAgainst(fields, value)
+}
+
 // OrderBy :
 func OrderBy(fields ...interface{}) *goloquent.Query {
 	return defaultDB.NewQuery().OrderBy(fields...)

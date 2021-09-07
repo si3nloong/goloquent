@@ -476,6 +476,19 @@ func (q *Query) WhereJSONIsArray(field string) *Query {
 	return q.WhereJSON(field, "isArray", nil)
 }
 
+// MatchAgainst :
+func (q *Query) MatchAgainst(fields []string, v string) *Query {
+	f := Filter{}
+	f.raw = "MATCH("
+	for _, field := range fields {
+		f.raw += "`" + field + "`"
+	}
+	f.raw += " AGAINST(??)"
+	f.value = v
+	q.filters = append(q.filters, f)
+	return q
+}
+
 // Lock :
 func (q *Query) Lock(mode locked) *Query {
 	q.lockMode = mode

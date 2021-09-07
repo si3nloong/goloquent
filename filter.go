@@ -14,6 +14,7 @@ type Filter struct {
 	operator operator
 	value    interface{}
 	isJSON   bool
+	raw      string
 }
 
 // Field :

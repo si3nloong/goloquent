@@ -41,6 +41,7 @@ func TestExamples(t *testing.T) {
 
 	db.Migrate(new(User))
 	db.Truncate("User")
+	db.MatchAgainst([]string{}, "")
 
 	users := [...]User{
 		newUser(),

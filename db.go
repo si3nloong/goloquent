@@ -373,6 +373,11 @@ func (db *DB) Where(field string, operator string, value interface{}) *Query {
 	return db.NewQuery().Where(field, operator, value)
 }
 
+// Where :
+func (db *DB) MatchAgainst(fields []string, value string) *Query {
+	return db.MatchAgainst(fields, value)
+}
+
 // RunInTransaction :
 func (db *DB) RunInTransaction(cb TransactionHandler) error {
 	return newBuilder(db.NewQuery()).runInTransaction(cb)

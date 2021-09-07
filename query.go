@@ -32,6 +32,7 @@ const (
 	IsObject
 	IsArray
 	IsType
+	Match
 )
 
 type sortDirection int
@@ -332,6 +333,8 @@ func (q *Query) where(field, op string, value interface{}, isJSON bool) *Query {
 			return q
 		}
 		optr = NotLike
+	case "match":
+		optr = Match
 	default:
 		if !isJSON {
 			q.errs = append(q.errs, fmt.Errorf("goloquent: invalid operator %q", op))

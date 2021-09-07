@@ -484,7 +484,10 @@ func (q *Query) MatchAgainst(fields []string, v string) *Query {
 	f := Filter{}
 	f.operator = MatchAgainst
 	f.raw = "MATCH("
-	for _, field := range fields {
+	for i, field := range fields {
+		if i > 0 {
+			f.raw += ","
+		}
 		f.raw += "`" + field + "`"
 	}
 	f.raw += ") AGAINST(" + variable + ")"

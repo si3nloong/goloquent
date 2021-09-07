@@ -43,7 +43,7 @@ func TestExamples(t *testing.T) {
 	db.Migrate(new(User))
 	db.Truncate("User")
 	u := new(User)
-	db.MatchAgainst([]string{"Name"}, "value").Find(datastore.IDKey("test", 100, nil), u)
+	db.MatchAgainst([]string{"Name", "Username"}, "value").Find(datastore.IDKey("test", 100, nil), u)
 
 	users := [...]User{
 		newUser(),

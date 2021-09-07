@@ -480,7 +480,7 @@ func (q *Query) WhereJSONIsArray(field string) *Query {
 }
 
 // MatchAgainst :
-func (q *Query) MatchAgainst(fields []string, v string) *Query {
+func (q *Query) MatchAgainst(fields []string, v []string) *Query {
 	f := Filter{}
 	f.operator = MatchAgainst
 	f.raw = "MATCH("
@@ -490,8 +490,11 @@ func (q *Query) MatchAgainst(fields []string, v string) *Query {
 		}
 		f.raw += "`" + field + "`"
 	}
-	f.raw += ") AGAINST(" + variable + ")"
-	f.value = v
+	f.raw += ") AGAINST('"
+	for _, value := range v {
+		f.raw += "\"" + value + "\" "
+	}
+	f.raw += "')"
 	q.filters = append(q.filters, f)
 	return q
 }

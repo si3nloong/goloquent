@@ -248,7 +248,9 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 			if f.raw != "" {
 				wheres = append(wheres, f.raw)
 			} else {
-				wheres = append(wheres, fmt.Sprintf("MATCH(%s) AGAINST(%s)", name, variable))
+				name := strings.Split(name, ",")
+				column := fmt.Sprintf("%s", strings.Join(name, "`,`"))
+				wheres = append(wheres, fmt.Sprintf("MATCH(%s) AGAINST(%s)", column, variable))
 			}
 			args = append(args, v)
 			continue

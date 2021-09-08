@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"cloud.google.com/go/datastore"
@@ -480,21 +481,28 @@ func (q *Query) WhereJSONIsArray(field string) *Query {
 }
 
 // MatchAgainst :
-func (q *Query) MatchAgainst(fields []string, v []string) *Query {
+func (q *Query) MatchAgainst(fields []string, values ...string) *Query {
 	f := Filter{}
 	f.operator = MatchAgainst
-	f.raw = "MATCH("
+	buf := new(bytes.Buffer)
+	buf.WriteString("MATCH(")
+
 	for i, field := range fields {
 		if i > 0 {
-			f.raw += ","
+			buf.WriteByte(',')
 		}
-		f.raw += "`" + field + "`"
+		buf.WriteString("`" + field + "`")
 	}
-	f.raw += ") AGAINST('"
-	for _, value := range v {
-		f.raw += "\"" + value + "\" "
+	buf.WriteString(") AGAINST(")
+	for i, val := range values {
+		if i > 0 {
+			buf.WriteByte(' ')
+		}
+
+		buf.WriteString(strconv.Quote(val))
 	}
-	f.raw += "')"
+	buf.WriteByte(')')
+	f.raw = buf.String()
 	q.filters = append(q.filters, f)
 	return q
 }

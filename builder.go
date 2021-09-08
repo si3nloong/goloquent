@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -139,7 +140,7 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 			if f.IsJSON() {
 				str, vv, err := b.db.dialect.FilterJSON(f)
 				if err != nil {
-					return nil, fmt.Errorf("goloquent: %v", err)
+					return nil, fmt.Errorf("goloquent: %w", err)
 				}
 				wheres = append(wheres, str)
 				args = append(args, vv...)
@@ -189,12 +190,12 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 				return nil, fmt.Errorf(`goloquent: value for "AnyLike" operator cannot be empty`)
 			}
 			buf := new(bytes.Buffer)
-			buf.WriteString("(")
+			buf.WriteByte('(')
 			for j := 0; j < len(x); j++ {
 				buf.WriteString(fmt.Sprintf("%s LIKE %s OR ", name, variable))
 			}
 			buf.Truncate(buf.Len() - 4)
-			buf.WriteString(")")
+			buf.WriteByte(')')
 
 			wheres = append(wheres, buf.String())
 			args = append(args, x...)
@@ -249,6 +250,14 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 				wheres = append(wheres, f.raw)
 			} else {
 				wheres = append(wheres, fmt.Sprintf("MATCH(%s) AGAINST(%s)", name, variable))
+
+			}
+			switch vi := v.(type) {
+			case []interface{}:
+				args = append(args, vi...)
+			case nil:
+			default:
+				args = append(args, v)
 			}
 			continue
 		}
@@ -259,18 +268,18 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 	for _, aa := range query.ancestors {
 		if aa.isGroup {
 			buf := new(bytes.Buffer)
-			buf.WriteString("(")
+			buf.WriteByte('(')
 			for _, x := range aa.data {
 				buf.WriteString(fmt.Sprintf("%s LIKE %s OR ", b.db.dialect.Quote(pkColumn), variable))
 				args = append(args, fmt.Sprintf("%%%s/%%", stringifyKey(x.(*datastore.Key))))
 			}
 			buf.Truncate(buf.Len() - 4)
-			buf.WriteString(")")
+			buf.WriteByte(')')
 			wheres = append(wheres, buf.String())
 			continue
 		}
 
-		wheres = append(wheres, fmt.Sprintf("%s LIKE %s", b.db.dialect.Quote(pkColumn), variable))
+		wheres = append(wheres, b.db.dialect.Quote(pkColumn)+" LIKE "+variable)
 		args = append(args, fmt.Sprintf("%%%s/%%", stringifyKey(aa.data[0].(*datastore.Key))))
 	}
 
@@ -316,10 +325,10 @@ func (b *builder) buildOrderBy(query scope) (*stmt, error) {
 func (b *builder) buildLimitOffset(query scope) *stmt {
 	buf := new(bytes.Buffer)
 	if query.limit > 0 {
-		buf.WriteString(fmt.Sprintf(" LIMIT %d", query.limit))
+		buf.WriteString(" LIMIT " + strconv.FormatInt(int64(query.limit), 10))
 	}
 	if query.offset > 0 {
-		buf.WriteString(fmt.Sprintf(" OFFSET %d", query.offset))
+		buf.WriteString(" OFFSET " + strconv.FormatInt(int64(query.offset), 10))
 	}
 	return &stmt{
 		statement: buf,
@@ -382,7 +391,7 @@ func (b *builder) getCommand(e *entity) (*stmt, error) {
 	query := b.query
 	buf := new(bytes.Buffer)
 	buf.WriteString(b.buildSelect(query).string())
-	buf.WriteString(fmt.Sprintf(" FROM %s", b.db.dialect.GetTable(e.Name())))
+	buf.WriteString(" FROM " + b.db.dialect.GetTable(e.Name()))
 	if !query.noScope && e.hasSoftDelete() {
 		query.filters = append(query.filters, Filter{
 			field:    softDeleteColumn,

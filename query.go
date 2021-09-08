@@ -493,7 +493,7 @@ func (q *Query) MatchAgainst(fields []string, values ...string) *Query {
 		}
 		buf.WriteString("`" + field + "`")
 	}
-	buf.WriteString(") AGAINST(")
+	buf.WriteString(") AGAINST('")
 	for i, val := range values {
 		if i > 0 {
 			buf.WriteByte(' ')
@@ -501,7 +501,7 @@ func (q *Query) MatchAgainst(fields []string, values ...string) *Query {
 
 		buf.WriteString(strconv.Quote(val))
 	}
-	buf.WriteByte(')')
+	buf.WriteString("')")
 	f.raw = buf.String()
 	q.filters = append(q.filters, f)
 	return q

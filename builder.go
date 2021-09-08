@@ -250,7 +250,6 @@ func (b *builder) buildWhere(query scope) (*stmt, error) {
 			} else {
 				wheres = append(wheres, fmt.Sprintf("MATCH(%s) AGAINST(%s)", name, variable))
 			}
-			args = append(args, v)
 			continue
 		}
 		wheres = append(wheres, fmt.Sprintf("%s %s %s", name, op, vv))

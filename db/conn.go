@@ -28,6 +28,7 @@ type Config struct {
 	TLSConfig  string
 	CharSet    *goloquent.CharSet
 	Logger     goloquent.LogHandler
+	Native     goloquent.NativeHandler
 }
 
 // Open :
@@ -58,6 +59,10 @@ func Open(driver string, conf Config) (*goloquent.DB, error) {
 	conn, err := dialect.Open(config)
 	if err != nil {
 		return nil, err
+	}
+
+	if conf.Native != nil {
+		conf.Native(conn)
 	}
 
 	if err := conn.Ping(); err != nil {

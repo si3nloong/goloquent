@@ -25,6 +25,9 @@ type TransactionHandler func(*DB) error
 // LogHandler :
 type LogHandler func(*Stmt)
 
+// NativeHandler :
+type NativeHandler func(*sql.DB)
+
 // public constant variables :
 const (
 	pkLen            = 512
